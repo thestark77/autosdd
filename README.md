@@ -292,7 +292,7 @@ Hooks automate quality enforcement without manual intervention:
 
 The `git push` hook blocks ALL pushes unless `pnpm validate` passes. Never skip it with `--no-verify`. Fix the issue instead.
 
-See [docs/hooks.md](docs/hooks.md) for more hook patterns.
+See [docs/hooks.md](docs/hooks.md) for the full hook event reference.
 
 ---
 
@@ -354,6 +354,23 @@ See [docs/iron-man-roadmap.md](docs/iron-man-roadmap.md) for full specification.
 
 ---
 
+## Context Directory
+
+Every AutoSDD project maintains a `context/` directory with persistent knowledge that agents read before making decisions:
+
+| File | Purpose | When to update |
+|------|---------|---------------|
+| `base_requirements.md` | Immutable conventions, patterns, security | Rarely — foundational rules |
+| `requirements.md` | Project specs, schema, phases, permissions | When user input affects the plan |
+| `autosdd.md` | Autonomous development framework | When framework evolves |
+| `business_logic.md` | Business domain knowledge, terminology, rules | Continuously — as user shares context |
+
+`business_logic.md` is the living record of everything that code alone cannot capture: what the product does, who uses it, what the terminology means, and what the non-obvious rules are. Agents write to it proactively whenever the user shares domain knowledge.
+
+Copy `templates/business_logic.md` into `your-project/context/business_logic.md` and fill it in as your project evolves.
+
+---
+
 ## Quick Start
 
 ```bash
@@ -370,6 +387,7 @@ npx -y skills add autosdd
 # 4. Add AutoSDD to your project
 cp templates/CLAUDE.md your-project/CLAUDE.md
 cp templates/autosdd.md your-project/context/autosdd.md
+cp templates/business_logic.md your-project/context/business_logic.md
 
 # 5. Initialize SDD in Claude Code
 /sdd-init
@@ -401,13 +419,14 @@ autosdd/
 │   └── SKILL.md                 # Claude Code skill (install via gentle-ai)
 ├── templates/
 │   ├── CLAUDE.md                # Template CLAUDE.md for new projects
-│   └── autosdd.md               # Template autosdd.md (the framework itself)
+│   ├── autosdd.md               # Template autosdd.md (the framework itself)
+│   └── business_logic.md        # Template for business domain knowledge
 └── docs/
     ├── testing-strategy.md      # Full testing strategy
     ├── skill-lifecycle.md       # Skill activation/deactivation protocol
     ├── mcp-setup.md             # MCP server configuration guide
     ├── iron-man-roadmap.md      # Voice/Telegram integration roadmap
-    └── hooks.md                 # Claude Code hooks configuration
+    └── hooks.md                 # Claude Code hooks — full event reference
 ```
 
 ---

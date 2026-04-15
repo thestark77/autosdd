@@ -4,12 +4,74 @@ Hooks automate quality enforcement. They run at defined points in Claude Code's 
 
 ---
 
-## Hook Types
+## All Hook Events
 
-| Type | When it runs |
-|------|-------------|
-| `PreToolUse` | Before Claude Code executes a tool call |
-| `PostToolUse` | After Claude Code executes a tool call |
+| Event | When it fires | Can block? |
+|-------|--------------|------------|
+| `PreToolUse` | Before any tool execution | Yes — return non-zero to block |
+| `PostToolUse` | After tool execution | No — output is logged only |
+| `SessionStart` | Session begins | No — use to load context |
+| `Stop` | Claude finishes responding | No — use for quality checks |
+| `SubagentStart` | A sub-agent launches | No |
+| `SubagentStop` | A sub-agent completes | No — use for output validation |
+| `TaskCreated` | A task is created | No |
+| `TaskCompleted` | A task is completed | No |
+| `CwdChanged` | Working directory changes | No |
+| `FileChanged` | A file is modified | No |
+| `PermissionDenied` | A permission request is denied | No |
+| `PreCompact` | Before context compaction | No — use to backup state |
+| `PostCompact` | After context compaction | No — use for recovery |
+| `UserPromptSubmit` | Before processing user input | Yes — use for cleanup pipeline |
+| `Notification` | When Claude sends a notification | No — use for routing to Telegram/Slack |
+
+---
+
+## Handler Types
+
+| Type | Description | Best for |
+|------|-------------|---------|
+| `command` | Shell script executed in the project root | Quality gates, validation, formatting |
+| `prompt` | LLM judgment — runs against `$ARGUMENTS` (the tool input) | Ambiguity detection, content review |
+| `http` | POST JSON payload to an external endpoint | Notifications, webhooks, external integrations |
+| `agent` | Sub-agent with full tool access (Read, Grep, Glob) | Complex validation, context-aware checks |
+
+### `command` example
+
+```json
+{ "type": "command", "command": "pnpm validate" }
+```
+
+### `prompt` example
+
+```json
+{
+  "type": "prompt",
+  "prompt": "Review this user input for clarity. If ambiguous, suggest clarifying questions. If clear, respond with APPROVE."
+}
+```
+
+### `http` example
+
+```json
+{
+  "type": "http",
+  "url": "https://api.telegram.org/bot{TOKEN}/sendMessage",
+  "headers": { "Content-Type": "application/json" }
+}
+```
+
+### `agent` example
+
+```json
+{
+  "type": "agent",
+  "prompt": "Review the modified file for security issues. Check for exposed secrets, SQL injection risks, and unvalidated inputs. Report CRITICAL if any are found."
+}
+```
+
+---
+
+## Hook Types
 
 ---
 
@@ -148,6 +210,54 @@ Save test failures to Engram for tracking:
   }
 }
 ```
+
+---
+
+## AutoSDD Hook Configuration
+
+The recommended baseline hook setup for any AutoSDD project covers three key automation points:
+
+```json
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash(git push*)",
+        "hooks": [{ "type": "command", "command": "pnpm validate" }]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "prompt",
+            "prompt": "Review this user input for clarity. If ambiguous, suggest clarifying questions. If clear, respond with APPROVE."
+          }
+        ]
+      }
+    ],
+    "Notification": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "http",
+            "url": "https://api.telegram.org/bot{TOKEN}/sendMessage",
+            "headers": { "Content-Type": "application/json" }
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+| Hook | Purpose |
+|------|---------|
+| `PreToolUse` on `git push*` | Blocks all pushes unless `pnpm validate` passes |
+| `UserPromptSubmit` | LLM reviews every user input for ambiguity before execution starts |
+| `Notification` | Routes all Claude notifications to Telegram (Iron Man mode) |
 
 ---
 
