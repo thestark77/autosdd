@@ -321,12 +321,37 @@ rtk git add . && rtk git commit -m "msg" && rtk git push
 
 ---
 
+## Remote Control (Mobile)
+
+Control your development session from your phone:
+
+1. Start session: `/rc` in Claude Code (or `claude --rc`)
+2. Scan QR code with Claude mobile app (iOS/Android)
+3. Full control from phone — same files, MCPs, project context
+4. Works on Pro and Max plans
+
+Remote Control REPLACES the need for Telegram/WhatsApp bots. Everything runs locally on your machine — the phone is just a window into the session.
+
+---
+
 ## Iron Man Mode (Roadmap)
+
+### Mobile Interface — Remote Control (Available Now)
+
+The primary mobile interface for Iron Man Mode is **Claude Remote Control** — built into Claude Code:
+
+1. Run `/rc` in Claude Code (or `claude --rc`)
+2. Scan the QR code with the Claude mobile app (iOS/Android)
+3. Full session access from your phone — same project context, MCPs, and tools
+4. Send voice messages or text directly from Claude mobile
+5. Receive notifications when the AI needs input or completes work
+
+No bot setup, no API tokens, no external services. Remote Control is the native, zero-friction path to mobile access.
 
 ### Voice Input Pipeline
 
 ```
-1. User sends audio/text via WhatsApp or Telegram
+1. User sends audio/text via Claude mobile app (Remote Control)
 2. AI cleans and formats with punctuation
 3. Passes through prompt-engineering-patterns skill
 4. Generates SDD-ready prompt for orchestrator
@@ -334,13 +359,6 @@ rtk git add . && rtk git commit -m "msg" && rtk git push
 6. Executes full pipeline autonomously
 7. Notifies user on completion, blocker, or approval needed
 ```
-
-### WhatsApp / Telegram Bridge
-
-- Bidirectional communication via Telegram Bot API
-- User sends audio or text prompts from anywhere
-- System sends notifications: completions, blockers, approval requests
-- Execution runs locally on the developer's machine
 
 ### Proactive Conversation Management
 

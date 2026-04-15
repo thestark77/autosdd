@@ -5,6 +5,8 @@
 
 Iron Man Mode is the end state of AutoSDD — a fully autonomous development loop where the developer communicates intent via voice or text from any device, and the AI executes the full pipeline without hand-holding.
 
+**Mobile interface**: [Remote Control](#phase-1--remote-control-available-now) (built into Claude Code) — no bot setup required.
+
 ---
 
 ## Vision
@@ -42,7 +44,7 @@ This is not science fiction. Every component exists. The roadmap below describes
 ```
 ┌──────────────────────────────────────────┐
 │  INPUT LAYER                             │
-│  WhatsApp / Telegram Bot                 │
+│  Claude Mobile App (Remote Control)      │
 │  Voice (audio message) or Text           │
 └──────────────────────────────────────────┘
     ↓
@@ -57,7 +59,7 @@ This is not science fiction. Every component exists. The roadmap below describes
 ┌──────────────────────────────────────────┐
 │  CLARIFICATION LAYER                     │
 │  AI generates focused questions          │
-│  Sends via Telegram                      │
+│  Sends via Remote Control session        │
 │  Waits for user responses                │
 │  Iterates until zero ambiguity           │
 └──────────────────────────────────────────┘
@@ -74,22 +76,57 @@ This is not science fiction. Every component exists. The roadmap below describes
 │  NOTIFICATION LAYER                      │
 │  Completion: "PR #47 ready for review"  │
 │  Blocker: "Can't proceed — need approval"│
-│  Question: "Should X or Y?"              │
-│  Error: "Failed 3x — need your help"    │
+│  Question: "Should X or Y?"             │
+│  Error: "Failed 3x — need your help"   │
 └──────────────────────────────────────────┘
 ```
 
 ---
 
-## Phase 1 — Voice Input Processing
+## Phase 1 — Remote Control (Available Now)
+
+### Goal
+Connect your phone to your active Claude Code session. Send voice or text from anywhere. No bot setup, no API tokens.
+
+### Setup (30 seconds)
+
+1. Open Claude Code in your terminal
+2. Run `/rc` (or start with `claude --rc`)
+3. Scan the QR code with the Claude mobile app (iOS/Android)
+4. Your phone is now a window into your development session
+
+### What You Get
+
+- **Full session access** — same project context, files, MCPs, and tools
+- **Voice input** — send audio messages via Claude mobile; Claude transcribes and processes them
+- **Real-time notifications** — Claude pings your phone when it needs input or finishes work
+- **Inline keyboards** — approve/reject actions directly from mobile
+- **Runs on Pro and Max plans** — no extra setup
+
+### Why This Replaces Telegram Bots
+
+| | Remote Control | Telegram Bot |
+|--|--|--|
+| Setup | Scan QR code | Create bot, configure API, host server |
+| Auth | Anthropic account | Bot token + webhook |
+| Context | Full session access | HTTP payload only |
+| MCPs | All available | None |
+| Voice | Built-in (Claude mobile) | Requires Whisper API |
+| Cost | Included in plan | API costs + hosting |
+
+Remote Control gives you everything a Telegram bot would — and more — with zero infrastructure.
+
+---
+
+## Phase 2 — Voice Input Processing
 
 ### Goal
 Transform raw voice input (or unstructured text) into clean, SDD-ready prompts.
 
 ### Implementation
 
-1. **Telegram Bot** receives audio message
-2. **Transcription** via Whisper API or Telegram's built-in transcription
+1. **Claude mobile app** receives audio message via Remote Control
+2. **Transcription** handled natively by Claude mobile
 3. **Cleaning** via `prompt-engineering-patterns` skill:
    - Add proper punctuation
    - Fix grammar
@@ -128,7 +165,7 @@ from a CSV file.
 
 ---
 
-## Phase 2 — Proactive Clarification
+## Phase 3 — Proactive Clarification
 
 ### Goal
 AI asks focused questions before execution, eliminating mid-implementation surprises.
@@ -139,7 +176,7 @@ AI asks focused questions before execution, eliminating mid-implementation surpr
 1. AI analyzes structured prompt
 2. Identifies ambiguities (requirement gaps, edge cases, scope questions)
 3. Groups questions by priority (blocking vs. non-blocking)
-4. Sends numbered question list via Telegram
+4. Sends numbered question list via Remote Control (Claude mobile)
 5. Waits for user response (async — user can reply hours later)
 6. Integrates answers into SDD spec before execution starts
 ```
@@ -176,10 +213,10 @@ JARVIS → User: Got it. Starting now. Will ping you when done.
 
 ---
 
-## Phase 3 — Notification System
+## Phase 4 — Notification System
 
 ### Goal
-AI sends updates, questions, and completion notices via Telegram. Developer stays informed without checking manually.
+AI sends updates, questions, and completion notices via Remote Control (Claude mobile). Developer stays informed without checking manually.
 
 ### Message Types
 
@@ -194,14 +231,26 @@ AI sends updates, questions, and completion notices via Telegram. Developer stay
 
 ### Implementation
 
-1. **Telegram Bot API** for message delivery
+1. **Claude Remote Control** for message delivery (built into Claude Code)
 2. **Inline keyboards** for approval buttons ([Yes] / [No] / [Later])
-3. **Message threading** — replies go to the right session
+3. **Session continuity** — replies go to the active Claude Code session
 4. **Rate limiting** — batch notifications to avoid spam
+
+### Optional: Telegram/WhatsApp for External Event Triggers
+
+Telegram or WhatsApp bots remain valid for one specific use case: **external event triggers** that originate outside your development session. For example:
+
+- A CI/CD pipeline failure pings you via Telegram
+- A production alert from Sentry routes through WhatsApp
+- A team member sends a task via a shared bot
+
+For these scenarios, the bot sends a webhook → Claude Code receives it → executes the task → responds via Remote Control or back through the bot.
+
+Remote Control handles the interactive session. Telegram/WhatsApp handle external event ingestion.
 
 ---
 
-## Phase 4 — Conversation Management
+## Phase 5 — Conversation Management
 
 ### Goal
 System guides the conversation intelligently. Developer doesn't need to know SDD commands or execution order.
@@ -243,26 +292,36 @@ JARVIS: "Update: 2 of 3 tasks complete.
 
 | Component | Technology | Notes |
 |-----------|-----------|-------|
-| Messaging | Telegram Bot API | Free, supports voice, inline keyboards |
-| Voice transcription | OpenAI Whisper API | Or Telegram's built-in (less accurate) |
+| Mobile interface | Claude Remote Control | Built into Claude Code — `/rc` or `claude --rc` |
+| Voice transcription | Claude mobile app | Built-in, no Whisper API needed |
 | Prompt processing | `prompt-engineering-patterns` skill | Runs inside Claude Code |
 | Orchestration | AutoSDD pipeline | Runs on developer's machine |
-| Notifications | Telegram Bot API | Same bot, bidirectional |
+| Notifications | Remote Control (Claude mobile) | Native push via Claude app |
 | Job state | Engram | Persists job status across sessions |
+| External triggers (optional) | Telegram Bot API | For CI/CD events, external system alerts |
 
 ---
 
 ## Implementation Priority
 
-1. **Phase 2 (Clarification)** — Highest ROI, already mostly doable with current Claude Code
-2. **Phase 3 (Notifications)** — Simple Telegram bot, significant UX improvement
-3. **Phase 1 (Voice)** — Adds accessibility, requires Whisper integration
-4. **Phase 4 (Conversation Management)** — Most complex, requires state machine
+1. **Phase 1 (Remote Control)** — AVAILABLE NOW. Zero setup. Scan QR code, done.
+2. **Phase 3 (Clarification)** — Highest ROI, already mostly doable with current Claude Code
+3. **Phase 2 (Voice Processing)** — Handled natively by Claude mobile via Remote Control
+4. **Phase 4 (Notifications)** — Native via Remote Control, no bot setup needed
+5. **Phase 5 (Conversation Management)** — Most complex, requires state machine
 
 ---
 
 ## Status
 
-This is a roadmap document. Contributions welcome — see the main README for how to contribute.
+| Phase | Status |
+|-------|--------|
+| Phase 1 — Remote Control | **AVAILABLE NOW** — built into Claude Code |
+| Phase 2 — Voice Processing | Available via Claude mobile + Remote Control |
+| Phase 3 — Proactive Clarification | Mostly doable with current Claude Code |
+| Phase 4 — Notifications | Native via Remote Control |
+| Phase 5 — Conversation Management | Roadmap — requires state machine |
 
 The AutoSDD pipeline (explore → certify) is complete and production-ready. Iron Man Mode is the next frontier.
+
+Contributions welcome — see the main README.

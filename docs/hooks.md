@@ -4,25 +4,36 @@ Hooks automate quality enforcement. They run at defined points in Claude Code's 
 
 ---
 
-## All Hook Events
+## All Hook Events (25)
 
 | Event | When it fires | Can block? |
 |-------|--------------|------------|
 | `PreToolUse` | Before any tool execution | Yes — return non-zero to block |
-| `PostToolUse` | After tool execution | No — output is logged only |
+| `PostToolUse` | After tool execution succeeds | No — output is logged only |
+| `PostToolUseFailure` | After tool execution fails | No — use for error tracking |
 | `SessionStart` | Session begins | No — use to load context |
+| `SessionEnd` | Session ends | No — use to save summaries |
 | `Stop` | Claude finishes responding | No — use for quality checks |
+| `StopFailure` | Claude fails to respond | No — use for error recovery |
 | `SubagentStart` | A sub-agent launches | No |
 | `SubagentStop` | A sub-agent completes | No — use for output validation |
 | `TaskCreated` | A task is created | No |
 | `TaskCompleted` | A task is completed | No |
 | `CwdChanged` | Working directory changes | No |
 | `FileChanged` | A file is modified | No |
+| `ConfigChange` | Settings or config changes | No |
+| `Notification` | When Claude sends a notification | No — use for routing to desktop/mobile |
+| `PermissionRequest` | A permission is requested | Yes — can approve/deny programmatically |
 | `PermissionDenied` | A permission request is denied | No |
 | `PreCompact` | Before context compaction | No — use to backup state |
 | `PostCompact` | After context compaction | No — use for recovery |
 | `UserPromptSubmit` | Before processing user input | Yes — use for cleanup pipeline |
-| `Notification` | When Claude sends a notification | No — use for routing to Telegram/Slack |
+| `TeammateIdle` | A teammate agent is idle | No |
+| `InstructionsLoaded` | Agent instructions are loaded | No |
+| `WorktreeCreate` | A git worktree is created | No |
+| `WorktreeRemove` | A git worktree is removed | No |
+| `Elicitation` | Claude elicits user input | No — use for input preprocessing |
+| `ElicitationResult` | User responds to elicitation | No — use for response validation |
 
 ---
 
@@ -55,7 +66,7 @@ Hooks automate quality enforcement. They run at defined points in Claude Code's 
 ```json
 {
   "type": "http",
-  "url": "https://api.telegram.org/bot{TOKEN}/sendMessage",
+  "url": "https://hooks.slack.com/services/YOUR/WEBHOOK/URL",
   "headers": { "Content-Type": "application/json" }
 }
 ```
@@ -71,7 +82,208 @@ Hooks automate quality enforcement. They run at defined points in Claude Code's 
 
 ---
 
-## Hook Types
+## Recommended AutoSDD Hooks
+
+Five strategic hooks that cover the most important automation points:
+
+### 1. PreToolUse — Pre-push quality gate
+
+Block all pushes unless `pnpm validate` passes:
+
+```json
+{
+  "PreToolUse": [
+    {
+      "matcher": "Bash(git push*)",
+      "hooks": [{ "type": "command", "command": "pnpm validate" }]
+    }
+  ]
+}
+```
+
+### 2. Notification — Desktop notification
+
+Route Claude Code notifications to a desktop alert (cross-platform):
+
+```json
+{
+  "Notification": [
+    {
+      "matcher": "*",
+      "hooks": [
+        {
+          "type": "command",
+          "command": "node -e \"const {execSync}=require('child_process');const p=process.platform;const m=process.env.NOTIFICATION_MESSAGE||'Claude Code';if(p==='darwin')execSync('osascript -e \\'display notification \"'+m+'\" with title \"Claude Code\"\\'');else if(p==='linux')execSync('notify-send \"Claude Code\" \"'+m+'\"');else execSync('powershell -Command \"[System.Reflection.Assembly]::LoadWithPartialName(\\'System.Windows.Forms\\');[System.Windows.Forms.MessageBox]::Show(\\''+m+'\\')\"');\""
+        }
+      ]
+    }
+  ]
+}
+```
+
+> For a simpler setup, use the [Remote Control](#) feature to receive notifications on your phone via the Claude mobile app — no bot setup required.
+
+### 3. PreCompact — Save session to Engram before compaction
+
+Preserve session state before context is compacted:
+
+```json
+{
+  "PreCompact": [
+    {
+      "matcher": "*",
+      "hooks": [
+        {
+          "type": "prompt",
+          "prompt": "The context is about to be compacted. Call mem_session_summary NOW with everything we've done this session — decisions, bugs fixed, files changed, and what remains. This is mandatory. Do not skip it."
+        }
+      ]
+    }
+  ]
+}
+```
+
+### 4. SessionStart — Recover context from Engram after compaction
+
+Restore state when a new session starts (especially after compaction):
+
+```json
+{
+  "SessionStart": [
+    {
+      "matcher": "*",
+      "hooks": [
+        {
+          "type": "prompt",
+          "prompt": "Session starting. Call mem_context immediately to recover context from previous sessions. If this is a post-compaction start, also call mem_search with the project name to recover the last session summary. Do this before responding to any user message."
+        }
+      ]
+    }
+  ]
+}
+```
+
+### 5. Stop — Verify all tasks completed
+
+After Claude finishes responding, check if any tasks remain open:
+
+```json
+{
+  "Stop": [
+    {
+      "matcher": "*",
+      "hooks": [
+        {
+          "type": "prompt",
+          "prompt": "Before completing: check if there are any open TODO items, incomplete tasks, or unresolved blockers from this session. If yes, list them. If no, respond with COMPLETE."
+        }
+      ]
+    }
+  ]
+}
+```
+
+---
+
+## Complete `.claude/settings.json` Configuration
+
+Full recommended setup combining all five strategic hooks:
+
+```json
+{
+  "mcpServers": {
+    "plugin:engram:engram": {
+      "command": "node",
+      "args": ["/home/user/.engram/server/dist/index.js"]
+    },
+    "playwright": {
+      "command": "npx",
+      "args": ["@anthropic-ai/playwright-mcp", "--headless"]
+    },
+    "prisma": {
+      "command": "npx",
+      "args": ["--yes", "mcp-remote", "https://mcp.prisma.io/mcp"]
+    }
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash(git push*)",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "pnpm validate"
+          }
+        ]
+      },
+      {
+        "matcher": "Bash(git commit*)",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "pnpm lint"
+          }
+        ]
+      }
+    ],
+    "Notification": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node -e \"const {execSync}=require('child_process');const p=process.platform;const m=process.env.NOTIFICATION_MESSAGE||'Claude Code';if(p==='darwin')execSync('osascript -e \\'display notification \"'+m+'\" with title \"Claude Code\"\\'');else if(p==='linux')execSync('notify-send \"Claude Code\" \"'+m+'\"');else execSync('powershell -Command \"[System.Reflection.Assembly]::LoadWithPartialName(\\'System.Windows.Forms\\');[System.Windows.Forms.MessageBox]::Show(\\''+m+'\\')\"');\""
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "prompt",
+            "prompt": "The context is about to be compacted. Call mem_session_summary NOW with everything we've done this session — decisions, bugs fixed, files changed, and what remains. This is mandatory. Do not skip it."
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "prompt",
+            "prompt": "Session starting. Call mem_context immediately to recover context from previous sessions. If this is a post-compaction start, also call mem_search with the project name to recover the last session summary. Do this before responding to any user message."
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "prompt",
+            "prompt": "Before completing: check if there are any open TODO items, incomplete tasks, or unresolved blockers from this session. If yes, list them. If no, respond with COMPLETE."
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "prompt",
+            "prompt": "Review this user input for clarity. If ambiguous, suggest clarifying questions. If clear, respond with APPROVE."
+          }
+        ]
+      }
+    ]
+  }
+}
+```
 
 ---
 
@@ -213,105 +425,12 @@ Save test failures to Engram for tracking:
 
 ---
 
-## AutoSDD Hook Configuration
-
-The recommended baseline hook setup for any AutoSDD project covers three key automation points:
-
-```json
-{
-  "hooks": {
-    "PreToolUse": [
-      {
-        "matcher": "Bash(git push*)",
-        "hooks": [{ "type": "command", "command": "pnpm validate" }]
-      }
-    ],
-    "UserPromptSubmit": [
-      {
-        "matcher": "*",
-        "hooks": [
-          {
-            "type": "prompt",
-            "prompt": "Review this user input for clarity. If ambiguous, suggest clarifying questions. If clear, respond with APPROVE."
-          }
-        ]
-      }
-    ],
-    "Notification": [
-      {
-        "matcher": "*",
-        "hooks": [
-          {
-            "type": "http",
-            "url": "https://api.telegram.org/bot{TOKEN}/sendMessage",
-            "headers": { "Content-Type": "application/json" }
-          }
-        ]
-      }
-    ]
-  }
-}
-```
-
-| Hook | Purpose |
-|------|---------|
-| `PreToolUse` on `git push*` | Blocks all pushes unless `pnpm validate` passes |
-| `UserPromptSubmit` | LLM reviews every user input for ambiguity before execution starts |
-| `Notification` | Routes all Claude notifications to Telegram (Iron Man mode) |
-
----
-
 ## Settings File Location
 
 - **Project-scoped**: `.claude/settings.json` (committed to repo — shared with team)
 - **User-scoped**: `~/.claude/settings.json` (personal — not committed)
 
 For team projects, keep the pre-push hook in the project-scoped settings so every developer (and every agent) runs the same quality gates.
-
----
-
-## Full Example Settings File
-
-```json
-{
-  "mcpServers": {
-    "plugin:engram:engram": {
-      "command": "node",
-      "args": ["/home/user/.engram/server/dist/index.js"]
-    },
-    "playwright": {
-      "command": "npx",
-      "args": ["@anthropic-ai/playwright-mcp", "--headless"]
-    },
-    "prisma": {
-      "command": "npx",
-      "args": ["--yes", "mcp-remote", "https://mcp.prisma.io/mcp"]
-    }
-  },
-  "hooks": {
-    "PreToolUse": [
-      {
-        "matcher": "Bash(git push*)",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "pnpm validate"
-          }
-        ]
-      },
-      {
-        "matcher": "Bash(git commit*)",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "pnpm lint"
-          }
-        ]
-      }
-    ]
-  }
-}
-```
 
 ---
 
