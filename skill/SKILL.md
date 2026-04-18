@@ -1,317 +1,452 @@
 ---
-triggers:
-  - "autonomous development"
-  - "SDD"
-  - "spec-driven"
-  - "testing infrastructure"
-  - "TDD"
-  - "quality gates"
-  - "autosdd"
-  - "sdd-new"
-  - "sdd-apply"
-  - "sdd-verify"
+name: autosdd
+description: >
+  Self-improving autonomous development framework. Routes prompts to 5 flows
+  (Development, Code Review, Debugging, Research, Self-Improvement), applies
+  CREA prompt engineering on ALL prompt creation, enforces SDD methodology,
+  tracks metrics, and auto-improves through A/B testing. ALWAYS ACTIVE unless
+  user explicitly opts out.
+version: "3.0.0"
+license: MIT
+metadata:
+  author: gentleman-programming
+  repository: https://github.com/thestark77/autosdd
+  requires:
+    - gentle-ai (SDD skills + Engram memory)
+    - prompt-engineering-patterns skill
+    - RTK (Rust Token Killer)
+  compatible_agents:
+    - Claude Code
+    - OpenAI Codex
+    - Cursor
+    - VS Code Copilot
+    - Windsurf
+    - Kiro
+    - Gemini CLI
 ---
 
-# AutoSDD — Autonomous Spec-Driven Development
+# autoSDD v3 — Self-Improving Autonomous Development Framework
 
-> **Context**: Framework for autonomous SaaS development using Spec-Driven Development (SDD). Every change — feature, bugfix, refactor — flows through a structured pipeline where AI agents plan, implement, test, and verify their own work. The orchestrator coordinates; sub-agents execute. No code ships without passing quality gates.
->
-> **Role**: The orchestrator acts as a Senior SaaS Architect (15+ years, multi-tenant systems, production-grade TypeScript). Sub-agents inherit domain expertise via skills injection. Every agent treats quality as non-negotiable.
->
-> **Action**: This document defines the complete autonomous loop. Read it before any SDD operation.
+> **This skill is ALWAYS ACTIVE.** Every prompt goes through autoSDD unless the user explicitly says otherwise (e.g., "skip autosdd", "raw mode", "no framework").
 
----
-
-## 1. The Autonomous Loop
-
-Every change follows this pipeline. No phase can be skipped.
-
-```
-USER REQUEST
-    ↓
-┌─────────────────────────────────────────────────┐
-│  PLAN PHASE (orchestrator delegates)            │
-│  explore → propose → spec → design → tasks      │
-│  Quality gate: specs have GIVEN/WHEN/THEN       │
-│  Quality gate: tasks include test tasks          │
-└─────────────────────────────────────────────────┘
-    ↓
-┌─────────────────────────────────────────────────┐
-│  BUILD PHASE (sub-agents execute in batches)    │
-│  For each task batch:                           │
-│    1. Write failing test (RED)                  │
-│    2. Implement code to pass (GREEN)            │
-│    3. Refactor if needed (REFACTOR)             │
-│    4. Run: rtk vitest run + rtk playwright test │
-│  Quality gate: ALL tests pass before next batch │
-└─────────────────────────────────────────────────┘
-    ↓
-┌─────────────────────────────────────────────────┐
-│  VERIFY PHASE (independent sub-agent)           │
-│  1. Run full test suite (vitest + playwright)   │
-│  2. Compare implementation against specs        │
-│  3. Use Playwright MCP to navigate and verify   │
-│  4. Check multi-tenant isolation                │
-│  5. Validate Zod schemas reject bad input       │
-│  Quality gate: 0 CRITICAL findings              │
-└─────────────────────────────────────────────────┘
-    ↓
-┌─────────────────────────────────────────────────┐
-│  CERTIFY PHASE (judgment-day dual review)       │
-│  Two independent judge agents review blindly    │
-│  Both must PASS or fixes are applied            │
-│  Max 2 iterations before escalation to user     │
-└─────────────────────────────────────────────────┘
-    ↓
-  COMMIT → ARCHIVE → SAVE TO ENGRAM
-```
-
----
-
-## 2. Testing Strategy
-
-### 2.1 Vitest — Backend & Logic (fast feedback)
-
-**What to test:**
-- Multi-tenant isolation (tenant A NEVER sees tenant B data)
-- Prisma extensions (soft deletes filter correctly)
-- Auth logic (JWT creation, validation, expiration, role checks)
-- Zod schemas (accept valid, reject invalid, correct error codes)
-- Financial calculations (transactions, reconciliations, balances)
-- `response()` function (consistent output structure)
-- `postRequest()` function (device metadata injection)
-- API routes (against real test database, NOT mocks)
-
-**Rules:**
-- NEVER mock Prisma — use a real test database (`DATABASE_URL_TEST`)
-- Each test file seeds its own data and cleans up after
-- Test tenant isolation by creating 2 tenants and asserting cross-boundary queries return empty
-- Use `pool: 'forks'` — MANDATORY when using AsyncLocalStorage
-- Run: `rtk vitest run`
-
-### 2.2 Playwright — E2E & UX (user verification)
-
-**What to test:**
-- Complete user flows (login → dashboard → action → result)
-- Role-based access (admin sees X, volunteer sees Y)
-- Tenant subdomain routing (correct tenant loads)
-- Suspended tenant read-only mode (can view, cannot modify)
-- Form validation (error messages appear, correct language)
-- Mobile responsiveness (viewport testing)
-- Landing page CMS (admin edits → public page updates)
-- Adoption flow (visitor → pre-register → admin approves)
-
-**Rules:**
-- Use Playwright MCP tools for agent-driven verification (`browser_navigate`, `browser_snapshot`, `browser_fill_form`)
-- Write `.spec.ts` files for reproducible regression tests
-- Test against `http://localhost:3000` with dev server running
-- Seed test tenants before E2E suite runs
-- Run: `rtk playwright test`
-
-### 2.3 When Each Applies
-
-| Scenario | Vitest | Playwright |
-|----------|--------|------------|
-| New API endpoint | ✅ Integration test | ❌ |
-| New UI component | ❌ | ✅ Visual + interaction |
-| Business logic change | ✅ Unit/integration | ✅ If user-facing |
-| Bug fix | ✅ Regression test | ✅ If UI-related |
-| Prisma schema change | ✅ Migration + isolation | ❌ |
-| Auth/permission change | ✅ Logic test | ✅ Access control |
-| Refactor | ✅ Existing tests pass | ✅ Existing tests pass |
-
----
-
-## 3. Quality Gates per SDD Phase
-
-| Phase | Gate | Fails if... |
-|-------|------|-------------|
-| **spec** | Scenarios complete | Missing GIVEN/WHEN/THEN for any requirement |
-| **design** | Architecture sound | Violates base_requirements.md constraints |
-| **tasks** | Test tasks included | No test task exists for the change |
-| **apply** | TDD compliance | Code written before failing test |
-| **apply** | Tests pass | `rtk vitest run` or `rtk playwright test` has failures |
-| **apply** | TypeScript clean | `rtk tsc` has errors |
-| **apply** | Lint clean | `rtk lint` has errors |
-| **verify** | Spec compliance | Implementation diverges from spec scenarios |
-| **verify** | E2E verification | Playwright MCP navigation reveals broken flows |
-| **verify** | Tenant isolation | Cross-tenant data leak detected |
-| **certify** | Dual review pass | Either judge reports CRITICAL issues |
-
----
-
-## 4. Skill Lifecycle Management (CRITICAL)
-
-**ALL skills are OFF by default.** Context pollution from unused skills degrades quality and wastes tokens.
-
-### Activation Protocol
-
-Before each task:
-1. Identify which skills the task context requires (see map below)
-2. Create symlinks: `ln -s ../../.agents/skills/<name> .claude/skills/<name>`
-3. For user-level skills: they are already in `~/.claude/skills/` — invoke via Skill tool only when needed
-
-After each task:
-4. Remove ALL project symlinks: `rm -f .claude/skills/*`
-5. Never leave skills active between tasks
-
-### Skills Map
-
-| Context | Activate (project) | Invoke (user-level) |
-|---------|-------------------|---------------------|
-| Writing tests | `test-driven-development`, `javascript-testing-patterns` | — |
-| E2E tests | `e2e-testing-patterns` | — |
-| React/Next.js code | `next-best-practices` | `vercel-react-best-practices` |
-| Prisma schema/queries | `prisma-client-api`, `prisma-cli`, `prisma-database-setup` | `postgresql-table-design` |
-| API endpoints | — | `error-handling-patterns` |
-| UI pages (public) | — | `frontend-design` |
-| UI pages (admin) | — | `interface-design` |
-| Code review | — | `judgment-day` |
-| Prompt/message design | — | `prompt-engineering-patterns` |
-
-**Rule**: Multiple skills can apply simultaneously. Activate the MINIMUM set needed — never "just in case."
-
----
-
-## 5. MCP Tools — When to Use
-
-| MCP | When | Agent Phase |
-|-----|------|-------------|
-| **Playwright** | E2E testing, visual verification, form testing | apply, verify |
-| **Prisma** | Schema migrations, database queries, data verification | apply, verify |
-| **Railway** | Deploy to staging, check deployment status, logs | post-verify |
-| **Sentry** | Check production errors, pull stack traces | monitoring |
-| **Engram** | Save decisions, recover context, cross-session memory | ALL phases |
-| **Linear** | Track issues, link PRs, update status | orchestrator |
-
----
-
-## 6. Self-Correction Protocol
-
-When a quality gate FAILS:
-
-1. **Test failure** → Read error output → Write fix → Re-run tests → Max 3 attempts before escalating
-2. **Type error** → Read `rtk tsc` output → Fix type → Re-check
-3. **Lint error** → Run `rtk lint` → Auto-fix where possible → Manual fix remainder
-4. **Verify failure** → Create new task for the gap → Re-enter apply phase for that task only
-5. **Certify failure** → Apply judge feedback → Re-verify → Max 2 iterations before user escalation
-
-**Escalation rule**: After 3 failed self-correction attempts on the same issue, STOP and ask the user. Save the failure context to Engram with type `bugfix` and tag `user-pending`.
-
----
-
-## 7. Commands Reference
+## Quick Start
 
 ```bash
-# Testing
-rtk vitest run                    # Run all unit/integration tests
-rtk vitest run src/lib/__tests__  # Run specific test directory
-rtk playwright test               # Run all E2E tests
-rtk playwright test --ui          # Run with Playwright UI
+# One-command installation (any OS, any agent)
+npx -y @anthropic-ai/claude-code skills add autosdd
 
-# Quality checks
-rtk tsc                           # TypeScript compilation check
-rtk lint                          # ESLint check
-pnpm lint:fix                     # Auto-fix lint issues
-
-# Development
-pnpm dev                          # Start dev server (localhost:3000)
-rtk prisma migrate dev            # Run migrations
-rtk prisma db seed                # Seed database
-
-# SDD (meta-commands via orchestrator)
-/sdd-new <change>                 # Start new change (full pipeline)
-/sdd-ff <change>                  # Fast-forward planning phases
-/sdd-continue <change>            # Continue next phase
+# Or manual: copy this SKILL.md to your agent's skills directory
+# Claude Code:  ~/.claude/skills/autosdd/SKILL.md
+# Cursor:       ~/.cursor/skills/autosdd/SKILL.md
+# Codex:        ~/.codex/skills/autosdd/SKILL.md
+# Windsurf:     ~/.windsurf/skills/autosdd/SKILL.md
+# Kiro:         ~/.kiro/skills/autosdd/SKILL.md
+# VS Code:      ~/.vscode/skills/autosdd/SKILL.md
 ```
 
 ---
 
-## 8. File Structure for Tests
+## 1. Core Behavior — ALWAYS ON
+
+When this skill is active, EVERY user prompt goes through the following pipeline:
 
 ```
-src/
-├── __tests__/                    # Vitest integration tests
-│   ├── setup.ts                  # Test database setup/teardown
-│   ├── helpers/                  # Test utilities (createTestTenant, etc.)
-│   ├── api/                      # API route tests
-│   │   ├── auth.test.ts
-│   │   └── ...
-│   ├── lib/                      # Library/utility tests
-│   │   ├── tenantIsolation.test.ts
-│   │   ├── softDelete.test.ts
-│   │   └── auth.test.ts
-│   └── validation/               # Zod schema tests
-│       └── schemas.test.ts
-├── e2e/                          # Playwright E2E tests
-│   ├── fixtures/                 # Test data and page objects
-│   │   ├── auth.fixture.ts
-│   │   └── tenant.fixture.ts
-│   ├── auth.spec.ts
-│   ├── dashboard.spec.ts
-│   ├── adoption-flow.spec.ts
-│   ├── tenant-isolation.spec.ts
-│   └── landing-cms.spec.ts
+USER PROMPT
+    ↓
+[1] FLOW ROUTER — detect intent, select flow
+    ↓
+[2] CREA PROMPT REFINE — structure with Context, Role, Specificity, Action
+    ↓
+[3] EXECUTE FLOW — one of 5 flows (Dev, Review, Debug, Research, Self-Improve)
+    ↓
+[4] OUTCOME COLLECTION — metrics, tokens, pass/fail
+    ↓
+[5] KNOWLEDGE UPDATE — update context files, Engram, wiki if relevant
 ```
+
+### Opt-Out
+
+The user can disable autoSDD for a specific prompt:
+- `[raw]` prefix: skip framework entirely
+- `[no-sdd]` prefix: skip SDD phases but keep CREA
+- `skip autosdd`: natural language opt-out
 
 ---
 
-## 9. Iron Man Mode — Voice/Telegram Integration
+## 2. CREA Framework — Mandatory Prompt Infrastructure
 
-### Vision
+**EVERY prompt created or refined by autoSDD MUST use CREA structure.**
 
-The end goal of AutoSDD is full autonomy: you speak, the system builds.
+CREA (Contexto, Rol, Especificidad, Accion) eliminates ambiguity:
 
-```
-USER → WhatsApp/Telegram message (voice or text)
-    ↓
-AI cleans and structures the input
-    ↓
-AI asks clarifying questions until zero ambiguity
-    ↓
-Full SDD pipeline executes autonomously
-    ↓
-AI notifies you: "Done", "Blocked — need approval", "Question: ..."
-```
+| Component | What to Include |
+|-----------|----------------|
+| **Context** | Project state, what exists, what changed, what problem we're solving. Include relevant sections from guidelines.md, user_context.md, business_logic.md |
+| **Role** | Professional expertise the agent should adopt. Phase-specific: architect for design, implementer for apply, reviewer for verify |
+| **Specificity** | Constraints, skills to use, tools available, learned gotchas, anti-patterns, testing instructions, Monitor tool patterns |
+| **Action** | Exact deliverable: files to create/modify, tests to write, output format, what to save to Engram |
 
-### Implementation Steps
+### CREA + prompt-engineering-patterns
 
-1. **Voice input**: Telegram Bot API receives audio → transcription → cleaning
-2. **Prompt engineering**: `prompt-engineering-patterns` skill formats the request into SDD-ready input
-3. **Proactive clarification**: Orchestrator asks focused questions before execution begins
-4. **Autonomous execution**: Full pipeline with no hand-holding
-5. **Notifications**: Telegram messages for completions, blockers, and approval requests
+CREA provides STRUCTURE. The `prompt-engineering-patterns` skill provides TECHNIQUES:
 
----
+- Chain-of-Thought: when reasoning is needed
+- Few-Shot Examples: when pattern matching is needed
+- Structured Output: when specific format is needed
+- Self-Consistency: when high-stakes decisions
 
-## 10. Non-Negotiable Principles
+Both are MANDATORY on every prompt creation — user-facing, sub-agent, or document updates.
 
-1. **No code without a test** — TDD is not optional. RED → GREEN → REFACTOR.
-2. **No mock databases** — Integration tests hit real PostgreSQL. Mocks hide real bugs.
-3. **No skipped quality gates** — Every phase must pass before the next begins.
-4. **No manual verification when automated is possible** — If Playwright can check it, write a test.
-5. **No context loss** — Every decision, bug, and discovery gets saved to Engram immediately.
-6. **No silent failures** — If self-correction fails 3 times, escalate. Never loop infinitely.
-7. **Specs are the source of truth** — Implementation matches specs, not the other way around.
+### CREA Validation Gate
+
+Before sending ANY prompt to a sub-agent:
+1. Has explicit CONTEXT? (not assumed)
+2. Has clear ROLE? (not generic)
+3. Has SPECIFIC constraints? (not vague)
+4. Has concrete ACTION? (not "figure it out")
+→ Missing any → REFINE before sending.
 
 ---
 
-## 11. RTK — Token Optimization (MANDATORY)
+## 3. Flow Router
 
-**ALWAYS prefix commands with `rtk`**. Even in chains.
+Detect user intent BEFORE selecting a workflow:
+
+| Signal | Flow | Confidence |
+|--------|------|------------|
+| Feature, add, create, implement, refactor | **DEV** | 90% |
+| Fix, bug, error, stack trace, broken, failing | **DEBUG** | 90% |
+| Review, PR, look at this code, check this | **REVIEW** | 90% |
+| Research, evaluate, compare, should we use | **RESEARCH** | 85% |
+| Improve autosdd, benchmark, optimize framework | **SELF-IMPROVE** | 95% |
+
+**Override**: `[dev]`, `[debug]`, `[review]`, `[research]`, `[improve]` prefix.
+**Ambiguous** (confidence < 80%): default to DEV flow.
+
+---
+
+## 4. Five Flows
+
+### 4.1 Development Flow
+
+```
+PROMPT REFINE → INTAKE → PLAN → BUILD → VERIFY → CERTIFY → SHIP → REVIEW & NEXT
+```
+
+Key behaviors:
+- PROMPT REFINE: Apply CREA + prompt-engineering-patterns. Query Context7 for live docs. Enrich per-task with skills, tools, gotchas from all 3 context files.
+- BUILD: Use Ralph Loop for autonomous iteration (run until tests pass, max iterations).
+- VERIFY: PR Review Toolkit (6 agents) as Layer 1 + judgment-day as Layer 2.
+- SHIP: Monitor tool for deploy events (NEVER poll).
+- REVIEW: Write changelog.md, metrics.md, learnings.md to version folder.
+- ALL phases: Report tokens and duration to Outcome Collector.
+
+Version folder per change:
+```
+context/appVersions/vX.Y.Z/
+  original_prompt.md    # Raw user prompt
+  prompt.md             # CREA-refined execution plan (updated during execution)
+  feedback.md           # Sub-agent findings
+  changelog.md          # What changed, why, impact
+  metrics.md            # Outcome Record
+  learnings.md          # What agent learned
+  screenshots/{task}/   # Playwright CLI screenshots
+  outputs/              # Reports, artifacts
+```
+
+### 4.2 Code Review Flow
+
+```
+INGEST → ANALYZE → REPORT → [FIX (optional)]
+```
+
+- ANALYZE: Launch PR Review Toolkit 6 agents + judgment-day in parallel
+- REPORT: Categorize as CRITICAL / WARNING / INFO / SUGGESTION
+- FIX: Only if user says "fix it" — apply CRITICAL + WARNING fixes only
+
+### 4.3 Debugging Flow
+
+```
+REPRODUCE → DIAGNOSE → FIX → VERIFY → DOCUMENT
+```
+
+- REPRODUCE: Search Engram for prior occurrences first. If known → apply fix immediately.
+- DIAGNOSE: TypeScript LSP for precise navigation. Git blame for recent changes.
+- FIX: TDD — write failing test (RED), implement fix (GREEN), anti-regression check.
+- DOCUMENT: Save to Engram, update guidelines.md gotchas if recurring.
+
+### 4.4 Research Flow
+
+```
+SCOPE → GATHER → EVALUATE → SYNTHESIZE → DECIDE
+```
+
+- GATHER: WebSearch + WebFetch + Context7 + Engram prior research
+- EVALUATE: Score candidates 1-5 per criterion, build comparison matrix
+- SYNTHESIZE: Save to Engram as `research/{topic}` + `ai-context/research/`
+
+### 4.5 Self-Improvement Flow
+
+```
+MEASURE → HYPOTHESIZE → EXPERIMENT → EVALUATE → APPLY/DISCARD → DISCOVER
+```
+
+Autoresearch-inspired: change parameter → run experiment → measure metric → keep/discard.
+
+Triggered: explicitly OR auto every 5th DEV flow.
+
+Optimizes: CLAUDE.md sections, skill injection, judge rubric, timeout budgets, sub-agent prompts.
+
+---
+
+## 5. Three Critical Context Files
+
+autoSDD maintains 3 sacred living documents. The orchestrator MUST update them whenever relevant information is discovered.
+
+| File | Purpose | Update Triggers |
+|------|---------|----------------|
+| `context/guidelines.md` | Technical rules, conventions, constraints | New gotcha, convention, post-mortem pattern |
+| `context/user_context.md` | User profile, preferences, workflow | User provides personal/professional info |
+| `context/business_logic.md` | Domain knowledge, entities, workflows | Business rule, entity relationship, workflow detail |
+
+**Rule: if information belongs in one of these files, UPDATE IT IMMEDIATELY. Never defer.**
+
+Sub-agents never read these directly. The orchestrator extracts relevant sections and injects them via CREA-structured prompts.
+
+---
+
+## 6. Orchestrator Prompt Enrichment
+
+For EACH task delegated to a sub-agent, the orchestrator MUST:
+
+1. Extract relevant sections from guidelines.md, user_context.md, business_logic.md
+2. Match skills from skill registry to task files
+3. Query Engram for gotchas and post-mortems
+4. Query Context7 for library docs
+5. Apply CREA structure + prompt-engineering-patterns
+6. Include: skill assignments, tool/MCP assignments, learned warnings, testing instructions, Monitor patterns
+
+---
+
+## 7. Event-Driven Monitoring (Monitor Tool)
+
+**NEVER use `sleep` or polling.** ALWAYS use Monitor tool:
 
 ```bash
-rtk vitest run          # 99% token savings
-rtk tsc                 # 83% savings
-rtk lint                # 84% savings
-rtk git status          # 59–80% savings
-rtk prisma migrate dev  # 88% savings
+# Deploy: Monitor railway/vercel logs → react on "deployed" or "error"
+# Tests:  Monitor test output → react on "FAIL" immediately
+# Build:  Monitor tsc output → react on "error TS"
+# Lint:   Monitor eslint output → react on errors
 ```
+
+---
+
+## 8. Knowledge System
+
+Three layers:
+
+```
+Layer 1: Engram (raw observations, write-optimized, immediate)
+Layer 2: Wiki (ai-context/wiki/, synthesized, read-optimized, syncs every 3rd flow)
+Layer 3: Versions (context/appVersions/, per-change history)
+```
+
+Read path: Wiki first → Engram fallback → Version history for trends.
+
+---
+
+## 9. Self-Improvement Engine
+
+### Metrics (Outcome Record per flow)
+
+```yaml
+flow, project, version, duration, tokens_per_phase, outcome_score,
+retry_count, escalation_count, fix_iterations, judge_scores
+```
+
+### Outcome Scoring
+
+| Outcome | Score |
+|---------|-------|
+| SUCCESS | 1.0 |
+| PARTIAL | 0.7 |
+| FIXED (2+ retries) | 0.5 |
+| ESCALATED | 0.3 |
+| FAILURE | 0.0 |
+
+### A/B Testing Protocol
+
+1. Define hypothesis + control + treatment
+2. Run 3 executions with control, 3 with treatment
+3. Compare: tokens, success rate, retries
+4. Strictly better → APPLY. Mixed/worse → DISCARD.
+5. ONE experiment at a time. Never change two variables simultaneously.
+
+---
+
+## 10. Installation & Requirements
+
+### Prerequisites
+
+| Requirement | Install Command | Purpose |
+|-------------|----------------|---------|
+| **Node.js 18+** | https://nodejs.org/ | Runtime |
+| **Claude Code CLI** | `npm install -g @anthropic-ai/claude-code` | Primary agent (or any compatible agent) |
+| **gentle-ai** | `npx -y gentle-ai@latest` | SDD skills + Engram memory |
+| **RTK** | `cargo install rtk` or `npm install -g rtk-cli` | Token optimization (60-90% savings) |
+| **Playwright CLI** | `npm install -g @playwright/cli@latest && playwright-cli install --skills` | Browser automation (4x cheaper than MCP) |
+| **TypeScript LSP** | `npm install -g typescript-language-server typescript` | Go-to-definition for TS projects |
+
+### Recommended Plugins (Claude Code)
 
 ```bash
-# Wrong
-git add . && git commit -m "msg"
-
-# Correct
-rtk git add . && rtk git commit -m "msg"
+# Install via Claude Code CLI
+claude plugin install context7              # Live library documentation
+claude plugin install ralph-loop            # Autonomous iteration engine
+claude plugin install pr-review-toolkit     # 6 specialized review agents
+claude plugin install typescript-lsp        # TypeScript navigation
+claude plugin install claude-md-management  # CLAUDE.md quality audit
+claude plugin install skill-creator         # Skill benchmarking & A/B testing
+claude plugin install code-review           # Automated PR review
+claude plugin install code-simplifier       # Post-implementation cleanup
 ```
+
+### Recommended MCP Servers
+
+| MCP | Purpose | Setup |
+|-----|---------|-------|
+| **Engram** | Persistent memory | Installed via gentle-ai |
+| **Prisma** | Database operations | `pnpm dlx -y mcp-remote https://mcp.prisma.io/mcp` |
+| **Railway** | Deployment | Configure in MCP settings |
+| **Sentry** | Error monitoring | Configure in MCP settings |
+| **Linear** | Issue tracking | Configure in MCP settings |
+
+### SDD Skills (installed via gentle-ai)
+
+```
+sdd-init, sdd-explore, sdd-propose, sdd-spec, sdd-design,
+sdd-tasks, sdd-apply, sdd-verify, sdd-archive, sdd-onboard
+```
+
+Plus: `judgment-day`, `skill-registry`, `skill-creator`, `prompt-engineering-patterns`
+
+### Installation (One Command)
+
+**Claude Code (any OS)**:
+```bash
+# Install gentle-ai (includes SDD skills + Engram)
+npx -y gentle-ai@latest
+
+# Copy autoSDD skill
+mkdir -p ~/.claude/skills/autosdd
+curl -o ~/.claude/skills/autosdd/SKILL.md https://raw.githubusercontent.com/thestark77/autosdd/main/skill/SKILL.md
+```
+
+**Cursor**:
+```bash
+npx -y gentle-ai@latest
+mkdir -p ~/.cursor/skills/autosdd
+curl -o ~/.cursor/skills/autosdd/SKILL.md https://raw.githubusercontent.com/thestark77/autosdd/main/skill/SKILL.md
+```
+
+**Codex**:
+```bash
+npx -y gentle-ai@latest
+mkdir -p ~/.codex/skills/autosdd
+curl -o ~/.codex/skills/autosdd/SKILL.md https://raw.githubusercontent.com/thestark77/autosdd/main/skill/SKILL.md
+```
+
+**Windsurf / Kiro / VS Code**:
+```bash
+npx -y gentle-ai@latest
+# Replace {agent} with: .windsurf, .kiro, or .vscode
+mkdir -p ~/{agent}/skills/autosdd
+curl -o ~/{agent}/skills/autosdd/SKILL.md https://raw.githubusercontent.com/thestark77/autosdd/main/skill/SKILL.md
+```
+
+### Post-Installation: CLAUDE.md Integration
+
+After installing autoSDD, the skill MUST be registered in the project's CLAUDE.md so it becomes the DEFAULT behavior. The installation script reads the existing CLAUDE.md, preserves ALL current content, and APPENDS the autoSDD activation block:
+
+```markdown
+## autoSDD — Active Framework (DO NOT REMOVE)
+
+autoSDD v3 is the ACTIVE development framework for this project.
+ALL prompts go through autoSDD unless the user explicitly opts out.
+
+### Default Behavior
+- Every prompt → Flow Router → CREA Prompt Refine → Execute Flow → Outcome Collection
+- CREA framework (Context, Role, Specificity, Action) on ALL prompt creation
+- prompt-engineering-patterns skill on ALL prompt refinement
+- 5 flows: Development, Code Review, Debugging, Research, Self-Improvement
+- Orchestrator delegates to sub-agents, NEVER executes directly
+- Monitor tool for ALL waiting/watching (NEVER poll)
+- RTK prefix on ALL shell commands
+
+### Context Files (sacred, auto-updated)
+- `context/guidelines.md` — Technical rules and conventions
+- `context/user_context.md` — User profile and preferences
+- `context/business_logic.md` — Domain knowledge and workflows
+
+### Opt-Out
+- `[raw]` prefix: skip framework entirely
+- `[no-sdd]` prefix: skip SDD but keep CREA
+- `skip autosdd`: natural language opt-out
+
+Read the full framework specification: `context/autoSDDv3.md`
+Read the autoSDD skill: `~/.claude/skills/autosdd/SKILL.md`
+```
+
+**CRITICAL**: The script NEVER replaces CLAUDE.md. It reads current content, preserves everything, and appends the autoSDD block at the end. If the block already exists, it updates it in place.
+
+### Per-Project Bootstrap
+
+After global installation, run `sdd-init` in each project to:
+1. Detect stack (package.json, go.mod, etc.)
+2. Install project-level skills in `.claude/skills/`
+3. Create `context/guidelines.md`, `context/user_context.md`, `context/business_logic.md` if they don't exist
+4. Create `ai-context/wiki/` directory
+5. Save project context to Engram
+6. Append autoSDD block to project CLAUDE.md (preserving existing content)
+
+---
+
+## 11. Language Policy
+
+- **Framework artifacts**: ALWAYS English (skills, prompts, Engram, wiki, changelogs, CLAUDE.md)
+- **Project UI**: Project-specific (detected by sdd-init, usually Spanish neutral for LATAM SaaS)
+- **Conversation**: Follow user's language (Spanish → Rioplatense, English → English)
+- **Code**: ALWAYS English (variables, functions, types, comments, commits)
+
+---
+
+## 12. Compatibility
+
+This skill follows the Agent Skills specification and works with any agent that reads SKILL.md files from a skills directory:
+
+| Agent | Skills Directory | Status |
+|-------|-----------------|--------|
+| Claude Code | `~/.claude/skills/` | Full support |
+| Cursor | `~/.cursor/skills/` | Full support |
+| OpenAI Codex | `~/.codex/skills/` | Full support |
+| Windsurf | `~/.windsurf/skills/` | Full support |
+| Kiro | `~/.kiro/skills/` | Full support |
+| VS Code Copilot | `~/.vscode/skills/` | Partial (depends on extension) |
+| Gemini CLI | `~/.gemini/skills/` | Full support |
+
+### Minimum Agent Requirements
+
+For full autoSDD functionality, the agent needs:
+- File read/write access
+- Shell command execution
+- Sub-agent delegation (for parallel BUILD batches)
+- Memory/persistence (Engram or equivalent)
+- Monitor tool or equivalent (for event-driven patterns)
+
+Agents without sub-agent support will run flows sequentially instead of parallel.
+
+---
+
+*autoSDD v3.0.0 — April 2026*
+*Author: Gentleman Programming (github.com/thestark77)*
+*License: MIT*

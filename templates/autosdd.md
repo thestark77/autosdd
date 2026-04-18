@@ -111,7 +111,7 @@ USER REQUEST
 | Phase | Gate | Fails if... |
 |-------|------|-------------|
 | **spec** | Scenarios complete | Missing GIVEN/WHEN/THEN for any requirement |
-| **design** | Architecture sound | Violates base_requirements.md constraints |
+| **design** | Architecture sound | Violates guidelines.md constraints |
 | **tasks** | Test tasks included | No test task exists for the change |
 | **apply** | TDD compliance | Code written before failing test |
 | **apply** | Tests pass | `rtk vitest run` or `rtk playwright test` has failures |

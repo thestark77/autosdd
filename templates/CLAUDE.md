@@ -16,9 +16,10 @@ Next.js 16 (App Router) · Tailwind CSS 4 · Zustand · Zod · Prisma 7 + Postgr
 
 | Document | Purpose |
 |----------|---------|
-| `context/base_requirements.md` | **Constitution** — immutable conventions, patterns, security rules |
+| `context/guidelines.md` | **Constitution** — immutable conventions, patterns, security rules |
+| `context/user_context.md` | **User Profile** — identity, preferences, workflow style |
 | `context/requirements.md` | **Legislation** — project specs, schema, phases, permissions |
-| `context/autosdd.md` | **AutoSDD framework** — autonomous development loop, testing, quality gates |
+| `context/business_logic.md` | **Domain** — business entities, workflows, terminology |
 
 ## Critical Constraints
 
@@ -35,7 +36,7 @@ Next.js 16 (App Router) · Tailwind CSS 4 · Zustand · Zod · Prisma 7 + Postgr
 1. Every change uses **SDD** — explore → propose → spec → design → tasks → apply → verify
 2. Orchestrator delegates, sub-agents execute. Never implement inline.
 3. **TDD mandatory**: RED → GREEN → REFACTOR. No code without a failing test first.
-4. Update `context/requirements.md` when user input affects the plan
+4. Auto-update Three Critical Context Files (guidelines.md, user_context.md, business_logic.md) when relevant info discovered
 5. Save decisions to Engram immediately after making them
 6. If blocked, mark `// TODO` + save to Engram as `user-pending`. Continue with everything else.
 7. Commit after completing key modules. Push to main.
@@ -49,7 +50,7 @@ rtk tsc                           # Type check
 rtk lint                          # Lint check
 ```
 
-See `context/autosdd.md` §2 for full testing strategy.
+See autoSDD v3 skill for full testing strategy.
 
 ## Quality Gates (every change must pass)
 
@@ -141,3 +142,29 @@ rtk prisma generate               # Regenerate client
 ## Path Aliases
 
 `@/*` · `@components/*` · `@lib/*` · `@stores/*` · `@config/*`
+
+## autoSDD — Active Framework (DO NOT REMOVE)
+
+autoSDD v3 is the ACTIVE development framework for this project.
+ALL prompts go through autoSDD unless the user explicitly opts out.
+
+### Default Behavior
+- Every prompt → Flow Router → CREA Prompt Refine → Execute Flow → Outcome Collection
+- CREA framework (Context, Role, Specificity, Action) on ALL prompt creation
+- prompt-engineering-patterns skill on ALL prompt refinement
+- 5 flows: Development, Code Review, Debugging, Research, Self-Improvement
+- Orchestrator delegates to sub-agents, NEVER executes directly
+- Monitor tool for ALL waiting/watching (NEVER poll)
+- RTK prefix on ALL shell commands
+
+### Three Critical Context Files (sacred, auto-updated)
+- `context/guidelines.md` — Technical rules and conventions
+- `context/user_context.md` — User profile and preferences
+- `context/business_logic.md` — Domain knowledge and workflows
+
+### Opt-Out
+- `[raw]` prefix: skip framework entirely
+- `[no-sdd]` prefix: skip SDD but keep CREA
+- `skip autosdd`: natural language opt-out
+
+Read the autoSDD skill: `~/.claude/skills/autosdd/SKILL.md`

@@ -14,9 +14,9 @@
 
 ---
 
-AutoSDD is an autonomous development framework where AI agents plan, implement, test, and deploy code through a structured pipeline. Every change flows through: **explore → propose → spec → design → tasks → apply → verify → certify → deploy**.
+AutoSDD v3 is a **self-improving** autonomous development framework. AI agents plan, implement, test, deploy, AND optimize their own process. Five flows (Development, Code Review, Debugging, Research, Self-Improvement) with automatic intent detection. CREA prompt engineering on every prompt. Metrics on every execution. The framework literally gets better over time.
 
-The AI doesn't just write code — it asks the right questions first, then executes the full pipeline from spec to certified deployment, notifying you when it needs approval or something blocks it.
+The AI doesn't just write code — it asks the right questions first, executes the full pipeline, measures its own performance, and continuously improves its prompts, skills, and workflows.
 
 ---
 
@@ -372,20 +372,32 @@ See [docs/iron-man-roadmap.md](docs/iron-man-roadmap.md) for full specification.
 
 ---
 
-## Context Directory
+## Three Critical Context Files
 
-Every AutoSDD project maintains a `context/` directory with persistent knowledge that agents read before making decisions:
+Every AutoSDD project maintains 3 **sacred living documents** in `context/`. The orchestrator MUST update them whenever relevant information is discovered — this is not optional.
+
+| File | Purpose | Update Triggers |
+|------|---------|----------------|
+| `guidelines.md` | Technical rules, conventions, constraints, security | New gotcha, convention, post-mortem pattern |
+| `user_context.md` | User profile, preferences, workflow style | User provides personal/professional info |
+| `business_logic.md` | Domain knowledge, entities, workflows, terminology | Business rule, entity relationship, workflow detail |
+
+Sub-agents never read these files directly. The orchestrator extracts relevant sections and injects them into sub-agent prompts via CREA structure.
+
+Additionally, projects may maintain:
 
 | File | Purpose | When to update |
 |------|---------|---------------|
-| `base_requirements.md` | Immutable conventions, patterns, security | Rarely — foundational rules |
 | `requirements.md` | Project specs, schema, phases, permissions | When user input affects the plan |
-| `autosdd.md` | Autonomous development framework | When framework evolves |
-| `business_logic.md` | Business domain knowledge, terminology, rules | Continuously — as user shares context |
+| `autoSDDv3.md` | Full framework specification (optional local copy) | When framework evolves |
 
-`business_logic.md` is the living record of everything that code alone cannot capture: what the product does, who uses it, what the terminology means, and what the non-obvious rules are. Agents write to it proactively whenever the user shares domain knowledge.
+Copy templates from `templates/` into `your-project/context/` and fill them in as your project evolves:
 
-Copy `templates/business_logic.md` into `your-project/context/business_logic.md` and fill it in as your project evolves.
+```bash
+cp templates/guidelines.md your-project/context/guidelines.md
+cp templates/user_context.md your-project/context/user_context.md
+cp templates/business_logic.md your-project/context/business_logic.md
+```
 
 ---
 
@@ -393,26 +405,29 @@ Copy `templates/business_logic.md` into `your-project/context/business_logic.md`
 
 ```bash
 # 1. Install prerequisites
-npm install -g @anthropic-ai/claude-code
-cargo install gentle-ai
-cargo install rtk
+npm install -g @anthropic-ai/claude-code   # Or your preferred agent
+npx -y gentle-ai@latest                     # SDD skills + Engram memory
+cargo install rtk                            # Token optimization (60-90% savings)
 
-# 2. Configure MCP servers (see docs/mcp-setup.md)
+# 2. Install autoSDD skill (Claude Code — any OS)
+mkdir -p ~/.claude/skills/autosdd
+curl -o ~/.claude/skills/autosdd/SKILL.md \
+  https://raw.githubusercontent.com/thestark77/autosdd/main/skill/SKILL.md
 
-# 3. Install skills via gentle-ai TUI or:
-npx -y skills add autosdd
-
-# 4. Add AutoSDD to your project
+# 3. Bootstrap your project
 cp templates/CLAUDE.md your-project/CLAUDE.md
-cp templates/autosdd.md your-project/context/autosdd.md
+cp templates/guidelines.md your-project/context/guidelines.md
+cp templates/user_context.md your-project/context/user_context.md
 cp templates/business_logic.md your-project/context/business_logic.md
 
-# 5. Initialize SDD in Claude Code
+# 4. Initialize SDD in Claude Code
 /sdd-init
 
-# 6. Start building
+# 5. Start building
 /sdd-new my-feature
 ```
+
+> **Other agents?** Replace `~/.claude/` with `~/.cursor/`, `~/.codex/`, `~/.windsurf/`, `~/.kiro/`, or `~/.vscode/` in step 2.
 
 ---
 
@@ -434,16 +449,17 @@ cp templates/business_logic.md your-project/context/business_logic.md
 autosdd/
 ├── README.md                    # This file
 ├── skill/
-│   └── SKILL.md                 # Claude Code skill (install via gentle-ai)
+│   └── SKILL.md                 # autoSDD v3 skill (install to ~/.claude/skills/autosdd/)
 ├── templates/
-│   ├── CLAUDE.md                # Template CLAUDE.md for new projects
-│   ├── autosdd.md               # Template autosdd.md (the framework itself)
+│   ├── CLAUDE.md                # Template CLAUDE.md for new projects (includes autoSDD activation block)
+│   ├── guidelines.md            # Template for technical rules and conventions
+│   ├── user_context.md          # Template for user profile and preferences
 │   └── business_logic.md        # Template for business domain knowledge
 └── docs/
     ├── testing-strategy.md      # Full testing strategy
     ├── skill-lifecycle.md       # Skill activation/deactivation protocol
     ├── mcp-setup.md             # MCP server configuration guide
-    ├── iron-man-roadmap.md      # Voice/Telegram integration roadmap
+    ├── iron-man-roadmap.md      # Voice/mobile integration roadmap
     └── hooks.md                 # Claude Code hooks — full event reference
 ```
 
