@@ -118,6 +118,8 @@ INGEST -> ANALYZE (6 agents + judgment-day) -> REPORT -> [FIX optional]
 
 ### Quick Install (recommended)
 
+> **IMPORTANT**: Run the install command **from inside your project directory** (the folder where your code lives). The installer bootstraps templates and injects the autoSDD block into your project's CLAUDE.md. If you run it from the wrong directory, files will land in the wrong place.
+
 The install script installs gentle-ai + autoSDD with the recommended configuration. It asks only 2 questions:
 1. **Which AI agents?** (default: all)
 2. **Response style?** (default: neutral)
