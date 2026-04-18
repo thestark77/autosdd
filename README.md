@@ -7,7 +7,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-Compatible-blue)](https://claude.ai/claude-code)
 [![gentle-ai](https://img.shields.io/badge/gentle--ai-FUNDAMENTAL-red)](https://github.com/Gentleman-Programming/gentle-ai)
-[![RTK](https://img.shields.io/badge/RTK-Token%20Killer-orange)](https://github.com/thestark77/rtk)
+[![RTK](https://img.shields.io/badge/RTK-Token%20Killer-orange)](https://github.com/rtk-ai/rtk)
 [![Made by Gentleman Programming](https://img.shields.io/badge/Made%20by-Gentleman%20Programming-blueviolet)](https://github.com/Gentleman-Programming)
 
 </div>
@@ -88,7 +88,8 @@ INGEST -> ANALYZE (6 agents + judgment-day) -> REPORT -> [FIX optional]
 | Tool | Purpose | Install |
 |------|---------|---------|
 | [gentle-ai](https://github.com/Gentleman-Programming/gentle-ai) | **CORE** — SDD skills, Engram memory, agent config | See [gentle-ai install guide](https://github.com/Gentleman-Programming/gentle-ai#installation) |
-| [RTK](https://github.com/thestark77/rtk) | Token-optimized CLI output (60-90% savings) | `cargo install rtk` |
+| [RTK](https://github.com/rtk-ai/rtk) | Token-optimized CLI output (60-90% savings) | Auto-installed by installer |
+| prompt-engineering-patterns | **CORE** — CREA prompt techniques (Chain-of-Thought, Few-Shot, etc.) | Installed by gentle-ai `--preset full-gentleman` |
 | AI Agent | Claude Code, Cursor, Codex, Windsurf, Kiro, Gemini CLI | Agent-specific |
 
 ### Recommended Plugins (Claude Code)
@@ -113,70 +114,79 @@ INGEST -> ANALYZE (6 agents + judgment-day) -> REPORT -> [FIX optional]
 
 ---
 
-## Installation
+## Installation (One Command)
 
-### Step 1: Install gentle-ai
+### Quick Install (recommended)
 
-Follow the [gentle-ai installation guide](https://github.com/Gentleman-Programming/gentle-ai#installation). gentle-ai installs SDD skills, Engram, and configures your agents.
+The install script installs gentle-ai + autoSDD with the recommended configuration. It asks only 2 questions:
+1. **Which AI agents?** (default: all)
+2. **Response style?** (default: neutral)
 
-### Step 2: Install autoSDD Skill
+Everything else is pre-configured: multi-agent SDD, optimal model assignments, all components.
 
-**Claude Code (any OS)**:
+**macOS / Linux:**
 ```bash
+curl -fsSL https://raw.githubusercontent.com/thestark77/autosdd/main/install.sh | bash
+```
+
+**Windows (PowerShell):**
+```powershell
+irm https://raw.githubusercontent.com/thestark77/autosdd/main/install.ps1 | iex
+```
+
+> **Prerequisite**: [gentle-ai](https://github.com/Gentleman-Programming/gentle-ai) must be installed first. The script will tell you how if it's missing.
+
+### Manual Install
+
+If you prefer manual control:
+
+```bash
+# 1. Install gentle-ai
+gentle-ai install --preset full-gentleman --sdd-mode multi
+
+# 2. Install autoSDD skill (Claude Code)
 mkdir -p ~/.claude/skills/autosdd
 curl -o ~/.claude/skills/autosdd/SKILL.md \
   https://raw.githubusercontent.com/thestark77/autosdd/main/skill/SKILL.md
+
+# 3. For other agents, replace ~/.claude/ with:
+#    Cursor:    ~/.cursor/
+#    Codex:     ~/.codex/
+#    Windsurf:  ~/.codeium/windsurf/
+#    Kiro:      ~/.kiro/
+#    Gemini:    ~/.gemini/
 ```
 
-**Other agents** — replace `~/.claude/` with your agent's skill directory:
-```bash
-# Cursor:    ~/.cursor/skills/autosdd/
-# Codex:     ~/.codex/skills/autosdd/
-# Windsurf:  ~/.windsurf/skills/autosdd/ (or ~/.codeium/windsurf/skills/)
-# Kiro:      ~/.kiro/skills/autosdd/
-# Gemini:    ~/.gemini/skills/autosdd/
-```
+The installer does **everything** in one command:
 
-### Step 3: Bootstrap Your Project
+1. Installs **gentle-ai** with your agent + persona preferences
+2. Installs **autoSDD skill** to each selected agent
+3. Installs **RTK** (token optimization — 60-90% savings on CLI output)
+4. Verifies **prompt-engineering-patterns** is available (CORE skill, used with CREA)
+5. Bootstraps **project templates** (`context/` + `CLAUDE.md`) in the current directory
+6. **Injects autoSDD block** into existing CLAUDE.md (or creates from template if none exists)
 
-```bash
-# Copy context templates
-cp templates/guidelines.md your-project/context/guidelines.md
-cp templates/user_context.md your-project/context/user_context.md
-cp templates/business_logic.md your-project/context/business_logic.md
+The CLAUDE.md injection uses HTML markers (`<!-- autosdd:start -->` / `<!-- autosdd:end -->`). This means:
+- **No CLAUDE.md** → copies the full template
+- **Existing CLAUDE.md, first install** → appends the autoSDD activation block
+- **Existing CLAUDE.md, update** → replaces ONLY the block between markers (your content untouched)
 
-# Initialize SDD in your agent
-/sdd-init
-```
+Running the installer multiple times is always safe (idempotent).
 
-### Step 4: Add to CLAUDE.md
+> **Note**: Run the installer FROM your project directory so templates land in the right place.
 
-Append the autoSDD activation block to your project's `CLAUDE.md`. See `templates/CLAUDE.md` for the full template. The critical block:
+### After Installation
 
-```markdown
-## autoSDD — Active Framework (DO NOT REMOVE)
-
-autoSDD v3 is the ACTIVE development framework for this project.
-ALL prompts go through autoSDD unless the user explicitly opts out.
-
-### Default Behavior
-- Every prompt -> Flow Router -> CREA Prompt Refine -> Execute Flow -> Outcome Collection
-- CREA framework on ALL prompt creation
-- 5 flows: Development, Code Review, Debugging, Research, Self-Improvement
-- Orchestrator delegates to sub-agents, NEVER executes directly
-- Monitor tool for ALL waiting/watching (NEVER poll)
-- RTK prefix on ALL shell commands
-
-### Opt-Out
-- `[raw]` prefix: skip framework entirely
-- `[no-sdd]` prefix: skip SDD but keep CREA
-- `skip autosdd`: natural language opt-out
-```
-
-### Step 5: Verify
+Open your project in your AI agent and run:
 
 ```bash
-# In Claude Code:
+/sdd-init          # Detects stack, creates context files, configures SDD
+/sdd-new feature   # Start building
+```
+
+### Verify Installation
+
+```bash
 /sdd-init          # Should detect your stack and configure
 /sdd-explore test  # Should explore your codebase
 ```
@@ -225,9 +235,9 @@ autoSDD: Asks critical questions IMMEDIATELY -> executes full plan autonomously 
 
 ## Key Concepts
 
-### CREA Framework
+### CREA Framework + prompt-engineering-patterns
 
-Every prompt created by autoSDD uses CREA structure:
+Every prompt created by autoSDD uses **CREA structure** combined with **prompt-engineering-patterns** techniques:
 
 | Component | What to Include |
 |-----------|----------------|
@@ -235,6 +245,8 @@ Every prompt created by autoSDD uses CREA structure:
 | **Role** | Professional expertise — architect for design, implementer for apply, reviewer for verify |
 | **Specificity** | Constraints, skills, tools, gotchas, anti-patterns, testing instructions |
 | **Action** | Exact deliverable — files to create/modify, tests to write, what to save |
+
+prompt-engineering-patterns provides the techniques (Chain-of-Thought, Few-Shot, Structured Output, Self-Consistency) that CREA structures. They work together — CREA defines the WHAT, prompt-engineering-patterns defines the HOW. Both are applied on **every** prompt creation and refinement.
 
 ### Three Critical Context Files
 
@@ -274,19 +286,30 @@ Before modifying files, autoSDD classifies user intent:
 
 ## Updating
 
-### Update autoSDD (independent of gentle-ai)
+### Update everything (re-run installer)
+```bash
+# macOS/Linux
+curl -fsSL https://raw.githubusercontent.com/thestark77/autosdd/main/install.sh | bash
+
+# Windows
+irm https://raw.githubusercontent.com/thestark77/autosdd/main/install.ps1 | iex
+```
+
+Re-running the installer is safe — it updates SKILL.md, refreshes the CLAUDE.md block between markers, and skips existing templates.
+
+### Update autoSDD skill only
 ```bash
 curl -o ~/.claude/skills/autosdd/SKILL.md \
   https://raw.githubusercontent.com/thestark77/autosdd/main/skill/SKILL.md
 ```
 
-### Update gentle-ai (independent of autoSDD)
+### Update gentle-ai only
 ```bash
 gentle-ai upgrade
 gentle-ai sync
 ```
 
-Both update independently without conflicts. gentle-ai manages its sections with markers, autoSDD manages its own SKILL.md and CLAUDE.md block.
+Both update independently without conflicts. gentle-ai manages its sections with markers, autoSDD manages its own SKILL.md and CLAUDE.md block (`<!-- autosdd:start/end -->`).
 
 ---
 
@@ -295,10 +318,13 @@ Both update independently without conflicts. gentle-ai manages its sections with
 ```
 autosdd/
 ├── README.md                    # This file
+├── install.sh                   # One-command installer (macOS/Linux)
+├── install.ps1                  # One-command installer (Windows)
 ├── skill/
-│   └── SKILL.md                 # autoSDD v3 skill (copy to ~/.{agent}/skills/autosdd/)
+│   └── SKILL.md                 # autoSDD v3.1 skill (installed to ~/.{agent}/skills/autosdd/)
 ├── templates/
 │   ├── CLAUDE.md                # Template CLAUDE.md (includes autoSDD activation block)
+│   ├── autosdd.md               # autoSDD v3 framework reference (→ context/autosdd.md)
 │   ├── guidelines.md            # Template for technical rules and conventions
 │   ├── user_context.md          # Template for user profile and preferences
 │   └── business_logic.md        # Template for business domain knowledge
@@ -354,7 +380,7 @@ gentle-ai is the **infrastructure**. autoSDD is the **methodology**.
 | Project | Role |
 |---------|------|
 | [gentle-ai](https://github.com/Gentleman-Programming/gentle-ai) | **CORE** — skill management, SDD orchestration, Engram memory |
-| [RTK](https://github.com/thestark77/rtk) | Token optimization — 60-90% savings on CLI commands |
+| [RTK](https://github.com/rtk-ai/rtk) | Token optimization — 60-90% savings on CLI commands |
 | [Engram](https://github.com/nicobailon/engram) | Persistent memory MCP (installed via gentle-ai) |
 
 ---

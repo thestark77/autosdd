@@ -6,7 +6,7 @@ description: >
   CREA prompt engineering on ALL prompt creation, enforces SDD methodology,
   tracks metrics, and auto-improves through A/B testing. ALWAYS ACTIVE unless
   user explicitly opts out.
-version: "3.0.0"
+version: "3.1.0"
 license: MIT
 metadata:
   author: gentleman-programming
@@ -32,17 +32,14 @@ metadata:
 ## Quick Start
 
 ```bash
-# One-command installation (any OS, any agent)
-npx -y @anthropic-ai/claude-code skills add autosdd
+# macOS / Linux
+curl -fsSL https://raw.githubusercontent.com/thestark77/autosdd/main/install.sh | bash
 
-# Or manual: copy this SKILL.md to your agent's skills directory
-# Claude Code:  ~/.claude/skills/autosdd/SKILL.md
-# Cursor:       ~/.cursor/skills/autosdd/SKILL.md
-# Codex:        ~/.codex/skills/autosdd/SKILL.md
-# Windsurf:     ~/.windsurf/skills/autosdd/SKILL.md
-# Kiro:         ~/.kiro/skills/autosdd/SKILL.md
-# VS Code:      ~/.vscode/skills/autosdd/SKILL.md
+# Windows (PowerShell)
+irm https://raw.githubusercontent.com/thestark77/autosdd/main/install.ps1 | iex
 ```
+
+The installer configures gentle-ai, autoSDD skill, RTK, prompt-engineering-patterns, and project templates — all in one command.
 
 ---
 
