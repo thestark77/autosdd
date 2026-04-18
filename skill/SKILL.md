@@ -228,16 +228,32 @@ For EACH task delegated to a sub-agent, the orchestrator MUST:
 
 ---
 
-## 7. Event-Driven Monitoring (Monitor Tool)
+## 7. Action Clarity Protocol
 
-**NEVER use `sleep` or polling.** ALWAYS use Monitor tool:
+Before modifying ANY file, classify user intent:
+- **EXECUTE**: "hacelo", "dale", "implement", "apply", "fix it" → write code
+- **RESPOND**: "¿qué opinás?", "analyze", "what do you think?" → analysis only, NO file changes
+- **PLAN**: "planificá", "proponé", "plan", "propose" → create plan, NO execution
+- **UNCLEAR**: ASK → "¿Querés que lo ejecute o solo que te dé mi opinión?"
 
-```bash
-# Deploy: Monitor railway/vercel logs → react on "deployed" or "error"
-# Tests:  Monitor test output → react on "FAIL" immediately
-# Build:  Monitor tsc output → react on "error TS"
-# Lint:   Monitor eslint output → react on errors
-```
+When Stop hook fires while waiting: stop cleanly, do NOT loop, do NOT start unrelated work.
+
+---
+
+## 8. Event-Driven Monitoring (Monitor-First Policy)
+
+**NEVER use `sleep` or polling.** ALWAYS use event-driven tools:
+
+| Wait For | Method | NEVER |
+|----------|--------|-------|
+| Deploy | Monitor tool → Railway logs | Poll with curl |
+| Tests | Monitor tool → test output | Sleep + re-run |
+| Build | Monitor tool → tsc output | Sleep + check |
+| Sub-agents | Background Agent (auto-notifies) | Sleep + poll |
+| Timed wait (user-requested only) | ScheduleWakeup | Sleep command |
+| User input | STOP cleanly | Loop asking |
+
+ScheduleWakeup ONLY when user explicitly requests timed operations.
 
 ---
 
@@ -411,7 +427,62 @@ After global installation, run `sdd-init` in each project to:
 
 ---
 
-## 11. Language Policy
+## 11. TODO Lists Protocol
+
+Two persistent TODO lists, updated automatically at phase boundaries.
+
+### Agent TODO (Orchestrator's Action Plan)
+
+Storage: Claude native memory `todo_agent_{change}.md` + Engram backup `todo/agent/{project}/{change}`
+
+```markdown
+## Agent Plan — {change-name}
+Status: IN_PROGRESS | 3/7 done
+
+- [x] Task description → result
+- [ ] Task description ⚠️ dependency note
+  - [x] Subtask done
+  - [ ] Subtask pending → BLOCKED: reason
+- [ ] Task description
+  NOTE: consideration
+```
+
+**Update**: plan creation, task completion, user interrupts, post-compaction, phase boundaries.
+**Read**: session start, after compaction, before each phase, when user sends new prompt mid-task.
+
+### User TODO (User's Pending Items)
+
+Storage: Claude native memory `todo_user.md` + Engram backup `todo/user/{project}`
+
+Tracks things outside AI scope or user-requested reminders. Auto-consulted at phase completion, session end, and when related to just-completed work.
+
+---
+
+## 12. Mid-Plan Interruption Handling
+
+When a NEW user prompt arrives during active execution:
+
+1. **PAUSE** current execution
+2. **READ** agent TODO list
+3. **CLASSIFY**: "do this NOW" → execute immediately. Clarification → update plan. New task → add + reprioritize. Affects completed work → create correction tasks.
+4. **ANALYZE** impact on completed work: if downstream depends on broken work → correct FIRST. If cosmetic → correct AFTER.
+5. **UPDATE** agent TODO with new priorities
+6. **CONTINUE** with updated plan
+
+---
+
+## 13. User Profile Auto-Capture
+
+When user shares ANY preference, constraint, or personal info:
+1. Update `context/user_context.md` (project-specific)
+2. Update Claude memory `user_profile.md` (cross-project)
+3. Save to Engram `user-profile/{username}` as backup (cross-session)
+
+Primary: Claude native memory (auto-loaded). Secondary: user_context.md. Backup: Engram.
+
+---
+
+## 14. Language Policy
 
 - **Framework artifacts**: ALWAYS English (skills, prompts, Engram, wiki, changelogs, CLAUDE.md)
 - **Project UI**: Project-specific (detected by sdd-init, usually Spanish neutral for LATAM SaaS)
@@ -420,7 +491,7 @@ After global installation, run `sdd-init` in each project to:
 
 ---
 
-## 12. Compatibility
+## 15. Compatibility
 
 This skill follows the Agent Skills specification and works with any agent that reads SKILL.md files from a skills directory:
 
@@ -447,6 +518,6 @@ Agents without sub-agent support will run flows sequentially instead of parallel
 
 ---
 
-*autoSDD v3.0.0 — April 2026*
+*autoSDD v3.1.0 — April 2026*
 *Author: Gentleman Programming (github.com/thestark77)*
 *License: MIT*

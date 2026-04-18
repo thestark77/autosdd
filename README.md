@@ -1,8 +1,8 @@
-# AutoSDD — Autonomous Spec-Driven Development
+# AutoSDD v3 — Self-Improving Autonomous Development
 
 <div align="center">
 
-**"Be Tony Stark"** — Talk to your AI, it asks questions, then builds everything autonomously.
+**Talk to your AI. It asks questions. Then it builds everything autonomously — and gets better at it over time.**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-Compatible-blue)](https://claude.ai/claude-code)
@@ -14,432 +14,279 @@
 
 ---
 
-AutoSDD v3 is a **self-improving** autonomous development framework. AI agents plan, implement, test, deploy, AND optimize their own process. Five flows (Development, Code Review, Debugging, Research, Self-Improvement) with automatic intent detection. CREA prompt engineering on every prompt. Metrics on every execution. The framework literally gets better over time.
+## What Is autoSDD?
 
-The AI doesn't just write code — it asks the right questions first, executes the full pipeline, measures its own performance, and continuously improves its prompts, skills, and workflows.
+autoSDD is a **methodology layer** on top of [gentle-ai](https://github.com/Gentleman-Programming/gentle-ai). It adds:
 
----
+- **5 Flows** — auto-detect if you're developing, debugging, reviewing, researching, or improving
+- **CREA Framework** — structured prompt engineering on EVERY prompt (Context, Role, Specificity, Action)
+- **Self-Improvement** — the framework measures its own performance and A/B tests its own process
+- **TODO Lists** — persistent orchestrator + user task tracking that survives compaction
+- **3 Sacred Context Files** — living docs the AI auto-updates: guidelines, user profile, business logic
+- **Event-Driven** — Monitor tool for all waiting, NEVER polling or sleep loops
 
-## Vision: Iron Man Mode
-
-Imagine talking to your development system like Tony Stark talks to JARVIS:
-
-1. **You speak** — voice or text, even from WhatsApp or Telegram
-2. **AI clarifies** — proactively asks questions until there is zero ambiguity
-3. **AI executes** — full pipeline from spec to certified deployment
-4. **AI notifies** — sends you updates, asks for approvals via messaging
-
-No more hand-holding every step. You define intent, the system handles execution.
+gentle-ai provides the **infrastructure** (skills, MCPs, agents, TUI). autoSDD provides the **process**.
 
 ---
 
-## How It Works
-
-### The Autonomous Loop
+## Flow Diagram
 
 ```
-USER INPUT (voice/text/chat)
-    ↓
-PROMPT ENGINEERING (cleanup + structure)
-    ↓
-PROACTIVE CLARIFICATION (AI asks questions)
-    ↓
-┌─────────────────────────────────────────┐
-│  PLAN PHASE                             │
-│  explore → propose → spec →             │
-│  design → tasks                         │
-│  Quality gate: GIVEN/WHEN/THEN          │
-└─────────────────────────────────────────┘
-    ↓
-┌─────────────────────────────────────────┐
-│  BUILD PHASE (TDD)                      │
-│  RED → GREEN → REFACTOR                 │
-│  Quality gate: ALL tests pass           │
-└─────────────────────────────────────────┘
-    ↓
-┌─────────────────────────────────────────┐
-│  VERIFY PHASE                           │
-│  Independent agent validates            │
-│  Quality gate: 0 CRITICAL findings      │
-└─────────────────────────────────────────┘
-    ↓
-┌─────────────────────────────────────────┐
-│  CERTIFY PHASE                          │
-│  Dual review (judgment-day)             │
-│  Both judges must PASS                  │
-└─────────────────────────────────────────┘
-    ↓
-COMMIT → DEPLOY → NOTIFY USER
+USER PROMPT (voice/text)
+    |
+    v
++-------------------+
+|   FLOW ROUTER     |  Detect intent: dev? debug? review? research? improve?
++-------------------+
+    |
+    v
++-------------------+
+|   CREA REFINE     |  Context + Role + Specificity + Action
++-------------------+
+    |
+    v
++------+------+------+------+------+
+| DEV  |DEBUG |REVIEW|RSCH  |SELF  |
+|      |      |      |      |IMPRV |
++------+------+------+------+------+
+    |
+    v
++-------------------+
+| OUTCOME COLLECT   |  Tokens, duration, pass/fail, retries
++-------------------+
+    |
+    v
++-------------------+
+| KNOWLEDGE UPDATE  |  Context files, Engram, wiki
++-------------------+
 ```
 
-### SDD Phases
+### Development Flow (most common)
 
-| Phase | Command | What it does |
-|-------|---------|-------------|
-| Explore | `/sdd-explore <topic>` | Investigate codebase, compare approaches — no files changed |
-| Propose | (via `/sdd-new`) | Architecture proposal with rollback plan |
-| Spec | (via `/sdd-new`) | GIVEN/WHEN/THEN scenarios for every requirement |
-| Design | (via `/sdd-new`) | File structure, sequence diagrams, dependency map |
-| Tasks | (via `/sdd-new`) | Numbered task list including test tasks |
-| Apply | `/sdd-apply` | TDD implementation in batches (RED → GREEN → REFACTOR) |
-| Verify | `/sdd-verify` | Independent validation against specs |
-| Archive | `/sdd-archive` | Close change, persist final state to Engram |
+```
+PROMPT REFINE -> INTAKE -> PLAN -> BUILD (TDD) -> VERIFY -> CERTIFY -> SHIP -> REVIEW
+```
 
-### Meta-Commands
+### Debug Flow
 
-| Command | What it does |
-|---------|-------------|
-| `/sdd-new <change>` | Start new change — triggers full pipeline |
-| `/sdd-ff <name>` | Fast-forward through all planning phases |
-| `/sdd-continue` | Run the next dependency-ready phase |
-| `/sdd-init` | Initialize SDD context for a project |
-| `/sdd-onboard` | Guided walkthrough using your real codebase |
+```
+REPRODUCE -> DIAGNOSE -> FIX (TDD) -> VERIFY -> DOCUMENT
+```
+
+### Code Review Flow
+
+```
+INGEST -> ANALYZE (6 agents + judgment-day) -> REPORT -> [FIX optional]
+```
 
 ---
 
-## Prerequisites
+## Requirements
 
-### Required Tools
+### Mandatory
 
 | Tool | Purpose | Install |
 |------|---------|---------|
-| [Claude Code](https://claude.ai/claude-code) | AI development CLI | `npm install -g @anthropic-ai/claude-code` |
-| [gentle-ai](https://github.com/Gentleman-Programming/gentle-ai) | **FUNDAMENTAL** — Skill management TUI, SDD orchestration | `cargo install gentle-ai` |
-| [RTK (Rust Token Killer)](https://github.com/thestark77/rtk) | Token-optimized command output (60–90% savings) | `cargo install rtk` |
-| Node.js 22+ | Runtime | [nodejs.org](https://nodejs.org) |
-| pnpm | Package manager | `npm install -g pnpm` |
+| [gentle-ai](https://github.com/Gentleman-Programming/gentle-ai) | **CORE** — SDD skills, Engram memory, agent config | See [gentle-ai install guide](https://github.com/Gentleman-Programming/gentle-ai#installation) |
+| [RTK](https://github.com/thestark77/rtk) | Token-optimized CLI output (60-90% savings) | `cargo install rtk` |
+| AI Agent | Claude Code, Cursor, Codex, Windsurf, Kiro, Gemini CLI | Agent-specific |
 
-> **gentle-ai is FUNDAMENTAL.** It manages skill installation, lifecycle, and SDD orchestration. Install it first.
+### Recommended Plugins (Claude Code)
 
-### Required MCP Servers
+| Plugin | Purpose |
+|--------|---------|
+| Context7 | Live library docs — prevents hallucinated APIs |
+| Ralph Loop | Autonomous iteration (run until tests pass) |
+| PR Review Toolkit | 6 specialized code review agents |
+| TypeScript LSP | Go-to-definition for TS projects |
+| Skill Creator | A/B test and benchmark skills |
+| CLAUDE.md Management | Auto-audit CLAUDE.md quality |
 
-MCPs (Model Context Protocol) extend Claude Code with real-world capabilities. These are critical to the framework:
+### Recommended MCPs
 
-| MCP | Purpose | Configuration |
-|-----|---------|--------------|
-| [Engram](https://github.com/nicobailon/engram) | Persistent memory across sessions and compactions | Add to `.claude/settings.json` |
-| [Playwright](https://github.com/anthropics/claude-code/tree/main/packages/playwright-mcp) | E2E testing, visual verification, form testing | `npx @anthropic-ai/playwright-mcp` |
-| [Prisma](https://mcp.prisma.io) | Database queries, schema management, migrations | `pnpm dlx -y mcp-remote https://mcp.prisma.io/mcp` |
-| [Railway](https://github.com/nicholasgriffintn/railway-mcp-server) | Deployment, logs, environment variables | Add to settings |
-| [Sentry](https://github.com/sentry-ai/sentry-mcp-server) | Production error tracking, stack traces | Add to settings |
-| [Linear](https://linear.app) | Issue/project tracking, PR linking | Claude.ai integration |
-
-See [docs/mcp-setup.md](docs/mcp-setup.md) for full configuration examples.
+| MCP | Purpose |
+|-----|---------|
+| [Engram](https://github.com/nicobailon/engram) | Persistent memory (installed via gentle-ai) |
+| Prisma | Database operations |
+| Railway / Vercel | Deployment monitoring |
+| Sentry | Production error tracking |
 
 ---
 
-## Skills System
+## Installation
 
-AutoSDD uses a **skill library** — focused instruction sets that the AI reads before performing specific tasks. Skills are scoped, composable, and controlled.
+### Step 1: Install gentle-ai
 
-> **ALL skills are OFF by default.** Activating unused skills wastes tokens and degrades quality.
+Follow the [gentle-ai installation guide](https://github.com/Gentleman-Programming/gentle-ai#installation). gentle-ai installs SDD skills, Engram, and configures your agents.
 
-### How Skills Work
+### Step 2: Install autoSDD Skill
 
+**Claude Code (any OS)**:
 ```bash
-# Activate a skill for the current task
-ln -s ../../.agents/skills/<name> .claude/skills/<name>
-
-# Deactivate after the task is done
-rm -f .claude/skills/<name>
-
-# NEVER leave skills active between tasks
-```
-
-### Project-Level Skills (`.agents/skills/`)
-
-| Skill | When to use |
-|-------|------------|
-| `test-driven-development` | Before writing ANY implementation code |
-| `javascript-testing-patterns` | Writing Vitest unit/integration tests |
-| `e2e-testing-patterns` | Playwright E2E tests |
-| `next-best-practices` | Next.js code — RSC, routes, data patterns |
-| `prisma-client-api` | Database queries, CRUD, transactions |
-| `prisma-cli` | Migrations, generate, db push/seed |
-| `prisma-database-setup` | PostgreSQL connection configuration |
-
-### User-Level Skills (`~/.claude/skills/`)
-
-| Skill | When to use |
-|-------|------------|
-| `vercel-react-best-practices` | React/Next.js performance optimization |
-| `postgresql-table-design` | Schema design, indexing strategies |
-| `error-handling-patterns` | API resilience, exception design |
-| `frontend-design` | Landing pages, public-facing UI |
-| `interface-design` | Dashboards, admin panels |
-| `prompt-engineering-patterns` | Prompt design, voice input processing |
-| `judgment-day` | Dual adversarial review for critical changes |
-| `branch-pr` | PR creation workflow |
-| `issue-creation` | GitHub issue creation |
-
-Install skills via `gentle-ai` TUI or: `npx -y skills add <skill-name>`
-
-See [docs/skill-lifecycle.md](docs/skill-lifecycle.md) for the full activation protocol.
-
----
-
-## Testing Strategy
-
-AutoSDD enforces strict TDD — **RED → GREEN → REFACTOR**. No code ships without a failing test first.
-
-### Three Layers
-
-| Layer | Tool | What to test |
-|-------|------|-------------|
-| Unit | Vitest | Pure functions, validation schemas, JWT logic |
-| Integration | Vitest (`pool: 'forks'`) | Models, tenant isolation, soft delete, API routes |
-| E2E | Playwright | User flows, auth, routing, mobile responsiveness |
-
-### Critical Technical Decisions
-
-| Decision | Why |
-|----------|-----|
-| `pool: 'forks'` for integration tests | MANDATORY when using `AsyncLocalStorage` — thread pool breaks context propagation |
-| `envFile` / `setupFiles` loads env BEFORE module imports | Prevents `process.exit(1)` in strict env validation |
-| Real database for integration tests | NEVER mock Prisma — mocks hide real bugs |
-| `ioredis-mock` in test environment | Redis behavior without a running server |
-
-### Quality Gates
-
-Every change must pass ALL gates before the next phase:
-
-| Phase | Gate | Fails if... |
-|-------|------|-------------|
-| spec | Scenarios complete | Missing GIVEN/WHEN/THEN for any requirement |
-| design | Architecture sound | Violates base constraints |
-| tasks | Test tasks included | No test task exists for the change |
-| apply | TDD compliance | Code written before failing test |
-| apply | Tests pass | `rtk vitest run` or `rtk playwright test` has failures |
-| apply | TypeScript clean | `rtk tsc` has errors |
-| apply | Lint clean | `rtk lint` has errors |
-| verify | Spec compliance | Implementation diverges from spec scenarios |
-| verify | E2E verification | Playwright navigation reveals broken flows |
-| certify | Dual review pass | Either judge reports CRITICAL issues |
-
-```bash
-pnpm validate        # lint + typecheck + unit/integration tests
-pnpm validate:full   # + E2E tests
-```
-
-See [docs/testing-strategy.md](docs/testing-strategy.md) for full detail.
-
----
-
-## Agent Architecture
-
-```
-ORCHESTRATOR (Opus — coordinates, never executes directly)
-    ├── sdd-explore  (Sonnet — reads code, structural analysis)
-    ├── sdd-propose  (Opus   — architectural decisions)
-    ├── sdd-spec     (Sonnet — structured writing)
-    ├── sdd-design   (Opus   — architecture decisions)
-    ├── sdd-tasks    (Sonnet — mechanical breakdown)
-    ├── sdd-apply    (Sonnet — TDD implementation)
-    ├── sdd-verify   (Sonnet — validation against spec)
-    └── sdd-archive  (Sonnet — close and persist)
-```
-
-The orchestrator **never** writes code inline. It delegates to sub-agents and synthesizes their results. Each sub-agent gets injected compact skill rules, not full files, keeping every context lean.
-
----
-
-## Persistent Memory (Engram)
-
-AutoSDD uses [Engram](https://github.com/nicobailon/engram) for persistent memory that survives sessions and compactions:
-
-- **Proactive saves**: Every decision, bug fix, and discovery is saved immediately — not when asked
-- **Session summaries**: Mandatory before ending any session
-- **Cross-session recovery**: Context restored after compaction or new session
-- **Structured topic keys**: `sdd/{change-name}/{artifact}` for deterministic retrieval
-
-### Artifact Topic Keys
-
-| Artifact | Topic Key |
-|----------|-----------|
-| Project context | `sdd-init/{project}` |
-| Exploration | `sdd/{change-name}/explore` |
-| Proposal | `sdd/{change-name}/proposal` |
-| Spec | `sdd/{change-name}/spec` |
-| Design | `sdd/{change-name}/design` |
-| Tasks | `sdd/{change-name}/tasks` |
-| Apply progress | `sdd/{change-name}/apply-progress` |
-| Verify report | `sdd/{change-name}/verify-report` |
-| Archive report | `sdd/{change-name}/archive-report` |
-
----
-
-## Claude Code Hooks
-
-Hooks automate quality enforcement without manual intervention:
-
-```json
-{
-  "hooks": {
-    "PreToolUse": [
-      {
-        "matcher": "Bash(git push*)",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "pnpm validate"
-          }
-        ]
-      }
-    ]
-  }
-}
-```
-
-The `git push` hook blocks ALL pushes unless `pnpm validate` passes. Never skip it with `--no-verify`. Fix the issue instead.
-
-See [docs/hooks.md](docs/hooks.md) for the full hook event reference.
-
----
-
-## Token Optimization with RTK
-
-**ALWAYS prefix commands with `rtk`** for 60–90% token savings. RTK passes through unknown commands unchanged — it is always safe to use.
-
-```bash
-rtk vitest run          # 99% savings
-rtk tsc                 # 83% savings
-rtk lint                # 84% savings
-rtk git status          # 59–80% savings
-rtk prisma migrate dev  # 88% savings
-rtk next build          # 87% savings
-```
-
-Even in chains:
-
-```bash
-# Wrong
-git add . && git commit -m "msg" && git push
-
-# Correct
-rtk git add . && rtk git commit -m "msg" && rtk git push
-```
-
----
-
-## Remote Control (Mobile)
-
-Control your development session from your phone:
-
-1. Start session: `/rc` in Claude Code (or `claude --rc`)
-2. Scan QR code with Claude mobile app (iOS/Android)
-3. Full control from phone — same files, MCPs, project context
-4. Works on Pro and Max plans
-
-Remote Control REPLACES the need for Telegram/WhatsApp bots. Everything runs locally on your machine — the phone is just a window into the session.
-
----
-
-## Iron Man Mode (Roadmap)
-
-### Mobile Interface — Remote Control (Available Now)
-
-The primary mobile interface for Iron Man Mode is **Claude Remote Control** — built into Claude Code:
-
-1. Run `/rc` in Claude Code (or `claude --rc`)
-2. Scan the QR code with the Claude mobile app (iOS/Android)
-3. Full session access from your phone — same project context, MCPs, and tools
-4. Send voice messages or text directly from Claude mobile
-5. Receive notifications when the AI needs input or completes work
-
-No bot setup, no API tokens, no external services. Remote Control is the native, zero-friction path to mobile access.
-
-### Voice Input Pipeline
-
-```
-1. User sends audio/text via Claude mobile app (Remote Control)
-2. AI cleans and formats with punctuation
-3. Passes through prompt-engineering-patterns skill
-4. Generates SDD-ready prompt for orchestrator
-5. AI asks clarifying questions until zero ambiguity
-6. Executes full pipeline autonomously
-7. Notifies user on completion, blocker, or approval needed
-```
-
-### Proactive Conversation Management
-
-- System guides the conversation, not the user
-- Suggests optimal execution order
-- Tracks pending tasks, priorities, and blockers
-- Asks clarifying questions BEFORE starting execution
-- Redirects user to optimal path when off-track
-
-See [docs/iron-man-roadmap.md](docs/iron-man-roadmap.md) for full specification.
-
----
-
-## Three Critical Context Files
-
-Every AutoSDD project maintains 3 **sacred living documents** in `context/`. The orchestrator MUST update them whenever relevant information is discovered — this is not optional.
-
-| File | Purpose | Update Triggers |
-|------|---------|----------------|
-| `guidelines.md` | Technical rules, conventions, constraints, security | New gotcha, convention, post-mortem pattern |
-| `user_context.md` | User profile, preferences, workflow style | User provides personal/professional info |
-| `business_logic.md` | Domain knowledge, entities, workflows, terminology | Business rule, entity relationship, workflow detail |
-
-Sub-agents never read these files directly. The orchestrator extracts relevant sections and injects them into sub-agent prompts via CREA structure.
-
-Additionally, projects may maintain:
-
-| File | Purpose | When to update |
-|------|---------|---------------|
-| `requirements.md` | Project specs, schema, phases, permissions | When user input affects the plan |
-| `autoSDDv3.md` | Full framework specification (optional local copy) | When framework evolves |
-
-Copy templates from `templates/` into `your-project/context/` and fill them in as your project evolves:
-
-```bash
-cp templates/guidelines.md your-project/context/guidelines.md
-cp templates/user_context.md your-project/context/user_context.md
-cp templates/business_logic.md your-project/context/business_logic.md
-```
-
----
-
-## Quick Start
-
-```bash
-# 1. Install prerequisites
-npm install -g @anthropic-ai/claude-code   # Or your preferred agent
-npx -y gentle-ai@latest                     # SDD skills + Engram memory
-cargo install rtk                            # Token optimization (60-90% savings)
-
-# 2. Install autoSDD skill (Claude Code — any OS)
 mkdir -p ~/.claude/skills/autosdd
 curl -o ~/.claude/skills/autosdd/SKILL.md \
   https://raw.githubusercontent.com/thestark77/autosdd/main/skill/SKILL.md
+```
 
-# 3. Bootstrap your project
-cp templates/CLAUDE.md your-project/CLAUDE.md
+**Other agents** — replace `~/.claude/` with your agent's skill directory:
+```bash
+# Cursor:    ~/.cursor/skills/autosdd/
+# Codex:     ~/.codex/skills/autosdd/
+# Windsurf:  ~/.windsurf/skills/autosdd/ (or ~/.codeium/windsurf/skills/)
+# Kiro:      ~/.kiro/skills/autosdd/
+# Gemini:    ~/.gemini/skills/autosdd/
+```
+
+### Step 3: Bootstrap Your Project
+
+```bash
+# Copy context templates
 cp templates/guidelines.md your-project/context/guidelines.md
 cp templates/user_context.md your-project/context/user_context.md
 cp templates/business_logic.md your-project/context/business_logic.md
 
-# 4. Initialize SDD in Claude Code
+# Initialize SDD in your agent
 /sdd-init
-
-# 5. Start building
-/sdd-new my-feature
 ```
 
-> **Other agents?** Replace `~/.claude/` with `~/.cursor/`, `~/.codex/`, `~/.windsurf/`, `~/.kiro/`, or `~/.vscode/` in step 2.
+### Step 4: Add to CLAUDE.md
+
+Append the autoSDD activation block to your project's `CLAUDE.md`. See `templates/CLAUDE.md` for the full template. The critical block:
+
+```markdown
+## autoSDD — Active Framework (DO NOT REMOVE)
+
+autoSDD v3 is the ACTIVE development framework for this project.
+ALL prompts go through autoSDD unless the user explicitly opts out.
+
+### Default Behavior
+- Every prompt -> Flow Router -> CREA Prompt Refine -> Execute Flow -> Outcome Collection
+- CREA framework on ALL prompt creation
+- 5 flows: Development, Code Review, Debugging, Research, Self-Improvement
+- Orchestrator delegates to sub-agents, NEVER executes directly
+- Monitor tool for ALL waiting/watching (NEVER poll)
+- RTK prefix on ALL shell commands
+
+### Opt-Out
+- `[raw]` prefix: skip framework entirely
+- `[no-sdd]` prefix: skip SDD but keep CREA
+- `skip autosdd`: natural language opt-out
+```
+
+### Step 5: Verify
+
+```bash
+# In Claude Code:
+/sdd-init          # Should detect your stack and configure
+/sdd-explore test  # Should explore your codebase
+```
 
 ---
 
-## Non-Negotiable Principles
+## Use Cases
 
-1. **No code without a test** — TDD is not optional. RED → GREEN → REFACTOR.
-2. **No mock databases** — Integration tests hit real PostgreSQL. Mocks hide real bugs.
-3. **No skipped quality gates** — Every phase must pass before the next begins.
-4. **No manual verification when automated is possible** — If Playwright can check it, write a test.
-5. **No context loss** — Every decision, bug, and discovery gets saved to Engram immediately.
-6. **No silent failures** — If self-correction fails 3 times, escalate. Never loop infinitely.
-7. **Specs are the source of truth** — Implementation matches specs, not the other way around.
+### "Build a new feature"
+```
+You: "Add user registration with email verification"
+autoSDD: DEV flow -> CREA refine -> explore -> propose -> spec -> design -> tasks -> apply (TDD) -> verify -> ship
+```
+
+### "Fix a bug"
+```
+You: "Login fails with 500 error on mobile"
+autoSDD: DEBUG flow -> reproduce -> diagnose (search Engram for prior occurrences) -> fix (TDD) -> verify -> document
+```
+
+### "Review this PR"
+```
+You: "Review PR #45"
+autoSDD: REVIEW flow -> analyze (6 agents + judgment-day in parallel) -> report (CRITICAL/WARNING/INFO) -> [fix if requested]
+```
+
+### "Should we use X?"
+```
+You: "Should we migrate from REST to tRPC?"
+autoSDD: RESEARCH flow -> scope -> gather (web + docs + Engram) -> evaluate (scoring matrix) -> synthesize -> decide
+```
+
+### "Improve the framework"
+```
+You: "Optimize token usage in BUILD phase"
+autoSDD: SELF-IMPROVE flow -> measure current metrics -> hypothesize -> A/B test -> evaluate -> apply/discard
+```
+
+### "I'm going to sleep"
+```
+You: "Me voy a dormir, terminá todo"
+autoSDD: Asks critical questions IMMEDIATELY -> executes full plan autonomously -> commits -> pushes -> saves summary to Engram
+```
+
+---
+
+## Key Concepts
+
+### CREA Framework
+
+Every prompt created by autoSDD uses CREA structure:
+
+| Component | What to Include |
+|-----------|----------------|
+| **Context** | Project state, what exists, what changed, relevant guidelines/business logic |
+| **Role** | Professional expertise — architect for design, implementer for apply, reviewer for verify |
+| **Specificity** | Constraints, skills, tools, gotchas, anti-patterns, testing instructions |
+| **Action** | Exact deliverable — files to create/modify, tests to write, what to save |
+
+### Three Critical Context Files
+
+| File | Purpose | Auto-Updated When... |
+|------|---------|---------------------|
+| `context/guidelines.md` | Technical rules, conventions | New gotcha, convention, pattern |
+| `context/user_context.md` | User profile, preferences | User shares personal/professional info |
+| `context/business_logic.md` | Domain knowledge, entities | Business rule, workflow detail |
+
+### TODO Lists
+
+| List | Purpose | Storage |
+|------|---------|---------|
+| **Agent TODO** | Orchestrator's action plan — survives compaction | Claude memory + Engram backup |
+| **User TODO** | Things the user needs to do (outside AI scope) | Claude memory + Engram backup |
+
+### Action Clarity Protocol
+
+Before modifying files, autoSDD classifies user intent:
+- **Execute**: "hacelo", "dale", "implement" -> write code
+- **Respond**: "what do you think?", "analyze" -> analysis only
+- **Plan**: "propose", "plan" -> create plan, no execution
+- **Unclear**: ask immediately
+
+### Monitor-First (Event-Driven)
+
+| Wait For | Method |
+|----------|--------|
+| Deploy | Monitor tool -> Railway/Vercel logs |
+| Tests | Monitor tool -> test output |
+| Sub-agents | Background Agent (auto-notifies) |
+| Timed wait | ScheduleWakeup (only when user requests) |
+
+**NEVER**: sleep, polling, repeated status checks.
+
+---
+
+## Updating
+
+### Update autoSDD (independent of gentle-ai)
+```bash
+curl -o ~/.claude/skills/autosdd/SKILL.md \
+  https://raw.githubusercontent.com/thestark77/autosdd/main/skill/SKILL.md
+```
+
+### Update gentle-ai (independent of autoSDD)
+```bash
+gentle-ai upgrade
+gentle-ai sync
+```
+
+Both update independently without conflicts. gentle-ai manages its sections with markers, autoSDD manages its own SKILL.md and CLAUDE.md block.
 
 ---
 
@@ -449,9 +296,9 @@ cp templates/business_logic.md your-project/context/business_logic.md
 autosdd/
 ├── README.md                    # This file
 ├── skill/
-│   └── SKILL.md                 # autoSDD v3 skill (install to ~/.claude/skills/autosdd/)
+│   └── SKILL.md                 # autoSDD v3 skill (copy to ~/.{agent}/skills/autosdd/)
 ├── templates/
-│   ├── CLAUDE.md                # Template CLAUDE.md for new projects (includes autoSDD activation block)
+│   ├── CLAUDE.md                # Template CLAUDE.md (includes autoSDD activation block)
 │   ├── guidelines.md            # Template for technical rules and conventions
 │   ├── user_context.md          # Template for user profile and preferences
 │   └── business_logic.md        # Template for business domain knowledge
@@ -460,25 +307,61 @@ autosdd/
     ├── skill-lifecycle.md       # Skill activation/deactivation protocol
     ├── mcp-setup.md             # MCP server configuration guide
     ├── iron-man-roadmap.md      # Voice/mobile integration roadmap
-    └── hooks.md                 # Claude Code hooks — full event reference
+    └── hooks.md                 # Claude Code hooks reference
 ```
+
+---
+
+## Relationship with gentle-ai
+
+autoSDD is built ON TOP of [gentle-ai](https://github.com/Gentleman-Programming/gentle-ai):
+
+| Responsibility | gentle-ai | autoSDD |
+|----------------|-----------|---------|
+| Skill installation | Yes | No (uses gentle-ai) |
+| Agent configuration (12 agents) | Yes | No (uses gentle-ai) |
+| SDD phase skills (10 skills) | Yes | References them |
+| Engram memory | Yes | Uses it |
+| TUI for setup | Yes | No |
+| Backup/rollback | Yes | No |
+| **5-flow routing** | No | **Yes** |
+| **CREA prompt engineering** | No | **Yes** |
+| **Self-improvement engine** | No | **Yes** |
+| **TODO lists** | No | **Yes** |
+| **Action Clarity Protocol** | No | **Yes** |
+| **Outcome metrics** | No | **Yes** |
+| **3 Critical Context Files** | No | **Yes** |
+
+gentle-ai is the **infrastructure**. autoSDD is the **methodology**.
+
+---
+
+## Non-Negotiable Principles
+
+1. **No code without a test** — TDD: RED -> GREEN -> REFACTOR
+2. **No mock databases** — integration tests hit real PostgreSQL
+3. **No skipped quality gates** — every phase must pass before the next
+4. **No context loss** — every decision saved to Engram immediately
+5. **No polling** — Monitor tool for all waiting, event-driven always
+6. **No silent failures** — escalate after 3 retries, never loop infinitely
+7. **Specs are truth** — implementation matches specs, not the other way around
+8. **English framework** — all skills, prompts, Engram content in English
 
 ---
 
 ## Related Projects
 
-| Project | Purpose |
-|---------|---------|
-| [gentle-ai](https://github.com/Gentleman-Programming/gentle-ai) | **FUNDAMENTAL** — Skill management TUI and SDD orchestration |
-| [RTK](https://github.com/thestark77/rtk) | Rust Token Killer — 60–90% token savings on common commands |
-| [skills.sh](https://skills.sh) | Claude Code skills marketplace |
-| [Engram](https://github.com/nicobailon/engram) | Persistent memory MCP for Claude Code |
+| Project | Role |
+|---------|------|
+| [gentle-ai](https://github.com/Gentleman-Programming/gentle-ai) | **CORE** — skill management, SDD orchestration, Engram memory |
+| [RTK](https://github.com/thestark77/rtk) | Token optimization — 60-90% savings on CLI commands |
+| [Engram](https://github.com/nicobailon/engram) | Persistent memory MCP (installed via gentle-ai) |
 
 ---
 
 ## Created By
 
-[**Gentleman Programming**](https://github.com/Gentleman-Programming) — Senior SaaS Architect, Google Developer Expert & Microsoft MVP. Building the future of autonomous development.
+[**Gentleman Programming**](https://github.com/Gentleman-Programming) — Senior SaaS Architect, Google Developer Expert & Microsoft MVP.
 
 ---
 
