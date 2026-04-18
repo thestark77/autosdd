@@ -87,7 +87,8 @@ INGEST -> ANALYZE (6 agents + judgment-day) -> REPORT -> [FIX optional]
 
 | Tool | Purpose | Install |
 |------|---------|---------|
-| [gentle-ai](https://github.com/Gentleman-Programming/gentle-ai) | **CORE** — SDD skills, Engram memory, agent config | See [gentle-ai install guide](https://github.com/Gentleman-Programming/gentle-ai#installation) |
+| [gentle-ai](https://github.com/Gentleman-Programming/gentle-ai) | **CORE** — SDD skills, Engram memory, agent config | Auto-installed by installer (needs [Homebrew](https://brew.sh) or [Scoop](https://scoop.sh)) |
+| [Go](https://go.dev) | Required by engram (persistent memory) | Auto-installed by installer via brew/scoop |
 | [RTK](https://github.com/rtk-ai/rtk) | Token-optimized CLI output (60-90% savings) | Auto-installed by installer |
 | prompt-engineering-patterns | **CORE** — CREA prompt techniques (Chain-of-Thought, Few-Shot, etc.) | Installed by gentle-ai `--preset full-gentleman` |
 | AI Agent | Claude Code, Cursor, Codex, Windsurf, Kiro, Gemini CLI | Agent-specific |
@@ -118,14 +119,17 @@ INGEST -> ANALYZE (6 agents + judgment-day) -> REPORT -> [FIX optional]
 
 ### Prerequisites
 
-The installer needs a package manager to install [gentle-ai](https://github.com/Gentleman-Programming/gentle-ai) automatically. If you already have gentle-ai installed, you can skip this.
+The installer automatically installs **gentle-ai** and **Go** if missing. You only need a package manager:
 
-| OS | Package Manager | Install |
-|----|----------------|---------|
+| OS | Package Manager | Install if missing |
+|----|----------------|--------------------|
 | macOS / Linux | [Homebrew](https://brew.sh) | `/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"` |
 | Windows | [Scoop](https://scoop.sh) | `irm get.scoop.sh \| iex` |
 
-The installer will automatically add the correct tap/bucket and install gentle-ai for you.
+The installer handles the rest:
+1. **Go** — installed via brew/scoop if missing ([manual install](https://go.dev/dl/))
+2. **gentle-ai** — installed via brew/scoop with the correct tap/bucket
+3. **GOBIN in PATH** — automatically added (required for engram binary)
 
 ### Quick Install (recommended)
 
@@ -146,8 +150,6 @@ curl -fsSL https://raw.githubusercontent.com/thestark77/autosdd/main/install.sh 
 ```powershell
 irm https://raw.githubusercontent.com/thestark77/autosdd/main/install.ps1 | iex
 ```
-
-> **Prerequisite**: [gentle-ai](https://github.com/Gentleman-Programming/gentle-ai) must be installed first. The script will tell you how if it's missing.
 
 ### Manual Install
 

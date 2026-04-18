@@ -92,29 +92,58 @@ switch ($personaInput) {
 Write-Host "  -> Selected: $selectedPersona"
 Write-Host ""
 
-# --- Check gentle-ai ---
+# --- Check prerequisites ---
 Write-Host "Checking prerequisites..."
 
-$gentleAi = Get-Command gentle-ai -ErrorAction SilentlyContinue
-if (-not $gentleAi) {
-  Write-Host "  . gentle-ai not found - attempting to install..." -ForegroundColor Yellow
+# Check Scoop
+$scoop = Get-Command scoop -ErrorAction SilentlyContinue
+if (-not $scoop) {
+  Write-Host ""
+  Write-Host "  ! Scoop is required to install dependencies on Windows." -ForegroundColor Red
+  Write-Host ""
+  Write-Host "  Install Scoop first:" -ForegroundColor Yellow
+  Write-Host "    https://scoop.sh"
+  Write-Host ""
+  Write-Host "  Then run this installer again."
+  Write-Host ""
+  return
+}
+Write-Host "  OK scoop"
 
-  $scoop = Get-Command scoop -ErrorAction SilentlyContinue
-  if (-not $scoop) {
-    Write-Host ""
-    Write-Host "  ! Scoop is required to install gentle-ai on Windows." -ForegroundColor Red
-    Write-Host ""
-    Write-Host "  Install Scoop first:" -ForegroundColor Yellow
-    Write-Host "    https://scoop.sh"
-    Write-Host ""
-    Write-Host "  Then run this installer again."
+# Check Go (required by engram, installed by gentle-ai)
+$goCmd = Get-Command go -ErrorAction SilentlyContinue
+if (-not $goCmd) {
+  Write-Host "  . Go not found - installing via scoop..." -ForegroundColor Yellow
+  & scoop install go
+  $goCmd = Get-Command go -ErrorAction SilentlyContinue
+  if (-not $goCmd) {
+    Write-Host "  ! Go installation failed." -ForegroundColor Red
+    Write-Host "  Install manually: https://go.dev/dl/" -ForegroundColor Yellow
     Write-Host ""
     return
   }
+}
+Write-Host "  OK go"
 
-  Write-Host "  . Adding Gentleman Programming bucket..."
+# Ensure GOBIN is in PATH (engram binary lands here)
+$gobin = & go env GOBIN 2>$null
+if ([string]::IsNullOrWhiteSpace($gobin)) {
+  $gobin = Join-Path (& go env GOPATH 2>$null) "bin"
+}
+if ($gobin -and -not ($env:Path -like "*$gobin*")) {
+  $currentPath = [Environment]::GetEnvironmentVariable("Path", "User")
+  if ($currentPath -notlike "*$gobin*") {
+    [Environment]::SetEnvironmentVariable("Path", "$currentPath;$gobin", "User")
+  }
+  $env:Path = "$env:Path;$gobin"
+  Write-Host "  OK added $gobin to PATH"
+}
+
+# Check gentle-ai
+$gentleAi = Get-Command gentle-ai -ErrorAction SilentlyContinue
+if (-not $gentleAi) {
+  Write-Host "  . gentle-ai not found - installing via scoop..." -ForegroundColor Yellow
   & scoop bucket add gentleman https://github.com/Gentleman-Programming/scoop-bucket 2>$null
-  Write-Host "  . Installing gentle-ai..."
   & scoop install gentle-ai
 
   $gentleAi = Get-Command gentle-ai -ErrorAction SilentlyContinue
@@ -127,7 +156,7 @@ if (-not $gentleAi) {
     return
   }
 }
-Write-Host "  OK gentle-ai found"
+Write-Host "  OK gentle-ai"
 
 Write-Host ""
 

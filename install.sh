@@ -96,27 +96,65 @@ esac
 echo "  → Selected: $selected_persona"
 echo ""
 
-# --- Check gentle-ai ---
+# --- Check prerequisites ---
 echo "Checking prerequisites..."
 
-if ! command -v gentle-ai &>/dev/null; then
-  echo "  · gentle-ai not found — attempting to install..."
+# Check Homebrew
+if ! command -v brew &>/dev/null; then
+  echo ""
+  echo "  ⚠ Homebrew is required to install dependencies on macOS/Linux."
+  echo ""
+  echo "  Install Homebrew first:"
+  echo "    https://brew.sh"
+  echo ""
+  echo "  Then run this installer again."
+  echo ""
+  return 1
+fi
+echo "  ✓ brew"
 
-  if ! command -v brew &>/dev/null; then
-    echo ""
-    echo "  ⚠ Homebrew is required to install gentle-ai on macOS/Linux."
-    echo ""
-    echo "  Install Homebrew first:"
-    echo "    https://brew.sh"
-    echo ""
-    echo "  Then run this installer again."
-    echo ""
+# Check curl
+if ! command -v curl &>/dev/null; then
+  echo "  ✗ curl not found. Please install curl."
+  return 1
+fi
+echo "  ✓ curl"
+
+# Check Go (required by engram, installed by gentle-ai)
+if ! command -v go &>/dev/null; then
+  echo "  · Go not found — installing via brew..."
+  if ! brew install go; then
+    echo "  ✗ Go installation failed."
+    echo "  Install manually: https://go.dev/dl/"
     return 1
   fi
+fi
+echo "  ✓ go"
 
-  echo "  · Adding Gentleman Programming tap..."
+# Ensure GOBIN is in PATH (engram binary lands here)
+gobin=$(go env GOBIN 2>/dev/null)
+if [[ -z "$gobin" ]]; then
+  gobin="$(go env GOPATH 2>/dev/null)/bin"
+fi
+if [[ -n "$gobin" && ":$PATH:" != *":$gobin:"* ]]; then
+  export PATH="$PATH:$gobin"
+  # Persist for future shells
+  shell_rc=""
+  if [[ -f "$HOME/.zshrc" ]]; then
+    shell_rc="$HOME/.zshrc"
+  elif [[ -f "$HOME/.bashrc" ]]; then
+    shell_rc="$HOME/.bashrc"
+  fi
+  if [[ -n "$shell_rc" ]] && ! grep -q "$gobin" "$shell_rc" 2>/dev/null; then
+    echo "export PATH=\"\$PATH:$gobin\"" >> "$shell_rc"
+    echo "  ✓ added $gobin to PATH ($shell_rc)"
+  fi
+fi
+
+# Check gentle-ai
+if ! command -v gentle-ai &>/dev/null; then
+  echo "  · gentle-ai not found — installing via brew..."
   brew tap Gentleman-Programming/homebrew-tap 2>/dev/null
-  echo "  · Installing gentle-ai..."
   if ! brew install gentle-ai; then
     echo ""
     echo "  ✗ gentle-ai installation failed."
@@ -127,12 +165,6 @@ if ! command -v gentle-ai &>/dev/null; then
   fi
 fi
 echo "  ✓ gentle-ai $(gentle-ai version 2>/dev/null || echo 'found')"
-
-if ! command -v curl &>/dev/null; then
-  echo "  ✗ curl not found. Please install curl."
-  return 1
-fi
-echo "  ✓ curl"
 echo ""
 
 # --- Install gentle-ai ---
