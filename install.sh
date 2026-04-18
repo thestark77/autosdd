@@ -1,8 +1,11 @@
 #!/usr/bin/env bash
-set -euo pipefail
-
 # autoSDD Installer — installs gentle-ai + autoSDD skill
 # Works on macOS and Linux. For Windows, use install.ps1
+
+# Wrap in function so exit doesn't kill the user's shell when run via curl | bash
+_autosdd_install() {
+
+set -uo pipefail
 
 REPO_URL="https://raw.githubusercontent.com/thestark77/autosdd/main"
 SKILL_URL="$REPO_URL/skill/SKILL.md"
@@ -36,8 +39,6 @@ AGENT_DIRS=(
   "$HOME/.qwen"
   "$HOME/.kiro"
 )
-
-PERSONAS=("gentleman" "neutral" "custom")
 
 echo ""
 echo "  ╔══════════════════════════════════════════╗"
@@ -106,13 +107,15 @@ if ! command -v gentle-ai &>/dev/null; then
   echo "    Go:           go install github.com/gentleman-programming/gentle-ai/cmd/gentle-ai@latest"
   echo "    Manual:       https://github.com/Gentleman-Programming/gentle-ai#installation"
   echo ""
-  exit 1
+  echo "  After installing gentle-ai, run this installer again."
+  echo ""
+  return 1
 fi
 echo "  ✓ gentle-ai $(gentle-ai version 2>/dev/null || echo 'found')"
 
 if ! command -v curl &>/dev/null; then
   echo "  ✗ curl not found. Please install curl."
-  exit 1
+  return 1
 fi
 echo "  ✓ curl"
 echo ""
@@ -125,11 +128,15 @@ echo "  Preset:   full-gentleman"
 echo "  SDD Mode: multi"
 echo ""
 
-gentle-ai install \
+if ! gentle-ai install \
   --agents "$selected_agents" \
   --persona "$selected_persona" \
   --preset full-gentleman \
-  --sdd-mode multi
+  --sdd-mode multi; then
+  echo ""
+  echo "  ✗ gentle-ai install failed. Check the output above for details." >&2
+  return 1
+fi
 
 echo ""
 echo "  ✓ gentle-ai installed"
@@ -163,8 +170,11 @@ for i in "${!AGENTS[@]}"; do
   if echo "$selected_agents" | grep -q "$agent"; then
     skill_dir="${AGENT_DIRS[$i]}/skills/autosdd"
     mkdir -p "$skill_dir"
-    curl -fsSL -o "$skill_dir/SKILL.md" "$SKILL_URL"
-    echo "  ✓ $agent → $skill_dir/SKILL.md"
+    if curl -fsSL -o "$skill_dir/SKILL.md" "$SKILL_URL"; then
+      echo "  ✓ $agent → $skill_dir/SKILL.md"
+    else
+      echo "  ⚠ Failed to download SKILL.md for $agent"
+    fi
   fi
 done
 
@@ -175,12 +185,17 @@ echo "Installing RTK (token optimization)..."
 if command -v rtk &>/dev/null; then
   echo "  ✓ RTK already installed ($(rtk --version 2>/dev/null || echo 'found'))"
 else
-  curl -fsSL https://raw.githubusercontent.com/rtk-ai/rtk/refs/heads/master/install.sh | sh
-  if command -v rtk &>/dev/null; then
-    echo "  ✓ RTK installed"
+  if curl -fsSL https://raw.githubusercontent.com/rtk-ai/rtk/refs/heads/master/install.sh | sh; then
+    if command -v rtk &>/dev/null; then
+      echo "  ✓ RTK installed"
+    else
+      echo "  ⚠ RTK install script ran but 'rtk' not in PATH. You may need to restart your shell."
+      echo "    Manual: https://github.com/rtk-ai/rtk"
+    fi
   else
-    echo "  ⚠ RTK install script ran but 'rtk' not in PATH. You may need to restart your shell."
-    echo "    Manual: https://github.com/rtk-ai/rtk"
+    echo "  ⚠ RTK auto-install failed. Install manually:"
+    echo "    cargo install rtk"
+    echo "    OR download from: https://github.com/rtk-ai/rtk/releases"
   fi
 fi
 
@@ -228,8 +243,11 @@ for tmpl in "${templates[@]}"; do
   if [[ -f "$target" ]]; then
     echo "  · $tmpl already exists — skipped"
   else
-    curl -fsSL -o "$target" "$TEMPLATE_URL/$tmpl"
-    echo "  ✓ $tmpl → $target"
+    if curl -fsSL -o "$target" "$TEMPLATE_URL/$tmpl"; then
+      echo "  ✓ $tmpl → $target"
+    else
+      echo "  ⚠ Failed to download $tmpl"
+    fi
   fi
 done
 
@@ -262,8 +280,11 @@ Read the autoSDD skill: `~/.claude/skills/autosdd/SKILL.md`
 <!-- autosdd:end -->'
 
 if [[ ! -f "./CLAUDE.md" ]]; then
-  curl -fsSL -o "./CLAUDE.md" "$TEMPLATE_URL/CLAUDE.md"
-  echo "  ✓ CLAUDE.md → ./CLAUDE.md (full template)"
+  if curl -fsSL -o "./CLAUDE.md" "$TEMPLATE_URL/CLAUDE.md"; then
+    echo "  ✓ CLAUDE.md → ./CLAUDE.md (full template)"
+  else
+    echo "  ⚠ Failed to download CLAUDE.md template"
+  fi
 elif grep -q "autosdd:start" "./CLAUDE.md"; then
   # Replace existing block between markers
   sed -i '/<!-- autosdd:start -->/,/<!-- autosdd:end -->/d' "./CLAUDE.md"
@@ -297,3 +318,8 @@ echo "    curl -fsSL $REPO_URL/install.sh | bash"
 echo ""
 echo "  Docs: https://github.com/thestark77/autosdd"
 echo ""
+
+}
+
+_autosdd_install
+unset -f _autosdd_install

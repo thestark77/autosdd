@@ -1,6 +1,9 @@
 # autoSDD Installer — installs gentle-ai + autoSDD skill
 # Windows PowerShell. For macOS/Linux, use install.sh
 
+# Wrap in scriptblock so exit doesn't kill the terminal when run via irm | iex
+& {
+
 $ErrorActionPreference = "Stop"
 
 $REPO_URL = "https://raw.githubusercontent.com/thestark77/autosdd/main"
@@ -101,7 +104,9 @@ if (-not $gentleAi) {
   Write-Host "    Go:       go install github.com/gentleman-programming/gentle-ai/cmd/gentle-ai@latest"
   Write-Host "    Manual:   https://github.com/Gentleman-Programming/gentle-ai#installation"
   Write-Host ""
-  exit 1
+  Write-Host "  After installing gentle-ai, run this installer again." -ForegroundColor Yellow
+  Write-Host ""
+  return
 }
 Write-Host "  OK gentle-ai found"
 
@@ -121,6 +126,12 @@ $agentsCsv = $selectedAgents -join ','
   --persona $selectedPersona `
   --preset full-gentleman `
   --sdd-mode multi
+
+if ($LASTEXITCODE -ne 0) {
+  Write-Host "  ! gentle-ai install failed (exit code $LASTEXITCODE)" -ForegroundColor Red
+  Write-Host "  Check the output above for details." -ForegroundColor Yellow
+  return
+}
 
 Write-Host ""
 Write-Host "  OK gentle-ai installed" -ForegroundColor Green
@@ -318,3 +329,5 @@ Write-Host "    irm $REPO_URL/install.ps1 | iex"
 Write-Host ""
 Write-Host "  Docs: https://github.com/thestark77/autosdd"
 Write-Host ""
+
+}
