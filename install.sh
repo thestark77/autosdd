@@ -100,16 +100,31 @@ echo ""
 echo "Checking prerequisites..."
 
 if ! command -v gentle-ai &>/dev/null; then
-  echo ""
-  echo "  ⚠ gentle-ai not found. Install it first:"
-  echo ""
-  echo "    macOS/Linux:  brew install gentle-ai"
-  echo "    Go:           go install github.com/gentleman-programming/gentle-ai/cmd/gentle-ai@latest"
-  echo "    Manual:       https://github.com/Gentleman-Programming/gentle-ai#installation"
-  echo ""
-  echo "  After installing gentle-ai, run this installer again."
-  echo ""
-  return 1
+  echo "  · gentle-ai not found — attempting to install..."
+
+  if ! command -v brew &>/dev/null; then
+    echo ""
+    echo "  ⚠ Homebrew is required to install gentle-ai on macOS/Linux."
+    echo ""
+    echo "  Install Homebrew first:"
+    echo "    https://brew.sh"
+    echo ""
+    echo "  Then run this installer again."
+    echo ""
+    return 1
+  fi
+
+  echo "  · Adding Gentleman Programming tap..."
+  brew tap Gentleman-Programming/homebrew-tap 2>/dev/null
+  echo "  · Installing gentle-ai..."
+  if ! brew install gentle-ai; then
+    echo ""
+    echo "  ✗ gentle-ai installation failed."
+    echo "  Try manually: brew install gentle-ai"
+    echo "  Docs: https://github.com/Gentleman-Programming/gentle-ai#installation"
+    echo ""
+    return 1
+  fi
 fi
 echo "  ✓ gentle-ai $(gentle-ai version 2>/dev/null || echo 'found')"
 

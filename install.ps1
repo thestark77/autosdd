@@ -97,16 +97,35 @@ Write-Host "Checking prerequisites..."
 
 $gentleAi = Get-Command gentle-ai -ErrorAction SilentlyContinue
 if (-not $gentleAi) {
-  Write-Host ""
-  Write-Host "  ! gentle-ai not found. Install it first:" -ForegroundColor Red
-  Write-Host ""
-  Write-Host "    Windows:  scoop install gentle-ai"
-  Write-Host "    Go:       go install github.com/gentleman-programming/gentle-ai/cmd/gentle-ai@latest"
-  Write-Host "    Manual:   https://github.com/Gentleman-Programming/gentle-ai#installation"
-  Write-Host ""
-  Write-Host "  After installing gentle-ai, run this installer again." -ForegroundColor Yellow
-  Write-Host ""
-  return
+  Write-Host "  . gentle-ai not found - attempting to install..." -ForegroundColor Yellow
+
+  $scoop = Get-Command scoop -ErrorAction SilentlyContinue
+  if (-not $scoop) {
+    Write-Host ""
+    Write-Host "  ! Scoop is required to install gentle-ai on Windows." -ForegroundColor Red
+    Write-Host ""
+    Write-Host "  Install Scoop first:" -ForegroundColor Yellow
+    Write-Host "    https://scoop.sh"
+    Write-Host ""
+    Write-Host "  Then run this installer again."
+    Write-Host ""
+    return
+  }
+
+  Write-Host "  . Adding Gentleman Programming bucket..."
+  & scoop bucket add gentleman https://github.com/Gentleman-Programming/scoop-bucket 2>$null
+  Write-Host "  . Installing gentle-ai..."
+  & scoop install gentle-ai
+
+  $gentleAi = Get-Command gentle-ai -ErrorAction SilentlyContinue
+  if (-not $gentleAi) {
+    Write-Host ""
+    Write-Host "  ! gentle-ai installation failed." -ForegroundColor Red
+    Write-Host "  Try manually: scoop install gentle-ai"
+    Write-Host "  Docs: https://github.com/Gentleman-Programming/gentle-ai#installation"
+    Write-Host ""
+    return
+  }
 }
 Write-Host "  OK gentle-ai found"
 

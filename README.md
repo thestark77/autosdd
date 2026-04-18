@@ -116,6 +116,17 @@ INGEST -> ANALYZE (6 agents + judgment-day) -> REPORT -> [FIX optional]
 
 ## Installation (One Command)
 
+### Prerequisites
+
+The installer needs a package manager to install [gentle-ai](https://github.com/Gentleman-Programming/gentle-ai) automatically. If you already have gentle-ai installed, you can skip this.
+
+| OS | Package Manager | Install |
+|----|----------------|---------|
+| macOS / Linux | [Homebrew](https://brew.sh) | `/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"` |
+| Windows | [Scoop](https://scoop.sh) | `irm get.scoop.sh \| iex` |
+
+The installer will automatically add the correct tap/bucket and install gentle-ai for you.
+
 ### Quick Install (recommended)
 
 > **IMPORTANT**: Run the install command **from inside your project directory** (the folder where your code lives). The installer bootstraps templates and injects the autoSDD block into your project's CLAUDE.md. If you run it from the wrong directory, files will land in the wrong place.
