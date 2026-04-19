@@ -39,6 +39,90 @@ $AGENT_DIRS = @(
   "$env:USERPROFILE\.kiro"
 )
 
+# Warning collector — populated throughout the install for the final report.
+$warnings = @()
+
+# --- Embedding backend configuration ---
+# Curated list of OpenAI-compatible embedding providers.
+# Models chosen for quality/cost balance (<=$0.10/1M tokens) with multilingual support.
+# Index 0 = local (Ollama); indexes 1-5 = remote API providers.
+$EMBED_PROVIDERS = @(
+  @{ Name = "local";      Url = "";                                                 Model = "bge-m3" }
+  @{ Name = "OpenAI";     Url = "https://api.openai.com/v1/embeddings";             Model = "text-embedding-3-small" }
+  @{ Name = "OpenRouter"; Url = "https://openrouter.ai/api/v1/embeddings";          Model = "openai/text-embedding-3-small" }
+  @{ Name = "Voyage AI";  Url = "https://api.voyageai.com/v1/embeddings";           Model = "voyage-3" }
+  @{ Name = "Mistral";    Url = "https://api.mistral.ai/v1/embeddings";             Model = "mistral-embed" }
+  @{ Name = "Jina AI";    Url = "https://api.jina.ai/v1/embeddings";                Model = "jina-embeddings-v3" }
+)
+
+$OLLAMA_LOCAL_URL   = "http://localhost:11434/v1/embeddings"
+$OLLAMA_LOCAL_MODEL = "bge-m3"
+
+$ENGRAM_STATE_DIR = "$env:USERPROFILE\.engram"
+$KEYCHAIN_SERVICE = "engram-embedding"
+
+# --- Helper: validate an API key by issuing a real embed request ---
+function Test-EmbeddingApiKey {
+  param([string]$Url, [string]$Model, [string]$Key)
+  try {
+    $body = @{ model = $Model; input = @("hello") } | ConvertTo-Json -Compress
+    $resp = Invoke-WebRequest -Uri $Url -Method POST `
+      -Headers @{ "Authorization" = "Bearer $Key"; "Content-Type" = "application/json" } `
+      -Body $body -UseBasicParsing -TimeoutSec 15 -ErrorAction Stop
+    return $resp.StatusCode -eq 200
+  } catch {
+    return $false
+  }
+}
+
+# --- Helper: store API key via Windows DPAPI (encrypted at rest with user account) ---
+# Returns the friendly storage method name.
+function Save-ApiKeySecure {
+  param([string]$Key)
+  New-Item -ItemType Directory -Path $ENGRAM_STATE_DIR -Force | Out-Null
+  $secure    = ConvertTo-SecureString -String $Key -AsPlainText -Force
+  $encrypted = $secure | ConvertFrom-SecureString
+  $path      = Join-Path $ENGRAM_STATE_DIR "api-key.dpapi"
+  Set-Content -Path $path -Value $encrypted -NoNewline
+  # Restrict ACL to current user only
+  try {
+    $acl = Get-Acl $path
+    $acl.SetAccessRuleProtection($true, $false)
+    $rule = New-Object System.Security.AccessControl.FileSystemAccessRule(
+      $env:USERNAME, "FullControl", "Allow"
+    )
+    $acl.AddAccessRule($rule)
+    Set-Acl $path $acl
+  } catch { }
+  return "Windows DPAPI ($($path | Split-Path -Leaf), user-scoped)"
+}
+
+# --- Helper: detect existing local (Ollama) install ---
+function Test-LocalInstalled {
+  if (-not (Get-Command ollama -ErrorAction SilentlyContinue)) { return $false }
+  $list = & ollama list 2>$null
+  return ($list -match "^$OLLAMA_LOCAL_MODEL(\s|:)")
+}
+
+# --- Helper: detect existing api configuration ---
+function Test-ApiConfigured {
+  $urlFile   = Join-Path $ENGRAM_STATE_DIR "api-url"
+  $modelFile = Join-Path $ENGRAM_STATE_DIR "api-model"
+  $keyFile   = Join-Path $ENGRAM_STATE_DIR "api-key.dpapi"
+  return (Test-Path $urlFile) -and (Test-Path $modelFile) -and (Test-Path $keyFile)
+}
+
+# --- Helper: confirm re-install of same mode (interactive) ---
+function Confirm-Reinstall {
+  param([string]$Label)
+  Write-Host ""
+  Write-Host "  ! A $Label embedding configuration is already present." -ForegroundColor Yellow
+  Write-Host "    Re-installing will ERASE the existing $Label setup and reconfigure from scratch."
+  Write-Host ""
+  $ans = Read-Host "  Proceed with re-install? [y/N]"
+  return ($ans -match "^[Yy]$")
+}
+
 Write-Host ""
 Write-Host "  +==========================================+" -ForegroundColor Cyan
 Write-Host "  |     autoSDD v3 - Installer               |" -ForegroundColor Cyan
@@ -47,7 +131,7 @@ Write-Host "  +==========================================+" -ForegroundColor Cya
 Write-Host ""
 
 # --- Step 1: Agent Selection ---
-Write-Host "Step 1/2 - Select AI agents to configure" -ForegroundColor Yellow
+Write-Host "Step 1/3 - Select AI agents to configure" -ForegroundColor Yellow
 Write-Host "  (ENTER = all agents)"
 Write-Host ""
 for ($i = 0; $i -lt $AGENTS.Count; $i++) {
@@ -73,7 +157,7 @@ if ([string]::IsNullOrWhiteSpace($agentInput)) {
 Write-Host ""
 
 # --- Step 2: Persona Selection ---
-Write-Host "Step 2/2 - Select AI response style" -ForegroundColor Yellow
+Write-Host "Step 2/3 - Select AI response style" -ForegroundColor Yellow
 Write-Host "  (ENTER = neutral)"
 Write-Host ""
 Write-Host "  1. gentleman  - Rioplatense Spanish, passionate, opinionated"
@@ -91,6 +175,82 @@ switch ($personaInput) {
 }
 Write-Host "  -> Selected: $selectedPersona"
 Write-Host ""
+
+# --- Step 3: Semantic search backend ---
+Write-Host "Step 3/3 - Semantic search backend for Engram" -ForegroundColor Yellow
+Write-Host "  (ENTER = local [default], 100% offline, no API key needed)"
+Write-Host ""
+Write-Host "  1. local        Ollama + bge-m3  (~2.3GB, free, offline)  [default]"
+Write-Host ("  2. OpenAI       ({0})" -f $EMBED_PROVIDERS[1].Model)
+Write-Host ("  3. OpenRouter   ({0})" -f $EMBED_PROVIDERS[2].Model)
+Write-Host ("  4. Voyage AI    ({0})" -f $EMBED_PROVIDERS[3].Model)
+Write-Host ("  5. Mistral      ({0})" -f $EMBED_PROVIDERS[4].Model)
+Write-Host ("  6. Jina AI      ({0})" -f $EMBED_PROVIDERS[5].Model)
+Write-Host ""
+$embedInput = Read-Host "  Backend (1-6)"
+
+$embeddingMode = "local"
+$embedIdx = 0
+switch ($embedInput) {
+  ""  { $embeddingMode = "local"; $embedIdx = 0 }
+  "1" { $embeddingMode = "local"; $embedIdx = 0 }
+  "2" { $embeddingMode = "api";   $embedIdx = 1 }
+  "3" { $embeddingMode = "api";   $embedIdx = 2 }
+  "4" { $embeddingMode = "api";   $embedIdx = 3 }
+  "5" { $embeddingMode = "api";   $embedIdx = 4 }
+  "6" { $embeddingMode = "api";   $embedIdx = 5 }
+  default { $embeddingMode = "local"; $embedIdx = 0 }
+}
+
+$embedProvider = $EMBED_PROVIDERS[$embedIdx]
+$displayModel = if ([string]::IsNullOrWhiteSpace($embedProvider.Model)) { $OLLAMA_LOCAL_MODEL } else { $embedProvider.Model }
+Write-Host ("  -> Selected: {0} ({1})" -f $embedProvider.Name, $displayModel)
+Write-Host ""
+
+# Re-install detection
+$reinstallConfirmed = $false
+if ($embeddingMode -eq "local" -and (Test-LocalInstalled)) {
+  if (Confirm-Reinstall "local (Ollama + $OLLAMA_LOCAL_MODEL)") {
+    $reinstallConfirmed = $true
+  } else {
+    Write-Host "  -> Local re-install cancelled; keeping existing config. Continuing with the rest of the install..."
+    $embeddingMode = "keep"
+  }
+} elseif ($embeddingMode -eq "api" -and (Test-ApiConfigured)) {
+  if (Confirm-Reinstall "api ($($embedProvider.Name))") {
+    $reinstallConfirmed = $true
+  } else {
+    Write-Host "  -> API re-configuration cancelled; keeping existing config. Continuing with the rest of the install..."
+    $embeddingMode = "keep"
+  }
+}
+
+# For api mode, collect and validate key up-front. Loops until valid.
+$apiKey = ""
+if ($embeddingMode -eq "api") {
+  Write-Host ""
+  Write-Host ("  You chose {0} with model {1}." -f $embedProvider.Name, $embedProvider.Model)
+  Write-Host ("  Endpoint: {0}" -f $embedProvider.Url)
+  Write-Host ""
+  while ($true) {
+    $secureKey = Read-Host "  Enter API key for $($embedProvider.Name) (input hidden)" -AsSecureString
+    $bstr = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($secureKey)
+    $apiKey = [Runtime.InteropServices.Marshal]::PtrToStringAuto($bstr)
+    [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($bstr)
+    if ([string]::IsNullOrWhiteSpace($apiKey)) {
+      Write-Host "  x API key is required. Press Ctrl+C to abort." -ForegroundColor Red
+      continue
+    }
+    Write-Host "  . Validating key by issuing a test embed request..."
+    if (Test-EmbeddingApiKey -Url $embedProvider.Url -Model $embedProvider.Model -Key $apiKey) {
+      Write-Host "  OK Key is valid (endpoint responded 200)" -ForegroundColor Green
+      break
+    } else {
+      Write-Host "  x Validation failed. The endpoint did not return 200 (check key, model access, or network)." -ForegroundColor Red
+      Write-Host "    Try again, or press Ctrl+C to abort."
+    }
+  }
+}
 
 # --- Check prerequisites ---
 Write-Host "Checking prerequisites..."
@@ -279,6 +439,174 @@ if (-not (Test-Path $engramSrc)) {
   }
 }
 
+# --- Configure Embedding Backend (local Ollama or remote API) ---
+# Dual-mode design: both configurations can coexist. A wrapper script reads
+# %USERPROFILE%\.engram\mode at each MCP launch to select which backend is active.
+Write-Host ""
+Write-Host "Configuring embedding backend..."
+
+New-Item -ItemType Directory -Path $ENGRAM_STATE_DIR -Force | Out-Null
+
+# Install Ollama + pull bge-m3 for local mode
+if ($embeddingMode -eq "local") {
+  if ($reinstallConfirmed) {
+    Write-Host "  . Wiping previous local setup (model only; Ollama binary is preserved)..."
+    & ollama rm $OLLAMA_LOCAL_MODEL 2>$null | Out-Null
+  }
+
+  if (-not (Get-Command ollama -ErrorAction SilentlyContinue)) {
+    Write-Host "  . Installing Ollama via scoop..."
+    try {
+      & scoop install ollama 2>$null
+      if (-not (Get-Command ollama -ErrorAction SilentlyContinue)) { throw "ollama still not in PATH" }
+      Write-Host "  OK Ollama installed" -ForegroundColor Green
+    } catch {
+      Write-Host "  ! scoop install failed; downloading Ollama installer from ollama.com..." -ForegroundColor Yellow
+      try {
+        $ollamaInst = Join-Path $env:TEMP "OllamaSetup.exe"
+        Invoke-WebRequest -Uri "https://ollama.com/download/OllamaSetup.exe" -OutFile $ollamaInst -UseBasicParsing
+        Start-Process -FilePath $ollamaInst -ArgumentList "/SILENT" -Wait
+        Remove-Item $ollamaInst -Force -ErrorAction SilentlyContinue
+        # Refresh PATH from registry
+        $env:Path = [Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [Environment]::GetEnvironmentVariable("Path", "User")
+        if (Get-Command ollama -ErrorAction SilentlyContinue) {
+          Write-Host "  OK Ollama installed via direct download" -ForegroundColor Green
+        } else {
+          throw "Ollama still not in PATH after direct install"
+        }
+      } catch {
+        Write-Host "  ! Ollama install failed — semantic search will fall back to TF-IDF" -ForegroundColor Red
+        $warnings += "Ollama install failed — local embedding mode unavailable"
+        $embeddingMode = "none"
+      }
+    }
+  } else {
+    Write-Host "  OK Ollama already present" -ForegroundColor Green
+  }
+
+  if ($embeddingMode -eq "local") {
+    # Ensure Ollama daemon is running
+    try {
+      $null = Invoke-WebRequest -Uri "http://localhost:11434/api/tags" -UseBasicParsing -TimeoutSec 2 -ErrorAction Stop
+    } catch {
+      Write-Host "  . Starting Ollama service in background..."
+      Start-Process -FilePath "ollama" -ArgumentList "serve" -WindowStyle Hidden -PassThru | Out-Null
+      for ($i = 0; $i -lt 10; $i++) {
+        Start-Sleep -Seconds 1
+        try {
+          $null = Invoke-WebRequest -Uri "http://localhost:11434/api/tags" -UseBasicParsing -TimeoutSec 2 -ErrorAction Stop
+          break
+        } catch { }
+      }
+    }
+
+    # Pull model (idempotent — skips if already present)
+    $listOut = & ollama list 2>$null
+    if ($listOut -match "^$OLLAMA_LOCAL_MODEL(\s|:)") {
+      Write-Host "  OK Model $OLLAMA_LOCAL_MODEL already present" -ForegroundColor Green
+    } else {
+      Write-Host "  . Pulling $OLLAMA_LOCAL_MODEL (~2.3GB, this may take several minutes)..."
+      & ollama pull $OLLAMA_LOCAL_MODEL
+      if ($LASTEXITCODE -eq 0) {
+        Write-Host "  OK Model $OLLAMA_LOCAL_MODEL pulled" -ForegroundColor Green
+      } else {
+        Write-Host "  ! Model pull failed — semantic search will fall back to TF-IDF" -ForegroundColor Red
+        $warnings += "Ollama pull $OLLAMA_LOCAL_MODEL failed"
+        $embeddingMode = "none"
+      }
+    }
+  }
+}
+
+# Store API credentials for api mode
+if ($embeddingMode -eq "api") {
+  Set-Content -Path (Join-Path $ENGRAM_STATE_DIR "api-url")      -Value $embedProvider.Url   -NoNewline
+  Set-Content -Path (Join-Path $ENGRAM_STATE_DIR "api-model")    -Value $embedProvider.Model -NoNewline
+  Set-Content -Path (Join-Path $ENGRAM_STATE_DIR "api-provider") -Value $embedProvider.Name  -NoNewline
+
+  $storeMethod = Save-ApiKeySecure -Key $apiKey
+  Write-Host "  OK API key stored in: $storeMethod" -ForegroundColor Green
+  # Clear plaintext from memory
+  $apiKey = $null
+  Remove-Variable apiKey -ErrorAction SilentlyContinue
+}
+
+# Write the active mode marker AFTER successful configuration of the chosen mode.
+if ($embeddingMode -ne "keep") {
+  Set-Content -Path (Join-Path $ENGRAM_STATE_DIR "mode") -Value $embeddingMode -NoNewline
+}
+
+# Write the wrapper PowerShell script that selects the backend at each MCP launch.
+$wrapperPath = Join-Path $ENGRAM_STATE_DIR "engram-wrapper.ps1"
+$wrapperContent = @'
+# Managed by autoSDD installer — do not edit directly.
+# Selects the embedding backend based on %USERPROFILE%\.engram\mode, then launches engram mcp.
+
+$ErrorActionPreference = "Stop"
+$stateDir = Join-Path $env:USERPROFILE ".engram"
+$modeFile = Join-Path $stateDir "mode"
+$mode = if (Test-Path $modeFile) { (Get-Content $modeFile -Raw).Trim() } else { "local" }
+
+switch ($mode) {
+  "local" {
+    $env:ENGRAM_EMBEDDING_PROVIDER  = "api"
+    $env:ENGRAM_EMBEDDING_API_URL   = "__OLLAMA_URL__"
+    $env:ENGRAM_EMBEDDING_API_MODEL = "__OLLAMA_MODEL__"
+    $env:ENGRAM_EMBEDDING_API_KEY   = "ollama"
+  }
+  "api" {
+    $env:ENGRAM_EMBEDDING_PROVIDER  = "api"
+    $env:ENGRAM_EMBEDDING_API_URL   = (Get-Content (Join-Path $stateDir "api-url")   -Raw).Trim()
+    $env:ENGRAM_EMBEDDING_API_MODEL = (Get-Content (Join-Path $stateDir "api-model") -Raw).Trim()
+    $keyPath = Join-Path $stateDir "api-key.dpapi"
+    $key = ""
+    if (Test-Path $keyPath) {
+      try {
+        $encrypted = Get-Content $keyPath -Raw
+        $secure = ConvertTo-SecureString -String $encrypted
+        $bstr = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($secure)
+        $key = [Runtime.InteropServices.Marshal]::PtrToStringAuto($bstr)
+        [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($bstr)
+      } catch { }
+    }
+    $env:ENGRAM_EMBEDDING_API_KEY = $key
+  }
+  default {
+    $env:ENGRAM_EMBEDDING_PROVIDER = "local"
+  }
+}
+
+$engramCmd = Get-Command engram -ErrorAction SilentlyContinue
+if (-not $engramCmd) {
+  Write-Error "engram binary not found in PATH — cannot start MCP server"
+  exit 1
+}
+& $engramCmd.Source mcp --tools=agent @args
+exit $LASTEXITCODE
+'@
+
+$wrapperContent = $wrapperContent.Replace("__OLLAMA_URL__",   $OLLAMA_LOCAL_URL)
+$wrapperContent = $wrapperContent.Replace("__OLLAMA_MODEL__", $OLLAMA_LOCAL_MODEL)
+Set-Content -Path $wrapperPath -Value $wrapperContent -NoNewline
+Write-Host "  OK Wrapper installed at $wrapperPath" -ForegroundColor Green
+
+# Point Claude Code's MCP config at the wrapper
+$claudeMcpDir = Join-Path $env:USERPROFILE ".claude\mcp"
+if (Test-Path $claudeMcpDir) {
+  $claudeMcp = Join-Path $claudeMcpDir "engram.json"
+  $mcpConfig = @{
+    command = "powershell.exe"
+    args    = @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", $wrapperPath)
+  } | ConvertTo-Json -Compress
+  Set-Content -Path $claudeMcp -Value $mcpConfig -NoNewline
+  Write-Host "  OK Claude Code MCP config rewired to wrapper" -ForegroundColor Green
+} else {
+  Write-Host "  ! $claudeMcpDir not found - skipped MCP rewire" -ForegroundColor Yellow
+}
+
+$activeMode = if (Test-Path (Join-Path $ENGRAM_STATE_DIR "mode")) { (Get-Content (Join-Path $ENGRAM_STATE_DIR "mode") -Raw).Trim() } else { "local" }
+Write-Host "  -> Active embedding mode: $activeMode"
+
 # --- Configure OpenCode profiles (if opencode was selected) ---
 if ($selectedAgents -contains "opencode") {
   Write-Host ""
@@ -306,7 +634,6 @@ if ($selectedAgents -contains "opencode") {
 Write-Host ""
 Write-Host "Installing core skills (global)..."
 
-$warnings = @()
 $installedSkillPaths = @()
 
 # 1. Install autoSDD skill directly (from this repo)
@@ -554,12 +881,40 @@ for ($i = 0; $i -lt $AGENTS.Count; $i++) {
   }
 }
 
-# Check embedding layer
+# Check embedding layer (Go patch applied + binary rebuilt)
 $embeddingCheck = Join-Path $env:USERPROFILE ".claude\plugins\marketplaces\engram\internal\embedding"
 if (Test-Path $embeddingCheck) {
   Write-Host "  [OK] Engram embedding layer" -ForegroundColor Green
 } else {
   Write-Host "  [..] Engram embedding layer not applied" -ForegroundColor Yellow
+}
+
+# Check embedding backend configuration
+$modeFile    = Join-Path $ENGRAM_STATE_DIR "mode"
+$wrapperFile = Join-Path $ENGRAM_STATE_DIR "engram-wrapper.ps1"
+if ((Test-Path $modeFile) -and (Test-Path $wrapperFile)) {
+  $active = (Get-Content $modeFile -Raw).Trim()
+  switch ($active) {
+    "local" {
+      $listOut = & ollama list 2>$null
+      if ($listOut -match "^$OLLAMA_LOCAL_MODEL(\s|:)") {
+        Write-Host "  [OK] Embedding backend: local ($OLLAMA_LOCAL_MODEL via Ollama)" -ForegroundColor Green
+      } else {
+        Write-Host "  [!!] Embedding backend: local but Ollama/bge-m3 missing" -ForegroundColor Red
+        $allGood = $false
+      }
+    }
+    "api" {
+      $providerName  = (Get-Content (Join-Path $ENGRAM_STATE_DIR "api-provider") -Raw).Trim()
+      $modelName     = (Get-Content (Join-Path $ENGRAM_STATE_DIR "api-model")    -Raw).Trim()
+      Write-Host "  [OK] Embedding backend: api ($providerName, $modelName)" -ForegroundColor Green
+    }
+    default {
+      Write-Host "  [..] Embedding backend: $active (no semantic search, TF-IDF fallback)" -ForegroundColor Yellow
+    }
+  }
+} else {
+  Write-Host "  [..] Embedding backend not configured" -ForegroundColor Yellow
 }
 
 # Check project templates

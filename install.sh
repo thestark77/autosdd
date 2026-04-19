@@ -40,6 +40,116 @@ AGENT_DIRS=(
   "$HOME/.kiro"
 )
 
+# Warning collector — populated throughout the install for the final report.
+warnings=()
+
+# --- Embedding backend configuration ---
+# Curated list of OpenAI-compatible embedding providers.
+# Models chosen for quality/cost balance (≤$0.10/1M tokens) with multilingual support.
+# Index 0 = local (Ollama); indexes 1-5 = remote API providers.
+EMBED_PROVIDER_NAMES=(
+  "local"
+  "OpenAI"
+  "OpenRouter"
+  "Voyage AI"
+  "Mistral"
+  "Jina AI"
+)
+EMBED_PROVIDER_URLS=(
+  ""   # local Ollama is hardcoded in wrapper (http://localhost:11434/v1/embeddings)
+  "https://api.openai.com/v1/embeddings"
+  "https://openrouter.ai/api/v1/embeddings"
+  "https://api.voyageai.com/v1/embeddings"
+  "https://api.mistral.ai/v1/embeddings"
+  "https://api.jina.ai/v1/embeddings"
+)
+EMBED_PROVIDER_MODELS=(
+  "bge-m3"                              # local Ollama — best open multilingual
+  "text-embedding-3-small"              # OpenAI — $0.02/1M, 1536 dims
+  "openai/text-embedding-3-small"       # OpenRouter — same model proxied
+  "voyage-3"                            # Voyage — $0.06/1M, strong multilingual
+  "mistral-embed"                       # Mistral — $0.10/1M, 1024 dims
+  "jina-embeddings-v3"                  # Jina — $0.02/1M, top multilingual MTEB
+)
+
+# Ollama local defaults
+OLLAMA_LOCAL_URL="http://localhost:11434/v1/embeddings"
+OLLAMA_LOCAL_MODEL="bge-m3"
+
+# State directory for dual-mode (local + api) configuration
+ENGRAM_STATE_DIR="$HOME/.engram"
+KEYCHAIN_SERVICE="engram-embedding"
+
+# --- Helper: validate an API key by issuing a real embed request ---
+# Usage: validate_api_key <url> <model> <key>  → exit 0 on HTTP 200, non-zero otherwise
+validate_api_key() {
+  local url="$1" model="$2" key="$3"
+  local http_code
+  http_code=$(curl -sS -o /dev/null -w "%{http_code}" --max-time 15 \
+    -X POST "$url" \
+    -H "Authorization: Bearer $key" \
+    -H "Content-Type: application/json" \
+    -d "{\"model\":\"$model\",\"input\":[\"hello\"]}" 2>/dev/null || echo "000")
+  [[ "$http_code" == "200" ]]
+}
+
+# --- Helper: store API key in OS keychain, fall back to chmod 600 file ---
+# Never echoes the key. Returns "keychain" or "file" to indicate storage used.
+store_api_key_secure() {
+  local key="$1"
+  if command -v security &>/dev/null; then
+    # macOS Keychain — -U updates if exists
+    if security add-generic-password -U -a "$USER" -s "$KEYCHAIN_SERVICE" -w "$key" 2>/dev/null; then
+      echo "macOS Keychain"; return
+    fi
+  fi
+  if command -v secret-tool &>/dev/null; then
+    # libsecret (GNOME Keyring / KWallet)
+    if printf '%s' "$key" | secret-tool store --label="Engram Embedding API key" \
+         service "$KEYCHAIN_SERVICE" account "$USER" 2>/dev/null; then
+      echo "libsecret"; return
+    fi
+  fi
+  # Fallback: chmod 600 file under ENGRAM_STATE_DIR
+  mkdir -p "$ENGRAM_STATE_DIR" && chmod 700 "$ENGRAM_STATE_DIR"
+  local old_umask; old_umask=$(umask); umask 077
+  printf '%s' "$key" > "$ENGRAM_STATE_DIR/api-key"
+  chmod 600 "$ENGRAM_STATE_DIR/api-key"
+  umask "$old_umask"
+  echo "file (~/.engram/api-key, chmod 600)"
+}
+
+# --- Helper: detect existing local (Ollama) install ---
+local_installed() {
+  command -v ollama &>/dev/null && \
+    ollama list 2>/dev/null | grep -qE "^$OLLAMA_LOCAL_MODEL(\s|:)"
+}
+
+# --- Helper: detect existing api configuration ---
+api_configured() {
+  [[ -f "$ENGRAM_STATE_DIR/api-url" && -f "$ENGRAM_STATE_DIR/api-model" ]] && \
+  ( (command -v security &>/dev/null && security find-generic-password \
+       -a "$USER" -s "$KEYCHAIN_SERVICE" -w &>/dev/null) || \
+    (command -v secret-tool &>/dev/null && secret-tool lookup \
+       service "$KEYCHAIN_SERVICE" account "$USER" &>/dev/null) || \
+    [[ -s "$ENGRAM_STATE_DIR/api-key" ]] )
+}
+
+# --- Helper: confirm re-install of same mode (interactive) ---
+# Returns 0 if user confirms (wipe + reinstall), 1 if user cancels.
+confirm_reinstall() {
+  local mode_label="$1"
+  echo ""
+  echo "  ⚠ A ${mode_label} embedding configuration is already present."
+  echo "    Re-installing will ERASE the existing ${mode_label} setup and reconfigure from scratch."
+  echo ""
+  local ans=""
+  if [[ -r /dev/tty ]]; then
+    read -rp "  Proceed with re-install? [y/N]: " ans </dev/tty || ans=""
+  fi
+  [[ "$ans" =~ ^[Yy]$ ]]
+}
+
 echo ""
 echo "  ╔══════════════════════════════════════════╗"
 echo "  ║     autoSDD v3 — Installer               ║"
@@ -48,7 +158,7 @@ echo "  ╚═══════════════════════
 echo ""
 
 # --- Step 1: Agent Selection ---
-echo "Step 1/2 — Select AI agents to configure"
+echo "Step 1/3 — Select AI agents to configure"
 echo "  (ENTER = all agents)"
 echo ""
 for i in "${!AGENTS[@]}"; do
@@ -83,7 +193,7 @@ fi
 echo ""
 
 # --- Step 2: Persona Selection ---
-echo "Step 2/2 — Select AI response style"
+echo "Step 2/3 — Select AI response style"
 echo "  (ENTER = neutral)"
 echo ""
 echo "  1. gentleman  — Rioplatense Spanish, passionate, opinionated"
@@ -104,6 +214,90 @@ case "$persona_input" in
 esac
 echo "  → Selected: $selected_persona"
 echo ""
+
+# --- Step 3: Semantic search backend ---
+echo "Step 3/3 — Semantic search backend for Engram"
+echo "  (ENTER = local [default], 100% offline, no API key needed)"
+echo ""
+echo "  1. local        Ollama + bge-m3  (~2.3GB, free, offline)  [default]"
+echo "  2. OpenAI       (${EMBED_PROVIDER_MODELS[1]})"
+echo "  3. OpenRouter   (${EMBED_PROVIDER_MODELS[2]})"
+echo "  4. Voyage AI    (${EMBED_PROVIDER_MODELS[3]})"
+echo "  5. Mistral      (${EMBED_PROVIDER_MODELS[4]})"
+echo "  6. Jina AI      (${EMBED_PROVIDER_MODELS[5]})"
+echo ""
+
+embed_input=""
+if [[ -r /dev/tty ]]; then
+  read -rp "  Backend (1-6): " embed_input </dev/tty || embed_input=""
+fi
+
+# Map input → embedding_mode and embed_idx (for api providers)
+embedding_mode="local"
+embed_idx=0
+case "$embed_input" in
+  ""|1) embedding_mode="local"; embed_idx=0 ;;
+  2)   embedding_mode="api";   embed_idx=1 ;;
+  3)   embedding_mode="api";   embed_idx=2 ;;
+  4)   embedding_mode="api";   embed_idx=3 ;;
+  5)   embedding_mode="api";   embed_idx=4 ;;
+  6)   embedding_mode="api";   embed_idx=5 ;;
+  *)   embedding_mode="local"; embed_idx=0 ;;
+esac
+
+echo "  → Selected: ${EMBED_PROVIDER_NAMES[$embed_idx]} (${EMBED_PROVIDER_MODELS[$embed_idx]:-$OLLAMA_LOCAL_MODEL})"
+echo ""
+
+# Re-install detection: warn if user picked a mode that's already configured.
+reinstall_confirmed=false
+if [[ "$embedding_mode" == "local" ]] && local_installed; then
+  if confirm_reinstall "local (Ollama + $OLLAMA_LOCAL_MODEL)"; then
+    reinstall_confirmed=true
+  else
+    echo "  → Local re-install cancelled; keeping existing config. Continuing with the rest of the install..."
+    embedding_mode="keep"
+  fi
+elif [[ "$embedding_mode" == "api" ]] && api_configured; then
+  if confirm_reinstall "api (${EMBED_PROVIDER_NAMES[$embed_idx]})"; then
+    reinstall_confirmed=true
+  else
+    echo "  → API re-configuration cancelled; keeping existing config. Continuing with the rest of the install..."
+    embedding_mode="keep"
+  fi
+fi
+
+# For api mode, collect and validate key up-front. Loops until valid.
+api_key=""
+if [[ "$embedding_mode" == "api" ]]; then
+  embed_url="${EMBED_PROVIDER_URLS[$embed_idx]}"
+  embed_model="${EMBED_PROVIDER_MODELS[$embed_idx]}"
+  echo ""
+  echo "  You chose ${EMBED_PROVIDER_NAMES[$embed_idx]} with model ${embed_model}."
+  echo "  Endpoint: ${embed_url}"
+  echo ""
+  if [[ ! -r /dev/tty ]]; then
+    echo "  ✗ API mode requires an interactive terminal to enter the key safely."
+    echo "    Re-run the installer attached to a terminal, or pick option 1 (local)."
+    return 1
+  fi
+  while true; do
+    api_key=""
+    read -rs -p "  Enter API key for ${EMBED_PROVIDER_NAMES[$embed_idx]} (input hidden): " api_key </dev/tty || api_key=""
+    echo ""
+    if [[ -z "$api_key" ]]; then
+      echo "  ✗ API key is required. Press Ctrl+C to abort."
+      continue
+    fi
+    echo "  · Validating key by issuing a test embed request..."
+    if validate_api_key "$embed_url" "$embed_model" "$api_key"; then
+      echo "  ✓ Key is valid (endpoint responded 200)"
+      break
+    else
+      echo "  ✗ Validation failed. The endpoint did not return 200 (check key, model access, or network)."
+      echo "    Try again, or press Ctrl+C to abort."
+    fi
+  done
+fi
 
 # --- Check prerequisites ---
 echo "Checking prerequisites..."
@@ -281,6 +475,155 @@ else
   fi
 fi
 
+# --- Configure Embedding Backend (local Ollama or remote API) ---
+# Dual-mode design: both configurations can coexist. A wrapper script reads
+# ~/.engram/mode at each MCP launch to select which backend is active.
+# Switching modes does NOT wipe the other mode's config.
+echo ""
+echo "Configuring embedding backend..."
+
+mkdir -p "$ENGRAM_STATE_DIR" && chmod 700 "$ENGRAM_STATE_DIR"
+
+# Install Ollama + pull bge-m3 for local mode (skips if already present, unless reinstall confirmed)
+if [[ "$embedding_mode" == "local" ]]; then
+  if $reinstall_confirmed; then
+    echo "  · Wiping previous local setup (model only; Ollama binary is preserved)..."
+    ollama rm "$OLLAMA_LOCAL_MODEL" 2>/dev/null || true
+  fi
+
+  if ! command -v ollama &>/dev/null; then
+    echo "  · Installing Ollama (~40MB)..."
+    if curl -fsSL https://ollama.com/install.sh | sh; then
+      echo "  ✓ Ollama installed"
+    else
+      echo "  ⚠ Ollama install failed — semantic search will fall back to TF-IDF"
+      warnings+=("Ollama install failed — local embedding mode unavailable")
+      embedding_mode="none"
+    fi
+  else
+    echo "  ✓ Ollama already present"
+  fi
+
+  if [[ "$embedding_mode" == "local" ]]; then
+    # Ensure ollama daemon is running. Linux systemd unit is typical; fall back to nohup.
+    if ! curl -sSf http://localhost:11434/api/tags >/dev/null 2>&1; then
+      echo "  · Starting Ollama service in background..."
+      if command -v systemctl &>/dev/null && systemctl list-unit-files ollama.service &>/dev/null; then
+        systemctl start ollama 2>/dev/null || nohup ollama serve >/dev/null 2>&1 &
+      else
+        nohup ollama serve >/dev/null 2>&1 &
+      fi
+      # Wait up to 10s for the daemon
+      for i in 1 2 3 4 5 6 7 8 9 10; do
+        curl -sSf http://localhost:11434/api/tags >/dev/null 2>&1 && break
+        sleep 1
+      done
+    fi
+
+    # Pull model (idempotent — skips if already local)
+    if ollama list 2>/dev/null | grep -qE "^$OLLAMA_LOCAL_MODEL(\s|:)"; then
+      echo "  ✓ Model $OLLAMA_LOCAL_MODEL already present"
+    else
+      echo "  · Pulling $OLLAMA_LOCAL_MODEL (~2.3GB, this may take several minutes)..."
+      if ollama pull "$OLLAMA_LOCAL_MODEL"; then
+        echo "  ✓ Model $OLLAMA_LOCAL_MODEL pulled"
+      else
+        echo "  ⚠ Model pull failed — semantic search will fall back to TF-IDF"
+        warnings+=("Ollama pull $OLLAMA_LOCAL_MODEL failed")
+        embedding_mode="none"
+      fi
+    fi
+  fi
+fi
+
+# Store API credentials for api mode
+if [[ "$embedding_mode" == "api" ]]; then
+  echo "$embed_url"   > "$ENGRAM_STATE_DIR/api-url"
+  echo "$embed_model" > "$ENGRAM_STATE_DIR/api-model"
+  echo "${EMBED_PROVIDER_NAMES[$embed_idx]}" > "$ENGRAM_STATE_DIR/api-provider"
+
+  store_method=$(store_api_key_secure "$api_key")
+  echo "  ✓ API key stored in: $store_method"
+  # Clear the variable from shell memory
+  api_key=""
+  unset api_key
+fi
+
+# Write the active mode marker AFTER successful configuration of the chosen mode.
+# If user chose "keep" (re-install cancelled), the existing mode file is untouched.
+if [[ "$embedding_mode" != "keep" ]]; then
+  echo "$embedding_mode" > "$ENGRAM_STATE_DIR/mode"
+fi
+
+# Write the wrapper script that selects the backend at each MCP launch.
+cat > "$ENGRAM_STATE_DIR/engram-wrapper.sh" <<WRAPPER_EOF
+#!/usr/bin/env bash
+# Managed by autoSDD installer — do not edit directly.
+# Selects the embedding backend (local Ollama or remote API) based on
+# \$HOME/.engram/mode, then execs engram mcp with the right env vars.
+
+MODE=\$(tr -d '[:space:]' < "\$HOME/.engram/mode" 2>/dev/null || echo "local")
+KEYCHAIN_SERVICE="$KEYCHAIN_SERVICE"
+OLLAMA_URL="$OLLAMA_LOCAL_URL"
+OLLAMA_MODEL="$OLLAMA_LOCAL_MODEL"
+
+case "\$MODE" in
+  local)
+    export ENGRAM_EMBEDDING_PROVIDER=api
+    export ENGRAM_EMBEDDING_API_URL="\$OLLAMA_URL"
+    export ENGRAM_EMBEDDING_API_MODEL="\$OLLAMA_MODEL"
+    export ENGRAM_EMBEDDING_API_KEY=ollama
+    ;;
+  api)
+    export ENGRAM_EMBEDDING_PROVIDER=api
+    export ENGRAM_EMBEDDING_API_URL=\$(cat "\$HOME/.engram/api-url" 2>/dev/null)
+    export ENGRAM_EMBEDDING_API_MODEL=\$(cat "\$HOME/.engram/api-model" 2>/dev/null)
+    key=""
+    if command -v security >/dev/null 2>&1; then
+      key=\$(security find-generic-password -a "\$USER" -s "\$KEYCHAIN_SERVICE" -w 2>/dev/null || echo "")
+    fi
+    if [[ -z "\$key" ]] && command -v secret-tool >/dev/null 2>&1; then
+      key=\$(secret-tool lookup service "\$KEYCHAIN_SERVICE" account "\$USER" 2>/dev/null || echo "")
+    fi
+    if [[ -z "\$key" ]] && [[ -f "\$HOME/.engram/api-key" ]]; then
+      key=\$(cat "\$HOME/.engram/api-key" 2>/dev/null || echo "")
+    fi
+    export ENGRAM_EMBEDDING_API_KEY="\$key"
+    ;;
+  *)
+    export ENGRAM_EMBEDDING_PROVIDER=local
+    ;;
+esac
+
+engram_bin=\$(command -v engram 2>/dev/null)
+if [[ -z "\$engram_bin" ]]; then
+  echo "engram binary not found in PATH — cannot start MCP server" >&2
+  exit 1
+fi
+exec "\$engram_bin" mcp --tools=agent "\$@"
+WRAPPER_EOF
+chmod 755 "$ENGRAM_STATE_DIR/engram-wrapper.sh"
+echo "  ✓ Wrapper installed at $ENGRAM_STATE_DIR/engram-wrapper.sh"
+
+# Point Claude Code's MCP config at the wrapper so the right env vars load at launch.
+# Other agents continue to use the default engram invocation (TF-IDF fallback).
+claude_mcp="$HOME/.claude/mcp/engram.json"
+if [[ -d "$HOME/.claude/mcp" ]]; then
+  cat > "$claude_mcp" <<EOF
+{
+  "command": "$ENGRAM_STATE_DIR/engram-wrapper.sh",
+  "args": []
+}
+EOF
+  echo "  ✓ Claude Code MCP config rewired to wrapper"
+else
+  echo "  ⚠ $HOME/.claude/mcp not found — skipped MCP rewire"
+fi
+
+# Report active mode
+active_mode=$(cat "$ENGRAM_STATE_DIR/mode" 2>/dev/null || echo "local")
+echo "  → Active embedding mode: $active_mode"
+
 # --- Configure OpenCode profiles (if opencode was selected) ---
 if echo "$selected_agents" | grep -q "opencode"; then
   echo ""
@@ -305,7 +648,6 @@ fi
 echo ""
 echo "Installing core skills (global)..."
 
-warnings=()
 installed_skill_paths=()
 
 # 1. Install autoSDD skill directly (from this repo)
@@ -532,11 +874,37 @@ for i in "${!AGENTS[@]}"; do
   fi
 done
 
-# Check embedding layer
+# Check embedding layer (Go patch applied + binary rebuilt)
 if [[ -d "$HOME/.claude/plugins/marketplaces/engram/internal/embedding" ]]; then
   echo "  [OK] Engram embedding layer"
 else
   echo "  [..] Engram embedding layer not applied"
+fi
+
+# Check embedding backend configuration
+if [[ -f "$ENGRAM_STATE_DIR/mode" && -x "$ENGRAM_STATE_DIR/engram-wrapper.sh" ]]; then
+  active=$(cat "$ENGRAM_STATE_DIR/mode" 2>/dev/null || echo "?")
+  case "$active" in
+    local)
+      if command -v ollama &>/dev/null && \
+         ollama list 2>/dev/null | grep -qE "^$OLLAMA_LOCAL_MODEL(\s|:)"; then
+        echo "  [OK] Embedding backend: local ($OLLAMA_LOCAL_MODEL via Ollama)"
+      else
+        echo "  [!!] Embedding backend: local but Ollama/bge-m3 missing"
+        all_good=false
+      fi
+      ;;
+    api)
+      provider=$(cat "$ENGRAM_STATE_DIR/api-provider" 2>/dev/null || echo "?")
+      model=$(cat "$ENGRAM_STATE_DIR/api-model" 2>/dev/null || echo "?")
+      echo "  [OK] Embedding backend: api ($provider, $model)"
+      ;;
+    *)
+      echo "  [..] Embedding backend: $active (no semantic search, TF-IDF fallback)"
+      ;;
+  esac
+else
+  echo "  [..] Embedding backend not configured"
 fi
 
 # Check project templates
