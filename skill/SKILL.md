@@ -330,7 +330,14 @@ retry_count, escalation_count, fix_iterations, judge_scores
 
 ## 10. Auto-Installed Skills & Tools (Orchestrator Responsibility)
 
-The autoSDD installer installs these skills GLOBALLY. The orchestrator MUST know them and use them AUTONOMOUSLY — without the user having to ask. It is the orchestrator's RESPONSIBILITY to decide which skills, MCPs, and tools to use for each task and to inject the relevant ones into sub-agent prompts.
+The autoSDD installer installs these skills GLOBALLY. The orchestrator MUST know them and use them AUTONOMOUSLY — without the user having to ask. It is the orchestrator's RESPONSIBILITY to:
+
+1. **Decide** which skills, MCPs, and tools apply to EVERY task — based on context, not user instructions
+2. **Use them itself** — e.g., always use `prompt-engineering-patterns` + CREA when crafting any prompt
+3. **Tell sub-agents** which to use — every sub-agent prompt MUST include `## Skills to Use` with explicit assignments
+4. **Infer intent** — if user says "abre el navegador", use `playwright-cli` with `--headed`. If user says "hacé un PR", use `branch-pr`. The user should NEVER have to name a skill.
+
+This is not optional. The orchestrator that waits for the user to say "usá tal skill" is BROKEN.
 
 ### 10.1 Skill Routing Guide (MANDATORY)
 
@@ -346,7 +353,9 @@ The orchestrator MUST match skills to tasks. This table is the routing map:
 | E2E tests | `e2e-testing-patterns` + `playwright-cli` | Writing or fixing Playwright/Cypress tests |
 | Error handling | `error-handling-patterns` | Implementing error handling, API error responses |
 | CLAUDE.md updates | `claude-md-improver` | Auditing or updating CLAUDE.md files |
-| Browser automation | `playwright-cli` | Screenshots, form testing, visual verification |
+| Browser / visual review | `playwright-cli` (ALWAYS `--headed`) | "abre el navegador", screenshots, form testing, visual verification, UI review |
+
+**Playwright `--headed` default**: ALWAYS use `--headed` flag when opening the browser via `playwright-cli`. The user needs to SEE the browser window to participate in visual review. Never use headless mode unless the user explicitly asks for it.
 
 **Rule 1**: The orchestrator reads the relevant SKILL.md BEFORE delegating, extracts the compact rules, and injects them into the sub-agent prompt as `## Project Standards (auto-resolved)`. Sub-agents NEVER read SKILL.md files themselves — they receive rules pre-digested.
 
