@@ -236,39 +236,51 @@ if ($selectedAgents -contains "opencode") {
 Write-Host ""
 Write-Host "Installing core skills (global)..."
 
-$CORE_SKILLS = @(
-  @{ name = "autosdd"; url = "$REPO_URL/skill/SKILL.md" },
-  @{ name = "prompt-engineering-patterns"; url = "https://raw.githubusercontent.com/wshobson/agents/main/plugins/llm-application-dev/skills/prompt-engineering-patterns/SKILL.md" },
-  @{ name = "branch-pr"; url = "https://raw.githubusercontent.com/Gentleman-Programming/gentle-ai/main/skills/branch-pr/SKILL.md" },
-  @{ name = "judgment-day"; url = "https://raw.githubusercontent.com/Gentleman-Programming/agent-teams-lite/main/skills/judgment-day/SKILL.md" },
-  @{ name = "frontend-design"; url = "https://raw.githubusercontent.com/anthropics/skills/main/skills/frontend-design/SKILL.md" },
-  @{ name = "interface-design"; url = "https://raw.githubusercontent.com/dammyjay93/interface-design/main/.claude/skills/interface-design/SKILL.md" },
-  @{ name = "claude-md-improver"; url = "https://raw.githubusercontent.com/anthropics/claude-plugins-official/main/plugins/claude-md-management/skills/claude-md-improver/SKILL.md" },
-  @{ name = "e2e-testing-patterns"; url = "https://raw.githubusercontent.com/wshobson/agents/main/plugins/developer-essentials/skills/e2e-testing-patterns/SKILL.md" },
-  @{ name = "error-handling-patterns"; url = "https://raw.githubusercontent.com/wshobson/agents/main/plugins/developer-essentials/skills/error-handling-patterns/SKILL.md" },
-  @{ name = "playwright-cli"; url = "https://raw.githubusercontent.com/microsoft/playwright-cli/main/skills/playwright-cli/SKILL.md" }
-)
-
-$installedSkillPaths = @()
 $warnings = @()
+$installedSkillPaths = @()
 
+# 1. Install autoSDD skill directly (from this repo)
 for ($i = 0; $i -lt $AGENTS.Count; $i++) {
   $agent = $AGENTS[$i]
   if ($selectedAgents -contains $agent) {
-    foreach ($skill in $CORE_SKILLS) {
-      $skillDir = Join-Path $AGENT_DIRS[$i] "skills\$($skill.name)"
-      try {
-        New-Item -ItemType Directory -Path $skillDir -Force | Out-Null
-        $skillFile = Join-Path $skillDir "SKILL.md"
-        Invoke-WebRequest -Uri $skill.url -OutFile $skillFile -UseBasicParsing
-        if ($skill.name -eq "autosdd") { $installedSkillPaths += $skillFile }
-        Write-Host "  OK $($skill.name) ($agent) -> $skillFile"
-      } catch {
-        $msg = "Failed to install $($skill.name) for $agent at $skillDir — $_"
-        Write-Host "  ! $msg" -ForegroundColor Red
-        $warnings += $msg
-      }
+    $skillDir = Join-Path $AGENT_DIRS[$i] "skills\autosdd"
+    try {
+      New-Item -ItemType Directory -Path $skillDir -Force | Out-Null
+      $skillFile = Join-Path $skillDir "SKILL.md"
+      Invoke-WebRequest -Uri "$REPO_URL/skill/SKILL.md" -OutFile $skillFile -UseBasicParsing
+      $installedSkillPaths += $skillFile
+      Write-Host "  OK autosdd ($agent)"
+    } catch {
+      $msg = "Failed to install autosdd for $agent — $_"
+      Write-Host "  ! $msg" -ForegroundColor Red
+      $warnings += $msg
     }
+  }
+}
+
+# 2. Install remaining core skills via skills.sh (canonical sources)
+$SKILLS_SH = @(
+  @{ repo = "https://github.com/wshobson/agents"; skill = "prompt-engineering-patterns" },
+  @{ repo = "https://github.com/gentleman-programming/sdd-agent-team"; skill = "branch-pr" },
+  @{ repo = "https://github.com/gentleman-programming/sdd-agent-team"; skill = "judgment-day" },
+  @{ repo = "https://github.com/anthropics/skills"; skill = "frontend-design" },
+  @{ repo = "https://github.com/dammyjay93/interface-design"; skill = "interface-design" },
+  @{ repo = "https://github.com/anthropics/claude-plugins-official"; skill = "claude-md-improver" },
+  @{ repo = "https://github.com/wshobson/agents"; skill = "e2e-testing-patterns" },
+  @{ repo = "https://github.com/wshobson/agents"; skill = "error-handling-patterns" },
+  @{ repo = "https://github.com/microsoft/playwright-cli"; skill = "playwright-cli" }
+)
+
+foreach ($entry in $SKILLS_SH) {
+  Write-Host "  . Installing $($entry.skill)..."
+  try {
+    & npx -y skills add $entry.repo --skill $entry.skill -g -y 2>$null
+    if ($LASTEXITCODE -ne 0) { throw "npx skills exited with code $LASTEXITCODE" }
+    Write-Host "  OK $($entry.skill)"
+  } catch {
+    $msg = "Failed to install $($entry.skill) via skills.sh — $_"
+    Write-Host "  ! $msg" -ForegroundColor Yellow
+    $warnings += $msg
   }
 }
 
@@ -457,7 +469,7 @@ for ($i = 0; $i -lt $AGENTS.Count; $i++) {
     }
 
     # Check core skills installed by autoSDD
-    $coreSkillNames = $CORE_SKILLS | ForEach-Object { $_.name }
+    $coreSkillNames = @("autosdd") + ($SKILLS_SH | ForEach-Object { $_.skill })
     foreach ($cs in $coreSkillNames) {
       $csPath = Join-Path $AGENT_DIRS[$i] "skills\$cs\SKILL.md"
       if (Test-Path $csPath) {

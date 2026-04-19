@@ -341,20 +341,32 @@ The orchestrator MUST match skills to tasks. This table is the routing map:
 
 **Rule**: EVERY prompt creation or refinement MUST use `prompt-engineering-patterns` + CREA framework. No exceptions. This applies to the orchestrator itself, not just sub-agents.
 
-### 10.2 Auto-Installed Skills (via installer)
+### 10.2 Auto-Installed Skills (via skills.sh)
 
-| Skill | Source | Purpose |
-|-------|--------|---------|
-| `autosdd` | [thestark77/autosdd](https://github.com/thestark77/autosdd) | This framework |
-| `prompt-engineering-patterns` | [wshobson/agents](https://github.com/wshobson/agents) | CREA prompt techniques (CoT, Few-Shot, Structured Output) |
-| `branch-pr` | [gentle-ai](https://github.com/Gentleman-Programming/gentle-ai) | PR creation workflow |
-| `judgment-day` | [agent-teams-lite](https://github.com/Gentleman-Programming/agent-teams-lite) | Parallel adversarial code review |
-| `frontend-design` | [anthropics/skills](https://github.com/anthropics/skills) | Production-grade frontend interfaces |
-| `interface-design` | [dammyjay93/interface-design](https://github.com/dammyjay93/interface-design) | Dashboards, admin panels, internal tools |
-| `claude-md-improver` | [claude-plugins-official](https://github.com/anthropics/claude-plugins-official) | CLAUDE.md audit and improvement |
-| `e2e-testing-patterns` | [wshobson/agents](https://github.com/wshobson/agents) | E2E testing with Playwright/Cypress |
-| `error-handling-patterns` | [wshobson/agents](https://github.com/wshobson/agents) | Error handling across languages |
-| `playwright-cli` | [microsoft/playwright-cli](https://github.com/microsoft/playwright-cli) | Browser automation and testing |
+All skills are installed globally (`-g`) from their canonical sources via [skills.sh](https://skills.sh):
+
+| Skill | Install Command | Purpose |
+|-------|----------------|---------|
+| `autosdd` | (direct download from autoSDD repo) | This framework |
+| `prompt-engineering-patterns` | `npx skills add https://github.com/wshobson/agents --skill prompt-engineering-patterns -g` | CREA prompt techniques (CoT, Few-Shot, Structured Output) |
+| `branch-pr` | `npx skills add https://github.com/gentleman-programming/sdd-agent-team --skill branch-pr -g` | PR creation workflow |
+| `judgment-day` | `npx skills add https://github.com/gentleman-programming/sdd-agent-team --skill judgment-day -g` | Parallel adversarial code review |
+| `frontend-design` | `npx skills add https://github.com/anthropics/skills --skill frontend-design -g` | Production-grade frontend interfaces |
+| `interface-design` | `npx skills add https://github.com/dammyjay93/interface-design --skill interface-design -g` | Dashboards, admin panels, internal tools |
+| `claude-md-improver` | `npx skills add https://github.com/anthropics/claude-plugins-official --skill claude-md-improver -g` | CLAUDE.md audit and improvement |
+| `e2e-testing-patterns` | `npx skills add https://github.com/wshobson/agents --skill e2e-testing-patterns -g` | E2E testing with Playwright/Cypress |
+| `error-handling-patterns` | `npx skills add https://github.com/wshobson/agents --skill error-handling-patterns -g` | Error handling across languages |
+| `playwright-cli` | `npx skills add https://github.com/microsoft/playwright-cli --skill playwright-cli -g` | Browser automation and testing |
+
+### 10.2.1 How to Install Skills (for the orchestrator)
+
+When the user asks to install a skill, or the orchestrator needs one that's missing:
+
+1. **Search**: `npx skills search {name}` or HTTP GET `https://skills.sh/api/search?q={name}&limit=10`
+2. **Pick**: choose the result with most installs (unless user specifies)
+3. **View**: visit `https://skills.sh/{source}/{skillId}` for details
+4. **Install**: `npx skills add {repo-url} --skill {name} -g -y`
+5. **Verify**: `npx skills list` to confirm installation
 
 ### 10.3 Auto-Installed via gentle-ai
 

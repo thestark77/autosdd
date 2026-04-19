@@ -232,39 +232,49 @@ fi
 echo ""
 echo "Installing core skills (global)..."
 
-CORE_SKILLS=(
-  "autosdd:$REPO_URL/skill/SKILL.md"
-  "prompt-engineering-patterns:https://raw.githubusercontent.com/wshobson/agents/main/plugins/llm-application-dev/skills/prompt-engineering-patterns/SKILL.md"
-  "branch-pr:https://raw.githubusercontent.com/Gentleman-Programming/gentle-ai/main/skills/branch-pr/SKILL.md"
-  "judgment-day:https://raw.githubusercontent.com/Gentleman-Programming/agent-teams-lite/main/skills/judgment-day/SKILL.md"
-  "frontend-design:https://raw.githubusercontent.com/anthropics/skills/main/skills/frontend-design/SKILL.md"
-  "interface-design:https://raw.githubusercontent.com/dammyjay93/interface-design/main/.claude/skills/interface-design/SKILL.md"
-  "claude-md-improver:https://raw.githubusercontent.com/anthropics/claude-plugins-official/main/plugins/claude-md-management/skills/claude-md-improver/SKILL.md"
-  "e2e-testing-patterns:https://raw.githubusercontent.com/wshobson/agents/main/plugins/developer-essentials/skills/e2e-testing-patterns/SKILL.md"
-  "error-handling-patterns:https://raw.githubusercontent.com/wshobson/agents/main/plugins/developer-essentials/skills/error-handling-patterns/SKILL.md"
-  "playwright-cli:https://raw.githubusercontent.com/microsoft/playwright-cli/main/skills/playwright-cli/SKILL.md"
-)
-
-installed_skill_paths=()
 warnings=()
+installed_skill_paths=()
 
+# 1. Install autoSDD skill directly (from this repo)
 for i in "${!AGENTS[@]}"; do
   agent="${AGENTS[$i]}"
   if echo "$selected_agents" | grep -q "$agent"; then
-    for entry in "${CORE_SKILLS[@]}"; do
-      skill_name="${entry%%:*}"
-      skill_url="${entry#*:}"
-      skill_dir="${AGENT_DIRS[$i]}/skills/$skill_name"
-      mkdir -p "$skill_dir"
-      if curl -fsSL -o "$skill_dir/SKILL.md" "$skill_url"; then
-        [[ "$skill_name" == "autosdd" ]] && installed_skill_paths+=("$skill_dir/SKILL.md")
-        echo "  ✓ $skill_name ($agent) → $skill_dir/SKILL.md"
-      else
-        msg="Failed to install $skill_name for $agent at $skill_dir"
-        echo "  ⚠ $msg"
-        warnings+=("$msg")
-      fi
-    done
+    skill_dir="${AGENT_DIRS[$i]}/skills/autosdd"
+    mkdir -p "$skill_dir"
+    if curl -fsSL -o "$skill_dir/SKILL.md" "$REPO_URL/skill/SKILL.md"; then
+      installed_skill_paths+=("$skill_dir/SKILL.md")
+      echo "  ✓ autosdd ($agent)"
+    else
+      msg="Failed to install autosdd for $agent"
+      echo "  ⚠ $msg"
+      warnings+=("$msg")
+    fi
+  fi
+done
+
+# 2. Install remaining core skills via skills.sh (canonical sources)
+SKILLS_SH=(
+  "https://github.com/wshobson/agents:prompt-engineering-patterns"
+  "https://github.com/gentleman-programming/sdd-agent-team:branch-pr"
+  "https://github.com/gentleman-programming/sdd-agent-team:judgment-day"
+  "https://github.com/anthropics/skills:frontend-design"
+  "https://github.com/dammyjay93/interface-design:interface-design"
+  "https://github.com/anthropics/claude-plugins-official:claude-md-improver"
+  "https://github.com/wshobson/agents:e2e-testing-patterns"
+  "https://github.com/wshobson/agents:error-handling-patterns"
+  "https://github.com/microsoft/playwright-cli:playwright-cli"
+)
+
+for entry in "${SKILLS_SH[@]}"; do
+  repo="${entry%%:*}"
+  skill="${entry#*:}"
+  echo "  · Installing $skill..."
+  if npx -y skills add "$repo" --skill "$skill" -g -y 2>/dev/null; then
+    echo "  ✓ $skill"
+  else
+    msg="Failed to install $skill via skills.sh"
+    echo "  ⚠ $msg"
+    warnings+=("$msg")
   fi
 done
 
@@ -430,7 +440,7 @@ for i in "${!AGENTS[@]}"; do
       all_good=false
     fi
 
-    # Check core skills installed by autoSDD
+    # Check core skills installed by autoSDD (via skills.sh -g)
     core_skill_names=("autosdd" "prompt-engineering-patterns" "branch-pr" "judgment-day" "frontend-design" "interface-design" "claude-md-improver" "e2e-testing-patterns" "error-handling-patterns" "playwright-cli")
     for cs in "${core_skill_names[@]}"; do
       cs_path="${AGENT_DIRS[$i]}/skills/$cs/SKILL.md"

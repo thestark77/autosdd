@@ -96,15 +96,15 @@ INGEST -> ANALYZE (6 agents + judgment-day) -> REPORT -> [FIX optional]
 | Context7 MCP | gentle-ai | Live library/framework documentation |
 | SDD skills (10) | gentle-ai | sdd-init, explore, propose, spec, design, tasks, apply, verify, archive, onboard |
 | autoSDD skill | autoSDD installer | This framework (SKILL.md) |
-| [prompt-engineering-patterns](https://github.com/wshobson/agents) | autoSDD installer | CREA prompt techniques (CoT, Few-Shot, Structured Output) |
-| [branch-pr](https://github.com/Gentleman-Programming/gentle-ai) | autoSDD installer | PR creation workflow |
-| [judgment-day](https://github.com/Gentleman-Programming/agent-teams-lite) | autoSDD installer | Parallel adversarial code review |
-| [frontend-design](https://github.com/anthropics/skills) | autoSDD installer | Production-grade frontend interfaces |
-| [interface-design](https://github.com/dammyjay93/interface-design) | autoSDD installer | Dashboards, admin panels, internal tools |
-| [claude-md-improver](https://github.com/anthropics/claude-plugins-official) | autoSDD installer | CLAUDE.md audit and improvement |
-| [e2e-testing-patterns](https://github.com/wshobson/agents) | autoSDD installer | E2E testing with Playwright/Cypress |
-| [error-handling-patterns](https://github.com/wshobson/agents) | autoSDD installer | Error handling patterns across languages |
-| [playwright-cli](https://github.com/microsoft/playwright-cli) | autoSDD installer | Browser automation and testing |
+| [prompt-engineering-patterns](https://skills.sh/wshobson/agents/prompt-engineering-patterns) | autoSDD installer (skills.sh) | CREA prompt techniques (CoT, Few-Shot, Structured Output) |
+| [branch-pr](https://skills.sh/gentleman-programming/sdd-agent-team/branch-pr) | autoSDD installer (skills.sh) | PR creation workflow |
+| [judgment-day](https://skills.sh/gentleman-programming/sdd-agent-team/judgment-day) | autoSDD installer (skills.sh) | Parallel adversarial code review |
+| [frontend-design](https://skills.sh/anthropics/skills/frontend-design) | autoSDD installer (skills.sh) | Production-grade frontend interfaces |
+| [interface-design](https://skills.sh/dammyjay93/interface-design/interface-design) | autoSDD installer (skills.sh) | Dashboards, admin panels, internal tools |
+| [claude-md-improver](https://skills.sh/anthropics/claude-plugins-official/claude-md-improver) | autoSDD installer (skills.sh) | CLAUDE.md audit and improvement |
+| [e2e-testing-patterns](https://skills.sh/wshobson/agents/e2e-testing-patterns) | autoSDD installer (skills.sh) | E2E testing with Playwright/Cypress |
+| [error-handling-patterns](https://skills.sh/wshobson/agents/error-handling-patterns) | autoSDD installer (skills.sh) | Error handling patterns across languages |
+| [playwright-cli](https://skills.sh/microsoft/playwright-cli/playwright-cli) | autoSDD installer (skills.sh) | Browser automation and testing |
 | Project templates | autoSDD installer | `context/` directory + CLAUDE.md injection |
 | GOBIN in PATH | autoSDD installer | Ensures engram binary is accessible |
 
