@@ -297,120 +297,129 @@ retry_count, escalation_count, fix_iterations, judge_scores
 
 ---
 
-## 10. Installation & Requirements
+## 10. Dependency Inventory Protocol (SESSION START — MANDATORY)
+
+At the START of every session, the orchestrator MUST:
+
+### 10.1 Inventory Available Capabilities
+
+1. **Detect available skills**: scan `~/.{agent}/skills/` and `.claude/skills/` (or project equivalent)
+2. **Detect MCP servers**: check for engram, context7, prisma, railway, linear, sentry tools
+3. **Detect CLI tools**: check `rtk`, `node`, `go`, `gentle-ai` availability
+4. **Detect plugins**: check for code-review, frontend-design, code-simplifier, claude-md-management, playwright-cli
+5. **Save inventory to Engram**: `mem_save(topic_key: "autosdd/session-inventory/{session-id}", title: "Session capability inventory", content: {full inventory})`
+
+### 10.2 Autonomous Skill Assignment
+
+The orchestrator maintains a cached capability map and AUTONOMOUSLY determines:
+- Which skills apply to each sub-agent prompt (by file extensions, task type)
+- Which MCPs/tools each sub-agent needs (by action: DB → Prisma, deploy → Railway, etc.)
+- Which plugins to invoke (review → code-review, UI → frontend-design)
+
+**Every sub-agent prompt MUST include**: a `## Available Tools` section listing the exact skills, MCPs, and tools the sub-agent should use, with brief usage instructions.
+
+### 10.3 Core Dependency Gate (BLOCKING)
+
+These are REQUIRED for autoSDD to function. If ANY is missing, the orchestrator MUST:
+1. **List all missing dependencies** with install commands
+2. **Warn**: "autoSDD cannot function correctly without: {missing list}. Install them and restart the session."
+3. **STOP execution** — do NOT proceed with the flow
+
+If the user explicitly says "continue anyway" or "skip checks", proceed in degraded mode but warn at each phase that uses a missing dependency.
+
+| Core Dependency | Detection | Install |
+|----------------|-----------|---------|
+| **Engram MCP** | Check for `mem_save` tool | Installed via gentle-ai |
+| **Context7 MCP** | Check for `context7` tools | Installed via gentle-ai |
+| **prompt-engineering-patterns** | Check `~/.{agent}/skills/prompt-engineering-patterns/SKILL.md` | Installed via gentle-ai `--preset full-gentleman` |
+| **RTK** | Check `rtk` command | Auto-installed by autoSDD installer |
+| **Node.js** | Check `node` command | https://nodejs.org/ or brew/scoop |
+
+### 10.4 Recommended Dependencies (WARNING only)
+
+If any of these are missing, warn ONCE at session start but continue:
+
+| Dependency | Detection | Install |
+|------------|-----------|---------|
+| **Playwright CLI** | Check `playwright-cli` skill | `npm install -g @anthropic-ai/claude-code-playwright` |
+| **TypeScript LSP** | Check `typescript-lsp` tools | Plugin: typescript-lsp |
+| **code-review plugin** | Check plugin availability | Plugin: code-review |
+| **frontend-design plugin** | Check plugin availability | Plugin: frontend-design |
+| **code-simplifier plugin** | Check plugin availability | Plugin: code-simplifier |
+| **claude-md-management** | Check plugin availability | Plugin: claude-md-management |
+| **Linear MCP** | Check for Linear tools | MCP: Linear |
+| **Prisma MCP** | Check for Prisma tools | `pnpm dlx -y mcp-remote https://mcp.prisma.io/mcp` |
+| **Railway MCP** | Check for Railway tools | MCP: Railway |
+
+---
+
+## 11. Installation & Requirements
 
 ### Prerequisites
 
-| Requirement | Install Command | Purpose |
-|-------------|----------------|---------|
-| **Node.js 18+** | https://nodejs.org/ | Runtime |
-| **Claude Code CLI** | `npm install -g @anthropic-ai/claude-code` | Primary agent (or any compatible agent) |
-| **gentle-ai** | `npx -y gentle-ai@latest` | SDD skills + Engram memory |
-| **RTK** | `cargo install rtk` or `npm install -g rtk-cli` | Token optimization (60-90% savings) |
-| **Playwright CLI** | `npm install -g @playwright/cli@latest && playwright-cli install --skills` | Browser automation (4x cheaper than MCP) |
-| **TypeScript LSP** | `npm install -g typescript-language-server typescript` | Go-to-definition for TS projects |
+The autoSDD installer automatically installs most dependencies. You only need a package manager:
 
-### Recommended Plugins (Claude Code)
+| Requirement | Auto-installed? | Manual install |
+|-------------|----------------|----------------|
+| [Homebrew](https://brew.sh) (macOS/Linux) or [Scoop](https://scoop.sh) (Windows) | **NO** — install first | See links |
+| [Node.js 18+](https://nodejs.org/) | **YES** via brew/scoop | https://nodejs.org/en/download |
+| [Go](https://go.dev) | **YES** via brew/scoop | https://go.dev/dl/ |
+| [gentle-ai](https://github.com/Gentleman-Programming/gentle-ai) | **YES** via brew/scoop | See gentle-ai docs |
+| [RTK](https://github.com/rtk-ai/rtk) | **YES** via installer | `cargo install rtk` |
+| Engram MCP | **YES** via gentle-ai | Included in gentle-ai |
+| Context7 MCP | **YES** via gentle-ai | Included in gentle-ai |
+| prompt-engineering-patterns | **YES** via gentle-ai | Included in gentle-ai `--preset full-gentleman` |
+| SDD skills (10) | **YES** via gentle-ai | Included in gentle-ai |
+| autoSDD skill | **YES** via installer | This SKILL.md |
+| Project templates | **YES** via installer | `context/` directory |
+| CLAUDE.md injection | **YES** via installer | autoSDD activation block |
 
-```bash
-# Install via Claude Code CLI
-claude plugin install context7              # Live library documentation
-claude plugin install ralph-loop            # Autonomous iteration engine
-claude plugin install pr-review-toolkit     # 6 specialized review agents
-claude plugin install typescript-lsp        # TypeScript navigation
-claude plugin install claude-md-management  # CLAUDE.md quality audit
-claude plugin install skill-creator         # Skill benchmarking & A/B testing
-claude plugin install code-review           # Automated PR review
-claude plugin install code-simplifier       # Post-implementation cleanup
-```
+### Recommended (NOT auto-installed)
 
-### Recommended MCP Servers
+These enhance autoSDD but are project-specific or require manual configuration:
 
-| MCP | Purpose | Setup |
-|-----|---------|-------|
-| **Engram** | Persistent memory | Installed via gentle-ai |
-| **Prisma** | Database operations | `pnpm dlx -y mcp-remote https://mcp.prisma.io/mcp` |
-| **Railway** | Deployment | Configure in MCP settings |
-| **Sentry** | Error monitoring | Configure in MCP settings |
-| **Linear** | Issue tracking | Configure in MCP settings |
-
-### SDD Skills (installed via gentle-ai)
-
-```
-sdd-init, sdd-explore, sdd-propose, sdd-spec, sdd-design,
-sdd-tasks, sdd-apply, sdd-verify, sdd-archive, sdd-onboard
-```
-
-Plus: `judgment-day`, `skill-registry`, `skill-creator`, `prompt-engineering-patterns`
+| Tool | Purpose | Install |
+|------|---------|---------|
+| Playwright CLI | Browser automation, screenshots, E2E | `npm install -g @anthropic-ai/claude-code-playwright` |
+| TypeScript LSP | Go-to-definition for TS projects | Plugin: `typescript-lsp` |
+| code-review | Automated PR review | Plugin: `code-review` |
+| frontend-design | Production UI creation | Plugin: `frontend-design` |
+| code-simplifier | Post-implementation cleanup | Plugin: `code-simplifier` |
+| claude-md-management | CLAUDE.md quality audit | Plugin: `claude-md-management` |
+| claude-powerline | Status line | `npx -y @owloops/claude-powerline@latest` |
+| Prisma MCP | Database operations | `pnpm dlx -y mcp-remote https://mcp.prisma.io/mcp` |
+| Railway MCP | Deployment monitoring | Configure in MCP settings |
+| Sentry MCP | Error monitoring | Configure in MCP settings |
+| Linear MCP | Issue tracking | Configure in MCP settings |
 
 ### Installation (One Command)
 
-**Claude Code (any OS)**:
+**macOS / Linux:**
 ```bash
-# Install gentle-ai (includes SDD skills + Engram)
-npx -y gentle-ai@latest
-
-# Copy autoSDD skill
-mkdir -p ~/.claude/skills/autosdd
-curl -o ~/.claude/skills/autosdd/SKILL.md https://raw.githubusercontent.com/thestark77/autosdd/main/skill/SKILL.md
+curl -fsSL https://raw.githubusercontent.com/thestark77/autosdd/main/install.sh | bash
 ```
 
-**Cursor**:
+**Windows (PowerShell):**
+```powershell
+irm https://raw.githubusercontent.com/thestark77/autosdd/main/install.ps1 | iex
+```
+
+The installer does everything in one command:
+1. Installs **Node.js** (via brew/scoop if missing)
+2. Installs **Go** (via brew/scoop if missing)
+3. Installs **gentle-ai** with SDD skills, Engram, Context7
+4. Installs **autoSDD skill** to selected agents
+5. Installs **RTK** (token optimization)
+6. Verifies **prompt-engineering-patterns** availability
+7. Bootstraps **project templates** (`context/` + `CLAUDE.md`)
+8. Adds **GOBIN to PATH** (for engram binary)
+
+### Post-Installation
+
 ```bash
-npx -y gentle-ai@latest
-mkdir -p ~/.cursor/skills/autosdd
-curl -o ~/.cursor/skills/autosdd/SKILL.md https://raw.githubusercontent.com/thestark77/autosdd/main/skill/SKILL.md
+/sdd-init          # Detects stack, creates context files, configures SDD
+/sdd-new feature   # Start building
 ```
-
-**Codex**:
-```bash
-npx -y gentle-ai@latest
-mkdir -p ~/.codex/skills/autosdd
-curl -o ~/.codex/skills/autosdd/SKILL.md https://raw.githubusercontent.com/thestark77/autosdd/main/skill/SKILL.md
-```
-
-**Windsurf / Kiro / VS Code**:
-```bash
-npx -y gentle-ai@latest
-# Replace {agent} with: .windsurf, .kiro, or .vscode
-mkdir -p ~/{agent}/skills/autosdd
-curl -o ~/{agent}/skills/autosdd/SKILL.md https://raw.githubusercontent.com/thestark77/autosdd/main/skill/SKILL.md
-```
-
-### Post-Installation: CLAUDE.md Integration
-
-After installing autoSDD, the skill MUST be registered in the project's CLAUDE.md so it becomes the DEFAULT behavior. The installation script reads the existing CLAUDE.md, preserves ALL current content, and APPENDS the autoSDD activation block:
-
-```markdown
-## autoSDD — Active Framework (DO NOT REMOVE)
-
-autoSDD v3 is the ACTIVE development framework for this project.
-ALL prompts go through autoSDD unless the user explicitly opts out.
-
-### Default Behavior
-- Every prompt → Flow Router → CREA Prompt Refine → Execute Flow → Outcome Collection
-- CREA framework (Context, Role, Specificity, Action) on ALL prompt creation
-- prompt-engineering-patterns skill on ALL prompt refinement
-- 5 flows: Development, Code Review, Debugging, Research, Self-Improvement
-- Orchestrator delegates to sub-agents, NEVER executes directly
-- Monitor tool for ALL waiting/watching (NEVER poll)
-- RTK prefix on ALL shell commands
-
-### Context Files (sacred, auto-updated)
-- `context/guidelines.md` — Technical rules and conventions
-- `context/user_context.md` — User profile and preferences
-- `context/business_logic.md` — Domain knowledge and workflows
-
-### Opt-Out
-- `[raw]` prefix: skip framework entirely
-- `[no-sdd]` prefix: skip SDD but keep CREA
-- `skip autosdd`: natural language opt-out
-
-Read the full framework specification: `context/autoSDDv3.md`
-Read the autoSDD skill: `~/.claude/skills/autosdd/SKILL.md`
-```
-
-**CRITICAL**: The script NEVER replaces CLAUDE.md. It reads current content, preserves everything, and appends the autoSDD block at the end. If the block already exists, it updates it in place.
 
 ### Per-Project Bootstrap
 

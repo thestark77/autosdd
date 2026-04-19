@@ -110,6 +110,21 @@ if (-not $scoop) {
 }
 Write-Host "  OK scoop"
 
+# Check Node.js (required by Context7 MCP and npx commands)
+$nodeCmd = Get-Command node -ErrorAction SilentlyContinue
+if (-not $nodeCmd) {
+  Write-Host "  . Node.js not found - installing via scoop..." -ForegroundColor Yellow
+  & scoop install nodejs
+  $nodeCmd = Get-Command node -ErrorAction SilentlyContinue
+  if (-not $nodeCmd) {
+    Write-Host "  ! Node.js installation failed." -ForegroundColor Red
+    Write-Host "  Install manually: https://nodejs.org/en/download" -ForegroundColor Yellow
+    Write-Host ""
+    return
+  }
+}
+Write-Host "  OK node $(node --version 2>$null)"
+
 # Check Go (required by engram, installed by gentle-ai)
 $goCmd = Get-Command go -ErrorAction SilentlyContinue
 if (-not $goCmd) {

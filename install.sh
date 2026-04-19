@@ -120,6 +120,17 @@ if ! command -v curl &>/dev/null; then
 fi
 echo "  ✓ curl"
 
+# Check Node.js (required by Context7 MCP and npx commands)
+if ! command -v node &>/dev/null; then
+  echo "  · Node.js not found — installing via brew..."
+  if ! brew install node; then
+    echo "  ✗ Node.js installation failed."
+    echo "  Install manually: https://nodejs.org/en/download"
+    return 1
+  fi
+fi
+echo "  ✓ node $(node --version 2>/dev/null)"
+
 # Check Go (required by engram, installed by gentle-ai)
 if ! command -v go &>/dev/null; then
   echo "  · Go not found — installing via brew..."

@@ -83,35 +83,46 @@ INGEST -> ANALYZE (6 agents + judgment-day) -> REPORT -> [FIX optional]
 
 ## Requirements
 
-### Mandatory
+### What the installer handles automatically
 
-| Tool | Purpose | Install |
-|------|---------|---------|
-| [gentle-ai](https://github.com/Gentleman-Programming/gentle-ai) | **CORE** — SDD skills, Engram memory, agent config | Auto-installed by installer (needs [Homebrew](https://brew.sh) or [Scoop](https://scoop.sh)) |
-| [Go](https://go.dev) | Required by engram (persistent memory) | Auto-installed by installer via brew/scoop |
-| [RTK](https://github.com/rtk-ai/rtk) | Token-optimized CLI output (60-90% savings) | Auto-installed by installer |
-| prompt-engineering-patterns | **CORE** — CREA prompt techniques (Chain-of-Thought, Few-Shot, etc.) | Installed by gentle-ai `--preset full-gentleman` |
-| AI Agent | Claude Code, Cursor, Codex, Windsurf, Kiro, Gemini CLI | Agent-specific |
+| Dependency | Installed by | Purpose |
+|------------|-------------|---------|
+| [Node.js 18+](https://nodejs.org/) | autoSDD installer (brew/scoop) | Runtime for Context7, npx commands |
+| [Go](https://go.dev) | autoSDD installer (brew/scoop) | Required by Engram binary |
+| [gentle-ai](https://github.com/Gentleman-Programming/gentle-ai) | autoSDD installer (brew/scoop) | SDD skills, Engram, Context7, agent config |
+| [RTK](https://github.com/rtk-ai/rtk) | autoSDD installer | Token-optimized CLI output (60-90% savings) |
+| Engram MCP | gentle-ai | Persistent cross-session memory |
+| Context7 MCP | gentle-ai | Live library/framework documentation |
+| prompt-engineering-patterns | gentle-ai | CREA prompt techniques (Chain-of-Thought, Few-Shot) |
+| SDD skills (10) | gentle-ai | sdd-init, explore, propose, spec, design, tasks, apply, verify, archive, onboard |
+| autoSDD skill | autoSDD installer | This framework (SKILL.md) |
+| Project templates | autoSDD installer | `context/` directory + CLAUDE.md injection |
+| GOBIN in PATH | autoSDD installer | Ensures engram binary is accessible |
 
-### Recommended Plugins (Claude Code)
+### What YOU must install first
 
-| Plugin | Purpose |
-|--------|---------|
-| Context7 | Live library docs — prevents hallucinated APIs |
-| Ralph Loop | Autonomous iteration (run until tests pass) |
-| PR Review Toolkit | 6 specialized code review agents |
-| TypeScript LSP | Go-to-definition for TS projects |
-| Skill Creator | A/B test and benchmark skills |
-| CLAUDE.md Management | Auto-audit CLAUDE.md quality |
+| Requirement | Purpose | Install |
+|-------------|---------|---------|
+| Package manager | Installs everything else | macOS/Linux: [Homebrew](https://brew.sh) · Windows: [Scoop](https://scoop.sh) |
+| AI Agent | Your coding agent | [Claude Code](https://claude.ai/claude-code), [Cursor](https://cursor.com), [Codex](https://openai.com/codex), etc. |
 
-### Recommended MCPs
+### Recommended (NOT auto-installed)
 
-| MCP | Purpose |
-|-----|---------|
-| [Engram](https://github.com/nicobailon/engram) | Persistent memory (installed via gentle-ai) |
-| Prisma | Database operations |
-| Railway / Vercel | Deployment monitoring |
-| Sentry | Production error tracking |
+These enhance autoSDD but are project-specific. Install what you need:
+
+| Tool | Type | Purpose | Install |
+|------|------|---------|---------|
+| Playwright CLI | Skill | Browser automation, screenshots, E2E | `npm install -g @anthropic-ai/claude-code-playwright` |
+| TypeScript LSP | Plugin | Go-to-definition for TS projects | Plugin: `typescript-lsp` |
+| code-review | Plugin | Automated PR review | Plugin: `code-review` |
+| frontend-design | Plugin | Production UI creation | Plugin: `frontend-design` |
+| code-simplifier | Plugin | Post-implementation cleanup | Plugin: `code-simplifier` |
+| claude-md-management | Plugin | CLAUDE.md quality audit | Plugin: `claude-md-management` |
+| claude-powerline | Plugin | Status line | `npx -y @owloops/claude-powerline@latest` |
+| Prisma MCP | MCP | Database operations | `pnpm dlx -y mcp-remote https://mcp.prisma.io/mcp` |
+| Railway MCP | MCP | Deployment monitoring | Configure in MCP settings |
+| Sentry MCP | MCP | Production error tracking | Configure in MCP settings |
+| Linear MCP | MCP | Issue/project tracking | Configure in MCP settings |
 
 ---
 
@@ -119,17 +130,12 @@ INGEST -> ANALYZE (6 agents + judgment-day) -> REPORT -> [FIX optional]
 
 ### Prerequisites
 
-The installer automatically installs **gentle-ai** and **Go** if missing. You only need a package manager:
+You only need a **package manager**. The installer handles Node.js, Go, gentle-ai, and everything else:
 
 | OS | Package Manager | Install if missing |
 |----|----------------|--------------------|
 | macOS / Linux | [Homebrew](https://brew.sh) | `/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"` |
 | Windows | [Scoop](https://scoop.sh) | `irm get.scoop.sh \| iex` |
-
-The installer handles the rest:
-1. **Go** — installed via brew/scoop if missing ([manual install](https://go.dev/dl/))
-2. **gentle-ai** — installed via brew/scoop with the correct tap/bucket
-3. **GOBIN in PATH** — automatically added (required for engram binary)
 
 ### Quick Install (recommended)
 
