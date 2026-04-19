@@ -178,6 +178,14 @@ fi
 echo "  ✓ gentle-ai $(gentle-ai version 2>/dev/null || echo 'found')"
 echo ""
 
+# --- Stop running engram process (prevents file lock issues during update) ---
+if pgrep -x "engram" &>/dev/null; then
+  echo "  · Stopping running engram process (required to update binary)..."
+  pkill -x "engram" 2>/dev/null
+  sleep 1
+  echo "  ✓ engram process stopped"
+fi
+
 # --- Install gentle-ai ---
 echo "Installing gentle-ai..."
 echo "  Agents:   $selected_agents"
