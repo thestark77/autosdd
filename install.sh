@@ -234,7 +234,15 @@ echo "Installing core skills (global)..."
 
 CORE_SKILLS=(
   "autosdd:$REPO_URL/skill/SKILL.md"
-  "prompt-engineering-patterns:$REPO_URL/skill/prompt-engineering-patterns/SKILL.md"
+  "prompt-engineering-patterns:https://raw.githubusercontent.com/wshobson/agents/main/plugins/llm-application-dev/skills/prompt-engineering-patterns/SKILL.md"
+  "branch-pr:https://raw.githubusercontent.com/Gentleman-Programming/gentle-ai/main/skills/branch-pr/SKILL.md"
+  "judgment-day:https://raw.githubusercontent.com/Gentleman-Programming/agent-teams-lite/main/skills/judgment-day/SKILL.md"
+  "frontend-design:https://raw.githubusercontent.com/anthropics/skills/main/skills/frontend-design/SKILL.md"
+  "interface-design:https://raw.githubusercontent.com/dammyjay93/interface-design/main/.claude/skills/interface-design/SKILL.md"
+  "claude-md-improver:https://raw.githubusercontent.com/anthropics/claude-plugins-official/main/plugins/claude-md-management/skills/claude-md-improver/SKILL.md"
+  "e2e-testing-patterns:https://raw.githubusercontent.com/wshobson/agents/main/plugins/developer-essentials/skills/e2e-testing-patterns/SKILL.md"
+  "error-handling-patterns:https://raw.githubusercontent.com/wshobson/agents/main/plugins/developer-essentials/skills/error-handling-patterns/SKILL.md"
+  "playwright-cli:https://raw.githubusercontent.com/microsoft/playwright-cli/main/skills/playwright-cli/SKILL.md"
 )
 
 installed_skill_paths=()
@@ -423,7 +431,7 @@ for i in "${!AGENTS[@]}"; do
     fi
 
     # Check core skills installed by autoSDD
-    core_skill_names=("autosdd" "prompt-engineering-patterns")
+    core_skill_names=("autosdd" "prompt-engineering-patterns" "branch-pr" "judgment-day" "frontend-design" "interface-design" "claude-md-improver" "e2e-testing-patterns" "error-handling-patterns" "playwright-cli")
     for cs in "${core_skill_names[@]}"; do
       cs_path="${AGENT_DIRS[$i]}/skills/$cs/SKILL.md"
       if [[ -f "$cs_path" ]]; then

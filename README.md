@@ -94,9 +94,17 @@ INGEST -> ANALYZE (6 agents + judgment-day) -> REPORT -> [FIX optional]
 | [RTK](https://github.com/rtk-ai/rtk) | autoSDD installer | Token-optimized CLI output (60-90% savings) |
 | Engram MCP | gentle-ai | Persistent cross-session memory |
 | Context7 MCP | gentle-ai | Live library/framework documentation |
-| prompt-engineering-patterns | gentle-ai | CREA prompt techniques (Chain-of-Thought, Few-Shot) |
 | SDD skills (10) | gentle-ai | sdd-init, explore, propose, spec, design, tasks, apply, verify, archive, onboard |
 | autoSDD skill | autoSDD installer | This framework (SKILL.md) |
+| [prompt-engineering-patterns](https://github.com/wshobson/agents) | autoSDD installer | CREA prompt techniques (CoT, Few-Shot, Structured Output) |
+| [branch-pr](https://github.com/Gentleman-Programming/gentle-ai) | autoSDD installer | PR creation workflow |
+| [judgment-day](https://github.com/Gentleman-Programming/agent-teams-lite) | autoSDD installer | Parallel adversarial code review |
+| [frontend-design](https://github.com/anthropics/skills) | autoSDD installer | Production-grade frontend interfaces |
+| [interface-design](https://github.com/dammyjay93/interface-design) | autoSDD installer | Dashboards, admin panels, internal tools |
+| [claude-md-improver](https://github.com/anthropics/claude-plugins-official) | autoSDD installer | CLAUDE.md audit and improvement |
+| [e2e-testing-patterns](https://github.com/wshobson/agents) | autoSDD installer | E2E testing with Playwright/Cypress |
+| [error-handling-patterns](https://github.com/wshobson/agents) | autoSDD installer | Error handling patterns across languages |
+| [playwright-cli](https://github.com/microsoft/playwright-cli) | autoSDD installer | Browser automation and testing |
 | Project templates | autoSDD installer | `context/` directory + CLAUDE.md injection |
 | GOBIN in PATH | autoSDD installer | Ensures engram binary is accessible |
 
@@ -113,17 +121,10 @@ These enhance autoSDD but are project-specific. Install what you need:
 
 | Tool | Type | Purpose | Install |
 |------|------|---------|---------|
-| Playwright CLI | Skill | Browser automation, screenshots, E2E | `npm install -g @anthropic-ai/claude-code-playwright` |
 | TypeScript LSP | Plugin | Go-to-definition for TS projects | Plugin: `typescript-lsp` |
 | code-review | Plugin | Automated PR review | Plugin: `code-review` |
-| frontend-design | Plugin | Production UI creation | Plugin: `frontend-design` |
 | code-simplifier | Plugin | Post-implementation cleanup | Plugin: `code-simplifier` |
-| claude-md-management | Plugin | CLAUDE.md quality audit | Plugin: `claude-md-management` |
 | claude-powerline | Plugin | Status line | `npx -y @owloops/claude-powerline@latest` |
-| Prisma MCP | MCP | Database operations | `pnpm dlx -y mcp-remote https://mcp.prisma.io/mcp` |
-| Railway MCP | MCP | Deployment monitoring | Configure in MCP settings |
-| Sentry MCP | MCP | Production error tracking | Configure in MCP settings |
-| Linear MCP | MCP | Issue/project tracking | Configure in MCP settings |
 
 ---
 
@@ -387,12 +388,12 @@ gentle-ai is the **infrastructure**. autoSDD is the **methodology**.
 ## Non-Negotiable Principles
 
 1. **No code without a test** — TDD: RED -> GREEN -> REFACTOR
-2. **No mock databases** — integration tests hit real PostgreSQL
-3. **No skipped quality gates** — every phase must pass before the next
-4. **No context loss** — every decision saved to Engram immediately
-5. **No polling** — Monitor tool for all waiting, event-driven always
-6. **No silent failures** — escalate after 3 retries, never loop infinitely
-7. **Specs are truth** — implementation matches specs, not the other way around
+2. **No skipped quality gates** — every phase must pass before the next
+3. **No context loss** — every decision saved to Engram immediately
+4. **No polling** — Monitor tool for all waiting, event-driven always
+5. **No silent failures** — escalate after 3 retries, never loop infinitely
+6. **Specs are truth** — implementation matches specs, not the other way around
+7. **Skills are the orchestrator's responsibility** — use them proactively, never wait to be asked
 8. **English framework** — all skills, prompts, Engram content in English
 
 ---

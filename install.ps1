@@ -238,7 +238,15 @@ Write-Host "Installing core skills (global)..."
 
 $CORE_SKILLS = @(
   @{ name = "autosdd"; url = "$REPO_URL/skill/SKILL.md" },
-  @{ name = "prompt-engineering-patterns"; url = "$REPO_URL/skill/prompt-engineering-patterns/SKILL.md" }
+  @{ name = "prompt-engineering-patterns"; url = "https://raw.githubusercontent.com/wshobson/agents/main/plugins/llm-application-dev/skills/prompt-engineering-patterns/SKILL.md" },
+  @{ name = "branch-pr"; url = "https://raw.githubusercontent.com/Gentleman-Programming/gentle-ai/main/skills/branch-pr/SKILL.md" },
+  @{ name = "judgment-day"; url = "https://raw.githubusercontent.com/Gentleman-Programming/agent-teams-lite/main/skills/judgment-day/SKILL.md" },
+  @{ name = "frontend-design"; url = "https://raw.githubusercontent.com/anthropics/skills/main/skills/frontend-design/SKILL.md" },
+  @{ name = "interface-design"; url = "https://raw.githubusercontent.com/dammyjay93/interface-design/main/.claude/skills/interface-design/SKILL.md" },
+  @{ name = "claude-md-improver"; url = "https://raw.githubusercontent.com/anthropics/claude-plugins-official/main/plugins/claude-md-management/skills/claude-md-improver/SKILL.md" },
+  @{ name = "e2e-testing-patterns"; url = "https://raw.githubusercontent.com/wshobson/agents/main/plugins/developer-essentials/skills/e2e-testing-patterns/SKILL.md" },
+  @{ name = "error-handling-patterns"; url = "https://raw.githubusercontent.com/wshobson/agents/main/plugins/developer-essentials/skills/error-handling-patterns/SKILL.md" },
+  @{ name = "playwright-cli"; url = "https://raw.githubusercontent.com/microsoft/playwright-cli/main/skills/playwright-cli/SKILL.md" }
 )
 
 $installedSkillPaths = @()
@@ -449,7 +457,7 @@ for ($i = 0; $i -lt $AGENTS.Count; $i++) {
     }
 
     # Check core skills installed by autoSDD
-    $coreSkillNames = @("autosdd", "prompt-engineering-patterns")
+    $coreSkillNames = $CORE_SKILLS | ForEach-Object { $_.name }
     foreach ($cs in $coreSkillNames) {
       $csPath = Join-Path $AGENT_DIRS[$i] "skills\$cs\SKILL.md"
       if (Test-Path $csPath) {
