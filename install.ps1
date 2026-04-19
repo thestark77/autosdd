@@ -294,7 +294,7 @@ if ($rtkCmd) {
   }
 }
 
-# --- Verify prompt-engineering-patterns ---
+# --- Verify and repair prompt-engineering-patterns ---
 Write-Host ""
 Write-Host "Verifying prompt-engineering-patterns skill..."
 
@@ -305,18 +305,56 @@ for ($i = 0; $i -lt $AGENTS.Count; $i++) {
     $pepFile = Join-Path $AGENT_DIRS[$i] "skills\prompt-engineering-patterns\SKILL.md"
     if (Test-Path $pepFile) {
       $pepFound = $true
-      break
     }
   }
 }
 
 if ($pepFound) {
-  Write-Host "  OK prompt-engineering-patterns found (installed by gentle-ai)"
+  Write-Host "  OK prompt-engineering-patterns found"
 } else {
-  Write-Host "  ! prompt-engineering-patterns not found." -ForegroundColor Yellow
-  Write-Host "    This skill is CORE to autoSDD (used with CREA on ALL prompts)."
-  Write-Host "    It should be installed by gentle-ai --preset full-gentleman."
-  Write-Host "    Run: gentle-ai sync --skills prompt-engineering-patterns"
+  Write-Host "  . prompt-engineering-patterns missing - attempting repair..." -ForegroundColor Yellow
+
+  # Try 1: gentle-ai sync
+  try {
+    & gentle-ai sync --skills prompt-engineering-patterns 2>$null
+  } catch {}
+
+  # Check again
+  $pepFound = $false
+  for ($i = 0; $i -lt $AGENTS.Count; $i++) {
+    $agent = $AGENTS[$i]
+    if ($selectedAgents -contains $agent) {
+      $pepFile = Join-Path $AGENT_DIRS[$i] "skills\prompt-engineering-patterns\SKILL.md"
+      if (Test-Path $pepFile) { $pepFound = $true }
+    }
+  }
+
+  if ($pepFound) {
+    Write-Host "  OK prompt-engineering-patterns repaired via gentle-ai sync"
+  } else {
+    # Try 2: download from Gentleman-Skills repo
+    Write-Host "  . gentle-ai sync didn't fix it - downloading from Gentleman-Skills..." -ForegroundColor Yellow
+    $pepUrl = "https://raw.githubusercontent.com/Gentleman-Programming/Gentleman-Skills/main/prompt-engineering-patterns/SKILL.md"
+    for ($i = 0; $i -lt $AGENTS.Count; $i++) {
+      $agent = $AGENTS[$i]
+      if ($selectedAgents -contains $agent) {
+        $pepDir = Join-Path $AGENT_DIRS[$i] "skills\prompt-engineering-patterns"
+        try {
+          New-Item -ItemType Directory -Path $pepDir -Force | Out-Null
+          Invoke-WebRequest -Uri $pepUrl -OutFile (Join-Path $pepDir "SKILL.md") -UseBasicParsing
+          Write-Host "  OK prompt-engineering-patterns -> $pepDir"
+          $pepFound = $true
+        } catch {
+          Write-Host "  ! Failed to download for $agent" -ForegroundColor Yellow
+        }
+      }
+    }
+
+    if (-not $pepFound) {
+      Write-Host "  ! prompt-engineering-patterns could NOT be installed." -ForegroundColor Red
+      Write-Host "    autoSDD will work but CREA prompt refinement will be degraded." -ForegroundColor Yellow
+    }
+  }
 }
 
 # --- Bootstrap project templates ---

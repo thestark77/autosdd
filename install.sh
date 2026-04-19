@@ -268,7 +268,7 @@ else
   fi
 fi
 
-# --- Verify prompt-engineering-patterns ---
+# --- Verify and repair prompt-engineering-patterns ---
 echo ""
 echo "Verifying prompt-engineering-patterns skill..."
 
@@ -279,18 +279,54 @@ for i in "${!AGENTS[@]}"; do
     pep_dir="${AGENT_DIRS[$i]}/skills/prompt-engineering-patterns"
     if [[ -f "$pep_dir/SKILL.md" ]]; then
       pep_found=true
-      break
     fi
   fi
 done
 
 if $pep_found; then
-  echo "  ✓ prompt-engineering-patterns found (installed by gentle-ai)"
+  echo "  ✓ prompt-engineering-patterns found"
 else
-  echo "  ⚠ prompt-engineering-patterns not found."
-  echo "    This skill is CORE to autoSDD (used with CREA on ALL prompts)."
-  echo "    It should be installed by gentle-ai --preset full-gentleman."
-  echo "    Run: gentle-ai sync --skills prompt-engineering-patterns"
+  echo "  · prompt-engineering-patterns missing — attempting repair..."
+
+  # Try 1: gentle-ai sync
+  gentle-ai sync --skills prompt-engineering-patterns 2>/dev/null || true
+
+  # Check again
+  pep_found=false
+  for i in "${!AGENTS[@]}"; do
+    agent="${AGENTS[$i]}"
+    if echo "$selected_agents" | grep -q "$agent"; then
+      if [[ -f "${AGENT_DIRS[$i]}/skills/prompt-engineering-patterns/SKILL.md" ]]; then
+        pep_found=true
+      fi
+    fi
+  done
+
+  if $pep_found; then
+    echo "  ✓ prompt-engineering-patterns repaired via gentle-ai sync"
+  else
+    # Try 2: download from Gentleman-Skills repo
+    echo "  · gentle-ai sync didn't fix it — downloading from Gentleman-Skills..."
+    pep_url="https://raw.githubusercontent.com/Gentleman-Programming/Gentleman-Skills/main/prompt-engineering-patterns/SKILL.md"
+    for i in "${!AGENTS[@]}"; do
+      agent="${AGENTS[$i]}"
+      if echo "$selected_agents" | grep -q "$agent"; then
+        pep_dir="${AGENT_DIRS[$i]}/skills/prompt-engineering-patterns"
+        mkdir -p "$pep_dir"
+        if curl -fsSL -o "$pep_dir/SKILL.md" "$pep_url"; then
+          echo "  ✓ prompt-engineering-patterns → $pep_dir"
+          pep_found=true
+        else
+          echo "  ⚠ Failed to download for $agent"
+        fi
+      fi
+    done
+
+    if ! $pep_found; then
+      echo "  ⚠ prompt-engineering-patterns could NOT be installed."
+      echo "    autoSDD will work but CREA prompt refinement will be degraded."
+    fi
+  fi
 fi
 
 # --- Bootstrap project templates ---
