@@ -212,16 +212,27 @@ Sub-agents never read these directly. The orchestrator extracts relevant section
 
 ---
 
-## 6. Orchestrator Prompt Enrichment
+## 6. Orchestrator Prompt Enrichment (NON-NEGOTIABLE)
 
 For EACH task delegated to a sub-agent, the orchestrator MUST:
 
-1. Extract relevant sections from guidelines.md, user_context.md, business_logic.md
-2. Match skills from skill registry to task files
-3. Query Engram for gotchas and post-mortems
-4. Query Context7 for library docs
-5. Apply CREA structure + prompt-engineering-patterns
-6. Include: skill assignments, tool/MCP assignments, learned warnings, testing instructions, Monitor patterns
+1. **Read `prompt-engineering-patterns`** SKILL.md and select the right technique (Few-Shot, CoT, Structured Output, etc.)
+2. **Apply CREA structure** to the sub-agent prompt:
+   - **Context**: extract relevant sections from guidelines.md, user_context.md, business_logic.md + Engram gotchas + Context7 docs
+   - **Role**: assign professional expertise matching the task (architect, implementer, reviewer, tester)
+   - **Specificity**: constraints, anti-patterns, testing instructions, Monitor patterns
+   - **Action**: exact deliverable — files to create/modify, tests, output format, what to save to Engram
+3. **Assign skills explicitly**: match skills from §10.1 to the task and include a `## Skills to Use` section in the prompt telling the sub-agent WHICH skills to apply and HOW. Example:
+   ```
+   ## Skills to Use
+   - `frontend-design`: follow its component patterns for all new UI components
+   - `e2e-testing-patterns`: write Playwright tests for each new page
+   - `error-handling-patterns`: implement Result pattern for all API calls
+   ```
+4. **Assign tools/MCPs**: list which MCPs the sub-agent should use (Prisma for DB, Railway for deploy, etc.)
+5. **Inject compact rules**: read the relevant SKILL.md files, extract the key rules, and inject them as `## Project Standards (auto-resolved)` — sub-agents NEVER read SKILL.md files themselves
+
+This is NOT optional. A sub-agent prompt without CREA structure and explicit skill assignments is a BUG.
 
 ---
 
@@ -337,9 +348,11 @@ The orchestrator MUST match skills to tasks. This table is the routing map:
 | CLAUDE.md updates | `claude-md-improver` | Auditing or updating CLAUDE.md files |
 | Browser automation | `playwright-cli` | Screenshots, form testing, visual verification |
 
-**Rule**: the orchestrator reads the relevant SKILL.md BEFORE delegating, extracts the compact rules, and injects them into the sub-agent prompt as `## Project Standards (auto-resolved)`. Sub-agents NEVER read SKILL.md files themselves.
+**Rule 1**: The orchestrator reads the relevant SKILL.md BEFORE delegating, extracts the compact rules, and injects them into the sub-agent prompt as `## Project Standards (auto-resolved)`. Sub-agents NEVER read SKILL.md files themselves — they receive rules pre-digested.
 
-**Rule**: EVERY prompt creation or refinement MUST use `prompt-engineering-patterns` + CREA framework. No exceptions. This applies to the orchestrator itself, not just sub-agents.
+**Rule 2**: EVERY prompt creation or refinement — for sub-agents, hooks, LLMs, or the orchestrator itself — MUST use `prompt-engineering-patterns` + CREA framework. No exceptions.
+
+**Rule 3**: EVERY sub-agent prompt MUST include a `## Skills to Use` section listing WHICH skills the sub-agent should apply and HOW. The orchestrator decides this based on the task context — the user should NEVER have to tell the orchestrator which skills to use. See §6 for the full enrichment protocol.
 
 ### 10.2 Auto-Installed Skills (via skills.sh)
 
