@@ -236,14 +236,21 @@ if ($selectedAgents -contains "opencode") {
 Write-Host ""
 Write-Host "Installing autoSDD skill..."
 
+$installedSkillPaths = @()
 for ($i = 0; $i -lt $AGENTS.Count; $i++) {
   $agent = $AGENTS[$i]
   if ($selectedAgents -contains $agent) {
     $skillDir = Join-Path $AGENT_DIRS[$i] "skills\autosdd"
-    New-Item -ItemType Directory -Path $skillDir -Force | Out-Null
-    $skillFile = Join-Path $skillDir "SKILL.md"
-    Invoke-WebRequest -Uri $SKILL_URL -OutFile $skillFile -UseBasicParsing
-    Write-Host "  OK $agent -> $skillFile"
+    try {
+      New-Item -ItemType Directory -Path $skillDir -Force | Out-Null
+      $skillFile = Join-Path $skillDir "SKILL.md"
+      Invoke-WebRequest -Uri $SKILL_URL -OutFile $skillFile -UseBasicParsing
+      $installedSkillPaths += $skillFile
+      Write-Host "  OK $agent -> $skillFile"
+    } catch {
+      Write-Host "  ! Failed to install SKILL.md for $agent at $skillDir" -ForegroundColor Red
+      Write-Host "    Error: $_" -ForegroundColor Yellow
+    }
   }
 }
 
@@ -331,12 +338,20 @@ foreach ($tmpl in $templates) {
   if (Test-Path $target) {
     Write-Host "  . $tmpl already exists - skipped"
   } else {
-    Invoke-WebRequest -Uri "$TEMPLATE_URL/$tmpl" -OutFile $target -UseBasicParsing
-    Write-Host "  OK $tmpl -> $target"
+    try {
+      Invoke-WebRequest -Uri "$TEMPLATE_URL/$tmpl" -OutFile $target -UseBasicParsing
+      Write-Host "  OK $tmpl -> $target"
+    } catch {
+      Write-Host "  ! Failed to download $tmpl" -ForegroundColor Yellow
+    }
   }
 }
 
 # --- Inject autoSDD block into CLAUDE.md ---
+
+# Build skill path references for all selected agents
+$skillPathRefs = ($installedSkillPaths | ForEach-Object { "- ``$_``" }) -join "`n"
+
 $AUTOSDD_BLOCK = @"
 <!-- autosdd:start -->
 ## autoSDD — Active Framework (DO NOT REMOVE)
@@ -362,35 +377,135 @@ ALL prompts go through autoSDD unless the user explicitly opts out.
 - ``[no-sdd]`` prefix: skip SDD but keep CREA
 - ``skip autosdd``: natural language opt-out
 
-Read the autoSDD skill: ``~/.claude/skills/autosdd/SKILL.md``
+Read the full framework: ``context/autosdd.md``
+autoSDD skill installed at:
+$skillPathRefs
 <!-- autosdd:end -->
 "@
 
 $claudeMd = Join-Path (Get-Location) "CLAUDE.md"
 if (-not (Test-Path $claudeMd)) {
-  Invoke-WebRequest -Uri "$TEMPLATE_URL/CLAUDE.md" -OutFile $claudeMd -UseBasicParsing
-  Write-Host "  OK CLAUDE.md -> $claudeMd (full template)"
-} elseif ((Get-Content $claudeMd -Raw) -match "autosdd:start") {
+  try {
+    Invoke-WebRequest -Uri "$TEMPLATE_URL/CLAUDE.md" -OutFile $claudeMd -UseBasicParsing
+    Write-Host "  OK CLAUDE.md -> $claudeMd (full template)"
+  } catch {
+    Write-Host "  ! Failed to download CLAUDE.md template" -ForegroundColor Yellow
+  }
+}
+
+# Inject or update autoSDD block (even in freshly downloaded template)
+if (Test-Path $claudeMd) {
   $content = Get-Content $claudeMd -Raw
-  $content = $content -replace "(?s)<!-- autosdd:start -->.*?<!-- autosdd:end -->", $AUTOSDD_BLOCK
-  Set-Content -Path $claudeMd -Value $content -NoNewline
-  Write-Host "  OK CLAUDE.md -> autoSDD block updated (markers replaced)"
+  if ($content -match "autosdd:start") {
+    $content = $content -replace "(?s)<!-- autosdd:start -->.*?<!-- autosdd:end -->", $AUTOSDD_BLOCK
+    Set-Content -Path $claudeMd -Value $content -NoNewline
+    Write-Host "  OK CLAUDE.md -> autoSDD block updated (markers replaced)"
+  } else {
+    Add-Content -Path $claudeMd -Value "`n$AUTOSDD_BLOCK"
+    Write-Host "  OK CLAUDE.md -> autoSDD block injected (appended)"
+  }
+}
+
+# --- Final Verification ---
+Write-Host ""
+Write-Host "Verifying installation..." -ForegroundColor Yellow
+Write-Host ""
+
+$allGood = $true
+
+# Check gentle-ai
+if (Get-Command gentle-ai -ErrorAction SilentlyContinue) {
+  Write-Host "  [OK] gentle-ai" -ForegroundColor Green
 } else {
-  Add-Content -Path $claudeMd -Value "`n$AUTOSDD_BLOCK"
-  Write-Host "  OK CLAUDE.md -> autoSDD block injected (appended)"
+  Write-Host "  [!!] gentle-ai NOT found" -ForegroundColor Red
+  $allGood = $false
+}
+
+# Check engram
+$engramCmd = Get-Command engram -ErrorAction SilentlyContinue
+if ($engramCmd) {
+  Write-Host "  [OK] engram MCP" -ForegroundColor Green
+} else {
+  Write-Host "  [!!] engram NOT in PATH — restart your terminal" -ForegroundColor Yellow
+}
+
+# Check RTK
+if (Get-Command rtk -ErrorAction SilentlyContinue) {
+  Write-Host "  [OK] RTK" -ForegroundColor Green
+} else {
+  Write-Host "  [..] RTK not in PATH — restart terminal or install: cargo install rtk" -ForegroundColor Yellow
+}
+
+# Check autoSDD skill for each selected agent
+foreach ($path in $installedSkillPaths) {
+  if (Test-Path $path) {
+    Write-Host "  [OK] $path" -ForegroundColor Green
+  } else {
+    Write-Host "  [!!] MISSING: $path" -ForegroundColor Red
+    $allGood = $false
+  }
+}
+
+# Check SDD skills (from gentle-ai)
+$sddSkills = @("sdd-init", "sdd-explore", "sdd-propose", "sdd-spec", "sdd-design", "sdd-tasks", "sdd-apply", "sdd-verify", "sdd-archive")
+for ($i = 0; $i -lt $AGENTS.Count; $i++) {
+  $agent = $AGENTS[$i]
+  if ($selectedAgents -contains $agent) {
+    $missingSkills = @()
+    foreach ($skill in $sddSkills) {
+      $spath = Join-Path $AGENT_DIRS[$i] "skills\$skill\SKILL.md"
+      if (-not (Test-Path $spath)) { $missingSkills += $skill }
+    }
+    if ($missingSkills.Count -eq 0) {
+      Write-Host "  [OK] SDD skills ($agent) — all 9 installed" -ForegroundColor Green
+    } else {
+      Write-Host "  [!!] SDD skills ($agent) — MISSING: $($missingSkills -join ', ')" -ForegroundColor Red
+      $allGood = $false
+    }
+
+    # Check prompt-engineering-patterns
+    $pepPath = Join-Path $AGENT_DIRS[$i] "skills\prompt-engineering-patterns\SKILL.md"
+    if (Test-Path $pepPath) {
+      Write-Host "  [OK] prompt-engineering-patterns ($agent)" -ForegroundColor Green
+    } else {
+      Write-Host "  [!!] prompt-engineering-patterns MISSING ($agent)" -ForegroundColor Red
+      $allGood = $false
+    }
+    break
+  }
+}
+
+# Check project templates
+$contextDir = Join-Path (Get-Location) "context"
+if (Test-Path (Join-Path $contextDir "autosdd.md")) {
+  Write-Host "  [OK] Project templates (context/)" -ForegroundColor Green
+} else {
+  Write-Host "  [!!] Project templates missing" -ForegroundColor Red
+  $allGood = $false
+}
+
+# Check CLAUDE.md injection
+$claudeMd = Join-Path (Get-Location) "CLAUDE.md"
+if ((Test-Path $claudeMd) -and ((Get-Content $claudeMd -Raw) -match "autosdd:start")) {
+  Write-Host "  [OK] CLAUDE.md autoSDD block" -ForegroundColor Green
+} else {
+  Write-Host "  [!!] CLAUDE.md autoSDD block missing" -ForegroundColor Red
+  $allGood = $false
 }
 
 # --- Done ---
 Write-Host ""
-Write-Host "  +==========================================+" -ForegroundColor Green
-Write-Host "  |     autoSDD v3 installed!                 |" -ForegroundColor Green
-Write-Host "  +==========================================+" -ForegroundColor Green
-Write-Host ""
-Write-Host "  What was installed:"
-Write-Host "    OK gentle-ai (SDD skills, Engram memory, agent config)"
-Write-Host "    OK autoSDD skill (methodology layer)"
-Write-Host "    OK RTK (token optimization - 60-90% savings)"
-Write-Host "    OK Project templates (context/ + CLAUDE.md)"
+if ($allGood) {
+  Write-Host "  +==========================================+" -ForegroundColor Green
+  Write-Host "  |     autoSDD v3 installed!                 |" -ForegroundColor Green
+  Write-Host "  +==========================================+" -ForegroundColor Green
+} else {
+  Write-Host "  +==========================================+" -ForegroundColor Yellow
+  Write-Host "  |  autoSDD v3 installed (with warnings)     |" -ForegroundColor Yellow
+  Write-Host "  +==========================================+" -ForegroundColor Yellow
+  Write-Host ""
+  Write-Host "  Some checks failed. Re-run the installer or fix manually." -ForegroundColor Yellow
+}
 Write-Host ""
 Write-Host "  Next steps:"
 Write-Host "    1. Open your project in your AI agent"

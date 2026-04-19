@@ -43,7 +43,7 @@ AGENT_DIRS=(
 echo ""
 echo "  ╔══════════════════════════════════════════╗"
 echo "  ║     autoSDD v3 — Installer               ║"
-echo "  ║     Self-Improving Autonomous Dev         ║"
+echo "  ║     Self-Improving Autonomous Dev        ║"
 echo "  ╚══════════════════════════════════════════╝"
 echo ""
 
@@ -232,12 +232,14 @@ fi
 echo ""
 echo "Installing autoSDD skill..."
 
+installed_skill_paths=()
 for i in "${!AGENTS[@]}"; do
   agent="${AGENTS[$i]}"
   if echo "$selected_agents" | grep -q "$agent"; then
     skill_dir="${AGENT_DIRS[$i]}/skills/autosdd"
     mkdir -p "$skill_dir"
     if curl -fsSL -o "$skill_dir/SKILL.md" "$SKILL_URL"; then
+      installed_skill_paths+=("$skill_dir/SKILL.md")
       echo "  ✓ $agent → $skill_dir/SKILL.md"
     else
       echo "  ⚠ Failed to download SKILL.md for $agent"
@@ -319,7 +321,15 @@ for tmpl in "${templates[@]}"; do
 done
 
 # --- Inject autoSDD block into CLAUDE.md ---
-AUTOSDD_BLOCK='<!-- autosdd:start -->
+
+# Build skill path references for all selected agents
+skill_refs=""
+for p in "${installed_skill_paths[@]}"; do
+  skill_refs="${skill_refs}
+- \`$p\`"
+done
+
+AUTOSDD_BLOCK="<!-- autosdd:start -->
 ## autoSDD — Active Framework (DO NOT REMOVE)
 
 autoSDD v3 is the ACTIVE development framework for this project.
@@ -334,17 +344,18 @@ ALL prompts go through autoSDD unless the user explicitly opts out.
 - RTK prefix on ALL shell commands
 
 ### Three Critical Context Files (sacred, auto-updated)
-- `context/guidelines.md` — Technical rules and conventions
-- `context/user_context.md` — User profile and preferences
-- `context/business_logic.md` — Domain knowledge and workflows
+- \`context/guidelines.md\` — Technical rules and conventions
+- \`context/user_context.md\` — User profile and preferences
+- \`context/business_logic.md\` — Domain knowledge and workflows
 
 ### Opt-Out
-- `[raw]` prefix: skip framework entirely
-- `[no-sdd]` prefix: skip SDD but keep CREA
-- `skip autosdd`: natural language opt-out
+- \`[raw]\` prefix: skip framework entirely
+- \`[no-sdd]\` prefix: skip SDD but keep CREA
+- \`skip autosdd\`: natural language opt-out
 
-Read the autoSDD skill: `~/.claude/skills/autosdd/SKILL.md`
-<!-- autosdd:end -->'
+Read the full framework: \`context/autosdd.md\`
+autoSDD skill installed at:${skill_refs}
+<!-- autosdd:end -->"
 
 if [[ ! -f "./CLAUDE.md" ]]; then
   if curl -fsSL -o "./CLAUDE.md" "$TEMPLATE_URL/CLAUDE.md"; then
@@ -352,28 +363,117 @@ if [[ ! -f "./CLAUDE.md" ]]; then
   else
     echo "  ⚠ Failed to download CLAUDE.md template"
   fi
-elif grep -q "autosdd:start" "./CLAUDE.md"; then
-  # Replace existing block between markers
-  sed -i '/<!-- autosdd:start -->/,/<!-- autosdd:end -->/d' "./CLAUDE.md"
-  printf '%s\n' "$AUTOSDD_BLOCK" >> "./CLAUDE.md"
-  echo "  ✓ CLAUDE.md → autoSDD block updated (markers replaced)"
+fi
+
+# Inject or update autoSDD block (even in freshly downloaded template)
+if [[ -f "./CLAUDE.md" ]]; then
+  if grep -q "autosdd:start" "./CLAUDE.md"; then
+    sed -i '/<!-- autosdd:start -->/,/<!-- autosdd:end -->/d' "./CLAUDE.md"
+    printf '%s\n' "$AUTOSDD_BLOCK" >> "./CLAUDE.md"
+    echo "  ✓ CLAUDE.md → autoSDD block updated (markers replaced)"
+  else
+    printf '\n%s\n' "$AUTOSDD_BLOCK" >> "./CLAUDE.md"
+    echo "  ✓ CLAUDE.md → autoSDD block injected (appended)"
+  fi
+fi
+
+# --- Final Verification ---
+echo ""
+echo "Verifying installation..."
+echo ""
+
+all_good=true
+
+# Check gentle-ai
+if command -v gentle-ai &>/dev/null; then
+  echo "  [OK] gentle-ai"
 else
-  # Append block to existing CLAUDE.md
-  printf '\n%s\n' "$AUTOSDD_BLOCK" >> "./CLAUDE.md"
-  echo "  ✓ CLAUDE.md → autoSDD block injected (appended)"
+  echo "  [!!] gentle-ai NOT found"
+  all_good=false
+fi
+
+# Check engram
+if command -v engram &>/dev/null; then
+  echo "  [OK] engram MCP"
+else
+  echo "  [..] engram NOT in PATH — restart your terminal"
+fi
+
+# Check RTK
+if command -v rtk &>/dev/null; then
+  echo "  [OK] RTK"
+else
+  echo "  [..] RTK not in PATH — restart terminal or install: cargo install rtk"
+fi
+
+# Check autoSDD skill for each selected agent
+for p in "${installed_skill_paths[@]}"; do
+  if [[ -f "$p" ]]; then
+    echo "  [OK] $p"
+  else
+    echo "  [!!] MISSING: $p"
+    all_good=false
+  fi
+done
+
+# Check SDD skills (from gentle-ai)
+sdd_skills=("sdd-init" "sdd-explore" "sdd-propose" "sdd-spec" "sdd-design" "sdd-tasks" "sdd-apply" "sdd-verify" "sdd-archive")
+for i in "${!AGENTS[@]}"; do
+  agent="${AGENTS[$i]}"
+  if echo "$selected_agents" | grep -q "$agent"; then
+    missing_skills=()
+    for skill in "${sdd_skills[@]}"; do
+      if [[ ! -f "${AGENT_DIRS[$i]}/skills/$skill/SKILL.md" ]]; then
+        missing_skills+=("$skill")
+      fi
+    done
+    if [[ ${#missing_skills[@]} -eq 0 ]]; then
+      echo "  [OK] SDD skills ($agent) — all 9 installed"
+    else
+      echo "  [!!] SDD skills ($agent) — MISSING: ${missing_skills[*]}"
+      all_good=false
+    fi
+
+    # Check prompt-engineering-patterns
+    if [[ -f "${AGENT_DIRS[$i]}/skills/prompt-engineering-patterns/SKILL.md" ]]; then
+      echo "  [OK] prompt-engineering-patterns ($agent)"
+    else
+      echo "  [!!] prompt-engineering-patterns MISSING ($agent)"
+      all_good=false
+    fi
+    break
+  fi
+done
+
+# Check project templates
+if [[ -f "./context/autosdd.md" ]]; then
+  echo "  [OK] Project templates (context/)"
+else
+  echo "  [!!] Project templates missing"
+  all_good=false
+fi
+
+# Check CLAUDE.md injection
+if [[ -f "./CLAUDE.md" ]] && grep -q "autosdd:start" "./CLAUDE.md"; then
+  echo "  [OK] CLAUDE.md autoSDD block"
+else
+  echo "  [!!] CLAUDE.md autoSDD block missing"
+  all_good=false
 fi
 
 # --- Done ---
 echo ""
-echo "  ╔══════════════════════════════════════════╗"
-echo "  ║     autoSDD v3 installed!                ║"
-echo "  ╚══════════════════════════════════════════╝"
-echo ""
-echo "  What was installed:"
-echo "    ✓ gentle-ai (SDD skills, Engram memory, agent config)"
-echo "    ✓ autoSDD skill (methodology layer)"
-echo "    ✓ RTK (token optimization — 60-90% savings)"
-echo "    ✓ Project templates (context/ + CLAUDE.md)"
+if $all_good; then
+  echo "  ╔══════════════════════════════════════════╗"
+  echo "  ║     autoSDD v3 installed!                ║"
+  echo "  ╚══════════════════════════════════════════╝"
+else
+  echo "  ╔══════════════════════════════════════════╗"
+  echo "  ║  autoSDD v3 installed (with warnings)    ║"
+  echo "  ╚══════════════════════════════════════════╝"
+  echo ""
+  echo "  Some checks failed. Re-run the installer or fix manually."
+fi
 echo ""
 echo "  Next steps:"
 echo "    1. Open your project in your AI agent"
