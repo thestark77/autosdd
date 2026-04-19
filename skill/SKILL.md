@@ -74,7 +74,7 @@ The user can disable autoSDD for a specific prompt:
 
 **EVERY prompt created or refined by autoSDD MUST use CREA structure.**
 
-CREA (Contexto, Rol, Especificidad, Accion) eliminates ambiguity:
+CREA (Context, Role, Specificity, Action) eliminates ambiguity:
 
 | Component | What to Include |
 |-----------|----------------|
@@ -239,10 +239,10 @@ This is NOT optional. A sub-agent prompt without CREA structure and explicit ski
 ## 7. Action Clarity Protocol
 
 Before modifying ANY file, classify user intent:
-- **EXECUTE**: "hacelo", "dale", "implement", "apply", "fix it" → write code
-- **RESPOND**: "¿qué opinás?", "analyze", "what do you think?" → analysis only, NO file changes
-- **PLAN**: "planificá", "proponé", "plan", "propose" → create plan, NO execution
-- **UNCLEAR**: ASK → "¿Querés que lo ejecute o solo que te dé mi opinión?"
+- **EXECUTE**: "do it", "go ahead", "implement", "apply", "fix it" → write code
+- **RESPOND**: "what do you think?", "analyze", "review this" → analysis only, NO file changes
+- **PLAN**: "propose", "plan", "outline" → create plan, NO execution
+- **UNCLEAR**: ASK → "Should I implement this or just give my analysis?"
 
 When Stop hook fires while waiting: stop cleanly, do NOT loop, do NOT start unrelated work.
 
@@ -254,15 +254,15 @@ When the user reports a **bug, error, or problem**, ALWAYS follow this sequence:
 
 1. **Diagnose**: Identify the exact root cause (code-level, architectural, or environmental)
 2. **Explain FIRST**: Before touching any file, give a concise summary:
-   - **Causa**: One sentence — what exactly is wrong and WHY it happens (technical root cause)
-   - **Solución**: One sentence — what the fix is at a technical level
+   - **Root cause**: One sentence — what exactly is wrong and WHY it happens (technical root cause)
+   - **Fix**: One sentence — what the fix is at a technical level
 3. **Then fix**: Proceed with the implementation
 
 This teaches the user to recognize patterns and builds their technical intuition. The explanation should be SHORT (2-4 lines max), not a lecture. Focus on the WHY — the pattern they can recognize next time.
 
 Example:
-> **Causa**: `gentle-ai install` returns exit code 1 for non-critical verification warnings, and our script treats any non-zero exit as fatal. False positive.
-> **Solución**: Treat exit code 1 as warning (log + continue), not as hard failure.
+> **Root cause**: `gentle-ai install` returns exit code 1 for non-critical verification warnings, and our script treats any non-zero exit as fatal. False positive.
+> **Fix**: Treat exit code 1 as warning (log + continue), not as hard failure.
 
 This applies to ALL flows (Dev, Debug, Review) whenever the trigger is a user-reported problem.
 
@@ -285,7 +285,7 @@ ScheduleWakeup ONLY when user explicitly requests timed operations.
 
 ---
 
-## 8. Knowledge System
+## 8.1 Knowledge System
 
 Three layers:
 
@@ -330,38 +330,127 @@ retry_count, escalation_count, fix_iterations, judge_scores
 
 ## 10. Auto-Installed Skills & Tools (Orchestrator Responsibility)
 
-The autoSDD installer installs these skills GLOBALLY. The orchestrator MUST know them and use them AUTONOMOUSLY — without the user having to ask. It is the orchestrator's RESPONSIBILITY to:
+The autoSDD installer installs these skills GLOBALLY. The orchestrator MUST know them and use them PROACTIVELY — without depending on the user to name a specific skill. It is the orchestrator's RESPONSIBILITY to:
 
-1. **Decide** which skills, MCPs, and tools apply to EVERY task — based on context, not user instructions
+1. **Analyze** the refined prompt (after CREA + prompt-engineering-patterns) and project context to determine which skills, MCPs, and tools apply to each task
 2. **Use them itself** — e.g., always use `prompt-engineering-patterns` + CREA when crafting any prompt
-3. **Tell sub-agents** which to use — every sub-agent prompt MUST include `## Skills to Use` with explicit assignments
-4. **Infer intent** — if user says "abre el navegador", use `playwright-cli` with `--headed`. If user says "hacé un PR", use `branch-pr`. The user should NEVER have to name a skill.
+3. **Tell sub-agents** which to use — every sub-agent prompt MUST include `## Skills to Use` with explicit assignments and usage instructions
+4. **Infer from context** — if the task involves opening a browser, use `playwright-cli` with `--headed`. If the task involves creating a PR, use `branch-pr`. The user should not need to name a skill explicitly for it to be used.
 
-This is not optional. The orchestrator that waits for the user to say "usá tal skill" is BROKEN.
+This is not optional. The orchestrator must actively resolve skill assignments from task context — never wait passively for the user to specify which skill to use.
 
 ### 10.1 Skill Routing Guide (MANDATORY)
 
-The orchestrator MUST match skills to tasks. This table is the routing map:
+The orchestrator MUST match skills to tasks based on context. The user should not need to name a skill — the orchestrator infers which skills apply from the refined prompt (post-CREA) and the nature of the work.
 
-| Task Context | Use These Skills | When |
-|-------------|-----------------|------|
+#### Routing Table
+
+| Task Context | Use These Skills | Implicit Triggers |
+|-------------|-----------------|-------------------|
 | Creating/refining ANY prompt | `prompt-engineering-patterns` + CREA | ALWAYS — hooks, sub-agents, LLMs, system prompts |
-| Frontend UI (public-facing) | `frontend-design` | Landing pages, marketing, user-facing components |
-| Admin/dashboard UI | `interface-design` | Dashboards, admin panels, internal tools |
-| Pull requests | `branch-pr` | Creating, reviewing, or preparing PRs |
-| Code review / debugging | `judgment-day` | Adversarial parallel review, critical bug diagnosis |
-| E2E tests | `e2e-testing-patterns` + `playwright-cli` | Writing or fixing Playwright/Cypress tests |
-| Error handling | `error-handling-patterns` | Implementing error handling, API error responses |
-| CLAUDE.md updates | `claude-md-improver` | Auditing or updating CLAUDE.md files |
-| Browser / visual review | `playwright-cli` (ALWAYS `--headed`) | "abre el navegador", screenshots, form testing, visual verification, UI review |
+| Frontend UI (public-facing) | `frontend-design` | Any user-facing page, component, layout, or visual element |
+| Admin/dashboard UI | `interface-design` | Any admin panel, dashboard, data table, settings page, or internal tool |
+| Pull requests | `branch-pr` | Shipping completed work, preparing changesets, PR creation |
+| Code review / quality | `judgment-day` | Reviewing critical code, security-sensitive changes, complex refactors |
+| E2E tests | `e2e-testing-patterns` + `playwright-cli` | Writing, fixing, or adding Playwright/Cypress test coverage |
+| Error handling | `error-handling-patterns` | API routes, validation layers, external service integration, error boundaries |
+| CLAUDE.md updates | `claude-md-improver` | Creating, updating, or auditing CLAUDE.md files |
+| Browser / visual review | `playwright-cli` (ALWAYS `--headed`) | Visual verification, screenshots, form testing, UI review |
 
-**Playwright `--headed` default**: ALWAYS use `--headed` flag when opening the browser via `playwright-cli`. The user needs to SEE the browser window to participate in visual review. Never use headless mode unless the user explicitly asks for it.
+#### 10.1.1 Implicit Use-Case Scenarios (when to use WITHOUT user asking)
+
+The orchestrator MUST activate these skills automatically when the task context matches — the user does not need to request them explicitly.
+
+**`prompt-engineering-patterns`** — ALWAYS active
+- Used on EVERY prompt the orchestrator creates or refines: sub-agent prompts, hook prompts, LLM system prompts, validation prompts
+- Combined with CREA structure on every single prompt creation
+- Example: user says "add a login page" → the orchestrator uses prompt-engineering-patterns + CREA to structure the sub-agent prompt BEFORE delegating the task
+
+**`frontend-design`** — ANY public-facing UI work
+- Landing pages, marketing pages, signup/login forms, product pages, pricing pages
+- User-facing components: cards, modals, navigation, footers, hero sections
+- Responsive layouts, typography, color systems, animations
+- Example: user says "add a pricing section" → use frontend-design for layout patterns, component structure, responsive behavior, accessibility
+- Example: user says "fix the mobile layout" → use frontend-design for responsive patterns and breakpoint strategy
+- Combines with: `interface-design` when a page has both public and admin elements
+
+**`interface-design`** — ANY admin/internal/dashboard UI work
+- Admin panels, user management pages, settings pages, configuration screens
+- Data tables, filters, search, pagination, bulk actions
+- Metrics dashboards, charts, analytics views, reporting screens
+- Internal tools, CMS interfaces, moderation panels
+- Example: user says "build the user management page" → use interface-design for data table patterns, filters, actions
+- Example: user says "add a metrics dashboard" → use interface-design for chart layout, data density, information hierarchy
+- Combines with: `frontend-design` when admin UI needs polished visual design
+
+**`branch-pr`** — Shipping completed work
+- After completing a feature, fix, or refactor and the work is ready to ship
+- When the user says "ship it", "push this", "create a PR", or similar shipping intent
+- After the CERTIFY phase in the Development flow — PR creation is part of SHIP
+- Example: user says "we're done, ship it" → use branch-pr for PR title, description, labels, reviewers
+- Example: after passing all quality gates → use branch-pr to create a well-structured PR
+
+**`judgment-day`** — Critical code quality review
+- Security-sensitive changes: authentication, authorization, encryption, token handling
+- Financial or data-critical code: payments, billing, data mutations, migrations
+- Complex refactors touching 5+ files or changing core architecture
+- Production hotfixes that need extra scrutiny before deployment
+- As Layer 2 review in the VERIFY phase of the Development flow
+- Example: user says "review the auth changes" → use judgment-day for adversarial parallel review
+- Example: a sub-agent completes a payment integration → use judgment-day before shipping
+
+**`e2e-testing-patterns`** — End-to-end test coverage
+- Writing new Playwright or Cypress tests for user flows
+- Adding E2E coverage to newly implemented features
+- Fixing flaky or failing E2E tests
+- When the task involves user interaction flows (login, registration, checkout, forms)
+- Example: user says "add tests for the registration flow" → use e2e-testing-patterns + playwright-cli
+- Example: after implementing a new feature → use e2e-testing-patterns to write coverage
+- Combines with: `playwright-cli` for browser automation
+
+**`error-handling-patterns`** — Robust error management
+- Implementing API routes that return error responses (validation errors, auth errors, not found)
+- Adding error boundaries in React/frontend applications
+- Integrating with external services (payment gateways, email providers, APIs) that can fail
+- Creating validation layers with structured error codes
+- Example: user says "build the payment API" → use error-handling-patterns for error responses, retry logic, fallback strategies
+- Example: user says "handle the webhook failures" → use error-handling-patterns for resilience patterns
+
+**`playwright-cli`** — Browser automation and visual verification
+- Opening a browser to show the user how something looks (ALWAYS `--headed`)
+- Taking screenshots for visual verification after UI changes
+- Testing forms, navigation flows, interactive elements
+- Running E2E test suites that need a browser
+- Example: user says "show me how it looks" → use playwright-cli with `--headed` to open the browser
+- Example: after UI changes → use playwright-cli to screenshot and verify visually
+- **ALWAYS use `--headed`** — the user needs to SEE the browser window. Never use headless mode unless the user explicitly requests it.
+
+**`claude-md-improver`** — CLAUDE.md quality assurance
+- After `sdd-init` creates or updates a project's CLAUDE.md
+- When the user explicitly asks to audit or improve their CLAUDE.md
+- After significant project configuration changes that affect CLAUDE.md sections
+- Example: after sdd-init bootstraps a new project → use claude-md-improver to audit the generated CLAUDE.md
+- Example: user says "clean up the CLAUDE.md" → use claude-md-improver for structure, completeness, clarity
+
+#### 10.1.2 Skill Combination Patterns
+
+Many tasks require MULTIPLE skills working together. The orchestrator should combine them:
+
+| Scenario | Skills to Combine |
+|----------|------------------|
+| Build a new page with tests | `frontend-design` or `interface-design` + `e2e-testing-patterns` + `playwright-cli` |
+| API endpoint with error handling | `error-handling-patterns` + `e2e-testing-patterns` (for integration tests) |
+| Ship a feature | `judgment-day` (review) + `branch-pr` (PR) + `playwright-cli` (visual check) |
+| New admin dashboard | `interface-design` + `frontend-design` (visual polish) + `playwright-cli` (verification) |
+| Project setup | `claude-md-improver` (audit CLAUDE.md) + `prompt-engineering-patterns` (refine all prompts) |
+
+#### 10.1.3 Rules
 
 **Rule 1**: The orchestrator reads the relevant SKILL.md BEFORE delegating, extracts the compact rules, and injects them into the sub-agent prompt as `## Project Standards (auto-resolved)`. Sub-agents NEVER read SKILL.md files themselves — they receive rules pre-digested.
 
 **Rule 2**: EVERY prompt creation or refinement — for sub-agents, hooks, LLMs, or the orchestrator itself — MUST use `prompt-engineering-patterns` + CREA framework. No exceptions.
 
-**Rule 3**: EVERY sub-agent prompt MUST include a `## Skills to Use` section listing WHICH skills the sub-agent should apply and HOW. The orchestrator decides this based on the task context — the user should NEVER have to tell the orchestrator which skills to use. See §6 for the full enrichment protocol.
+**Rule 3**: EVERY sub-agent prompt MUST include a `## Skills to Use` section listing WHICH skills the sub-agent should apply and HOW. The orchestrator decides this based on the task context. See §6 for the full enrichment protocol.
 
 ### 10.2 Auto-Installed Skills (via skills.sh)
 
@@ -486,7 +575,7 @@ After global installation, run `sdd-init` in each project to:
 
 ---
 
-## 11. TODO Lists Protocol
+## 12. TODO Lists Protocol
 
 Two persistent TODO lists, updated automatically at phase boundaries.
 
@@ -517,7 +606,7 @@ Tracks things outside AI scope or user-requested reminders. Auto-consulted at ph
 
 ---
 
-## 12. Mid-Plan Interruption Handling
+## 13. Mid-Plan Interruption Handling
 
 When a NEW user prompt arrives during active execution:
 
@@ -530,7 +619,7 @@ When a NEW user prompt arrives during active execution:
 
 ---
 
-## 13. User Profile Auto-Capture
+## 14. User Profile Auto-Capture
 
 When user shares ANY preference, constraint, or personal info:
 1. Update `context/user_context.md` (project-specific)
@@ -541,7 +630,7 @@ Primary: Claude native memory (auto-loaded). Secondary: user_context.md. Backup:
 
 ---
 
-## 14. Language Policy
+## 15. Language Policy
 
 - **Framework artifacts**: ALWAYS English (skills, prompts, Engram, wiki, changelogs, CLAUDE.md)
 - **Project UI**: Project-specific (detected by sdd-init, usually Spanish neutral for LATAM SaaS)
@@ -550,7 +639,7 @@ Primary: Claude native memory (auto-loaded). Secondary: user_context.md. Backup:
 
 ---
 
-## 15. Compatibility
+## 16. Compatibility
 
 This skill follows the Agent Skills specification and works with any agent that reads SKILL.md files from a skills directory:
 

@@ -209,6 +209,76 @@ if ($LASTEXITCODE -ne 0) {
 Write-Host ""
 Write-Host "  OK gentle-ai installed" -ForegroundColor Green
 
+# --- Inject Engram Embedding Layer ---
+Write-Host ""
+Write-Host "Injecting semantic search (embedding layer) into Engram..."
+
+$engramSrc = Join-Path $env:USERPROFILE ".claude\plugins\marketplaces\engram"
+$patchUrl = "$REPO_URL/patches/engram-embedding.patch"
+
+if (-not (Test-Path $engramSrc)) {
+  Write-Host "  ! Engram source not found at $engramSrc" -ForegroundColor Yellow
+  Write-Host "  Semantic search will not be available until Engram is installed."
+  $warnings += "Engram source not found — embedding layer skipped"
+} else {
+  $embeddingDir = Join-Path $engramSrc "internal\embedding"
+
+  # Check if embedding layer is already applied (idempotent)
+  if (Test-Path $embeddingDir) {
+    Write-Host "  OK Embedding layer already applied — skipping patch" -ForegroundColor Green
+  } else {
+    # Download and apply patch
+    $patchTmp = Join-Path $env:TEMP "engram-embedding.patch"
+    try {
+      Invoke-WebRequest -Uri $patchUrl -OutFile $patchTmp -UseBasicParsing
+
+      Push-Location $engramSrc
+      $checkResult = & git apply --check $patchTmp 2>&1
+      if ($LASTEXITCODE -eq 0) {
+        & git apply $patchTmp
+        Write-Host "  OK Embedding patch applied" -ForegroundColor Green
+      } else {
+        Write-Host "  ! Patch does not apply cleanly — trying 3-way merge..." -ForegroundColor Yellow
+        & git apply --3way $patchTmp 2>&1
+        if ($LASTEXITCODE -eq 0) {
+          Write-Host "  OK Embedding patch applied (3-way merge)" -ForegroundColor Green
+        } else {
+          Write-Host "  ! Embedding patch failed — semantic search not available" -ForegroundColor Red
+          $warnings += "Embedding patch failed to apply"
+        }
+      }
+      Pop-Location
+      Remove-Item $patchTmp -Force -ErrorAction SilentlyContinue
+    } catch {
+      Write-Host "  ! Failed to download embedding patch" -ForegroundColor Red
+      $warnings += "Failed to download embedding patch from $patchUrl"
+    }
+  }
+
+  # Rebuild engram binary if embedding layer exists
+  if (Test-Path $embeddingDir) {
+    Write-Host "  . Rebuilding engram binary with embedding support..."
+
+    # Find current engram binary location
+    $engramBinCmd = Get-Command engram -ErrorAction SilentlyContinue
+    if ($engramBinCmd) {
+      $engramBin = $engramBinCmd.Source
+    } else {
+      $engramBin = Join-Path (& go env GOPATH 2>$null) "bin\engram.exe"
+    }
+
+    Push-Location $engramSrc
+    & go build -o $engramBin ./cmd/engram/ 2>$null
+    if ($LASTEXITCODE -eq 0) {
+      Write-Host "  OK Engram rebuilt with semantic search support" -ForegroundColor Green
+    } else {
+      Write-Host "  ! Engram rebuild failed — check Go installation" -ForegroundColor Red
+      $warnings += "Engram rebuild failed — embedding layer applied but binary not updated"
+    }
+    Pop-Location
+  }
+}
+
 # --- Configure OpenCode profiles (if opencode was selected) ---
 if ($selectedAgents -contains "opencode") {
   Write-Host ""
@@ -482,6 +552,14 @@ for ($i = 0; $i -lt $AGENTS.Count; $i++) {
     }
     break
   }
+}
+
+# Check embedding layer
+$embeddingCheck = Join-Path $env:USERPROFILE ".claude\plugins\marketplaces\engram\internal\embedding"
+if (Test-Path $embeddingCheck) {
+  Write-Host "  [OK] Engram embedding layer" -ForegroundColor Green
+} else {
+  Write-Host "  [..] Engram embedding layer not applied" -ForegroundColor Yellow
 }
 
 # Check project templates

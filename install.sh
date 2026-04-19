@@ -217,6 +217,70 @@ gentle-ai install \
 echo ""
 echo "  ✓ gentle-ai installed"
 
+# --- Inject Engram Embedding Layer ---
+echo ""
+echo "Injecting semantic search (embedding layer) into Engram..."
+
+ENGRAM_SRC="$HOME/.claude/plugins/marketplaces/engram"
+PATCH_URL="$REPO_URL/patches/engram-embedding.patch"
+
+if [[ ! -d "$ENGRAM_SRC" ]]; then
+  echo "  ⚠ Engram source not found at $ENGRAM_SRC"
+  echo "  Semantic search will not be available until Engram is installed."
+  warnings+=("Engram source not found — embedding layer skipped")
+else
+  # Check if embedding layer is already applied (idempotent)
+  if [[ -d "$ENGRAM_SRC/internal/embedding" ]]; then
+    echo "  ✓ Embedding layer already applied — skipping patch"
+  else
+    # Download and apply patch
+    patch_tmp=$(mktemp /tmp/engram-embedding-XXXXXX.patch)
+    if curl -fsSL -o "$patch_tmp" "$PATCH_URL"; then
+      cd "$ENGRAM_SRC"
+      if git apply --check "$patch_tmp" 2>/dev/null; then
+        git apply "$patch_tmp"
+        echo "  ✓ Embedding patch applied"
+      else
+        echo "  ⚠ Patch does not apply cleanly (Engram version may have changed)"
+        echo "  Trying with 3-way merge..."
+        if git apply --3way "$patch_tmp" 2>/dev/null; then
+          echo "  ✓ Embedding patch applied (3-way merge)"
+        else
+          echo "  ⚠ Embedding patch failed — semantic search not available"
+          warnings+=("Embedding patch failed to apply")
+          rm -f "$patch_tmp"
+          cd - >/dev/null
+        fi
+      fi
+      rm -f "$patch_tmp"
+      cd - >/dev/null
+    else
+      echo "  ⚠ Failed to download embedding patch"
+      warnings+=("Failed to download embedding patch from $PATCH_URL")
+    fi
+  fi
+
+  # Rebuild engram binary if embedding layer exists
+  if [[ -d "$ENGRAM_SRC/internal/embedding" ]]; then
+    echo "  · Rebuilding engram binary with embedding support..."
+
+    # Find current engram binary location
+    engram_bin=$(command -v engram 2>/dev/null || echo "")
+    if [[ -z "$engram_bin" ]]; then
+      engram_bin="$(go env GOPATH 2>/dev/null)/bin/engram"
+    fi
+
+    cd "$ENGRAM_SRC"
+    if go build -o "$engram_bin" ./cmd/engram/ 2>/dev/null; then
+      echo "  ✓ Engram rebuilt with semantic search support"
+    else
+      echo "  ⚠ Engram rebuild failed — check Go installation"
+      warnings+=("Engram rebuild failed — embedding layer applied but binary not updated")
+    fi
+    cd - >/dev/null
+  fi
+fi
+
 # --- Configure OpenCode profiles (if opencode was selected) ---
 if echo "$selected_agents" | grep -q "opencode"; then
   echo ""
@@ -467,6 +531,13 @@ for i in "${!AGENTS[@]}"; do
     break
   fi
 done
+
+# Check embedding layer
+if [[ -d "$HOME/.claude/plugins/marketplaces/engram/internal/embedding" ]]; then
+  echo "  [OK] Engram embedding layer"
+else
+  echo "  [..] Engram embedding layer not applied"
+fi
 
 # Check project templates
 if [[ -f "./context/autosdd.md" ]]; then

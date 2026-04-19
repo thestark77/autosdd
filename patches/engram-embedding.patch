@@ -1,0 +1,1296 @@
+diff --git a/.gitignore b/.gitignore
+index 31f14ed..7d28e52 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -10,6 +10,10 @@
+ # Export files
+ engram-export.json
+ 
++# Environment (API keys)
++.env
++.env.*
++
+ # OS
+ .DS_Store
+ Thumbs.db
+diff --git a/cmd/engram/main.go b/cmd/engram/main.go
+index e295cd1..2d7f338 100644
+--- a/cmd/engram/main.go
++++ b/cmd/engram/main.go
+@@ -26,6 +26,7 @@ import (
+ 	"syscall"
+ 	"time"
+ 
++	"github.com/Gentleman-Programming/engram/internal/embedding"
+ 	"github.com/Gentleman-Programming/engram/internal/mcp"
+ 	"github.com/Gentleman-Programming/engram/internal/obsidian"
+ 	"github.com/Gentleman-Programming/engram/internal/project"
+@@ -259,8 +260,30 @@ func cmdMCP(cfg store.Config) {
+ 	}
+ 	defer s.Close()
+ 
++	embCfg := embedding.Config{
++		Provider: os.Getenv("ENGRAM_EMBEDDING_PROVIDER"),
++		APIKey:   os.Getenv("ENGRAM_EMBEDDING_API_KEY"),
++		APIURL:   os.Getenv("ENGRAM_EMBEDDING_API_URL"),
++		APIModel: os.Getenv("ENGRAM_EMBEDDING_API_MODEL"),
++	}
++	if embCfg.Provider == "" {
++		embCfg.Provider = "local"
++	}
++	if embCfg.APIURL == "" {
++		embCfg.APIURL = embedding.DefaultConfig().APIURL
++	}
++	if embCfg.APIModel == "" {
++		embCfg.APIModel = embedding.DefaultConfig().APIModel
++	}
++
++	embProvider, embErr := embedding.NewProvider(embCfg)
++	if embErr != nil {
++		log.Printf("engram: embedding provider disabled: %v", embErr)
++	}
++
+ 	mcpCfg := mcp.MCPConfig{
+-		DefaultProject: detectedProject,
++		DefaultProject:    detectedProject,
++		EmbeddingProvider: embProvider,
+ 	}
+ 
+ 	allowlist := resolveMCPTools(toolsFilter)
+diff --git a/cmd/engram/main_extra_test.go b/cmd/engram/main_extra_test.go
+index bc11743..3361253 100644
+--- a/cmd/engram/main_extra_test.go
++++ b/cmd/engram/main_extra_test.go
+@@ -359,7 +359,7 @@ func TestCmdExportDefaultAndCmdImportErrors(t *testing.T) {
+ 	badPath := filepath.Join(workDir, "missing", "out.json")
+ 	withArgs(t, "engram", "export", badPath)
+ 	_, stderr, recovered = captureOutputAndRecover(t, func() { cmdExport(cfg) })
+-	if _, ok := recovered.(exitCode); !ok || !strings.Contains(stderr, "no such file or directory") {
++	if _, ok := recovered.(exitCode); !ok || (!strings.Contains(stderr, "no such file or directory") && !strings.Contains(stderr, "The system cannot find the path specified")) {
+ 		t.Fatalf("expected export write fatal, panic=%v stderr=%q", recovered, stderr)
+ 	}
+ 
+diff --git a/internal/embedding/api.go b/internal/embedding/api.go
+new file mode 100644
+index 0000000..21b9762
+--- /dev/null
++++ b/internal/embedding/api.go
+@@ -0,0 +1,124 @@
++package embedding
++
++import (
++	"bytes"
++	"encoding/json"
++	"fmt"
++	"io"
++	"net/http"
++	"time"
++)
++
++type embedRequest struct {
++	Model string   `json:"model"`
++	Input []string `json:"input"`
++}
++
++type embedResponse struct {
++	Data []struct {
++		Embedding []float64 `json:"embedding"`
++		Index     int       `json:"index"`
++	} `json:"data"`
++	Error *struct {
++		Message string `json:"message"`
++	} `json:"error,omitempty"`
++}
++
++// APIProvider calls an OpenAI-compatible embedding API (OpenRouter, OpenAI, etc).
++type APIProvider struct {
++	apiKey string
++	apiURL string
++	model  string
++	dims   int
++	client *http.Client
++}
++
++// NewAPIProvider creates an API-based embedding provider.
++func NewAPIProvider(apiKey, apiURL, model string) *APIProvider {
++	if apiURL == "" {
++		apiURL = "https://openrouter.ai/api/v1/embeddings"
++	}
++	if model == "" {
++		model = "openai/text-embedding-3-small"
++	}
++	return &APIProvider{
++		apiKey: apiKey,
++		apiURL: apiURL,
++		model:  model,
++		dims:   0,
++		client: &http.Client{Timeout: 30 * time.Second},
++	}
++}
++
++func (p *APIProvider) Name() string { return "api" }
++
++func (p *APIProvider) Dimensions() int {
++	if p.dims > 0 {
++		return p.dims
++	}
++	return 1536
++}
++
++func (p *APIProvider) Embed(text string) ([]float64, error) {
++	vecs, err := p.EmbedBatch([]string{text})
++	if err != nil {
++		return nil, err
++	}
++	return vecs[0], nil
++}
++
++func (p *APIProvider) EmbedBatch(texts []string) ([][]float64, error) {
++	body, err := json.Marshal(embedRequest{
++		Model: p.model,
++		Input: texts,
++	})
++	if err != nil {
++		return nil, fmt.Errorf("embedding api: marshal request: %w", err)
++	}
++
++	req, err := http.NewRequest("POST", p.apiURL, bytes.NewReader(body))
++	if err != nil {
++		return nil, fmt.Errorf("embedding api: create request: %w", err)
++	}
++	req.Header.Set("Content-Type", "application/json")
++	req.Header.Set("Authorization", "Bearer "+p.apiKey)
++
++	resp, err := p.client.Do(req)
++	if err != nil {
++		return nil, fmt.Errorf("embedding api: request failed: %w", err)
++	}
++	defer resp.Body.Close()
++
++	respBody, err := io.ReadAll(resp.Body)
++	if err != nil {
++		return nil, fmt.Errorf("embedding api: read response: %w", err)
++	}
++
++	if resp.StatusCode != http.StatusOK {
++		return nil, fmt.Errorf("embedding api: status %d: %s", resp.StatusCode, string(respBody))
++	}
++
++	var result embedResponse
++	if err := json.Unmarshal(respBody, &result); err != nil {
++		return nil, fmt.Errorf("embedding api: parse response: %w", err)
++	}
++
++	if result.Error != nil {
++		return nil, fmt.Errorf("embedding api: %s", result.Error.Message)
++	}
++
++	if len(result.Data) != len(texts) {
++		return nil, fmt.Errorf("embedding api: expected %d embeddings, got %d", len(texts), len(result.Data))
++	}
++
++	vecs := make([][]float64, len(texts))
++	for _, d := range result.Data {
++		vecs[d.Index] = d.Embedding
++	}
++
++	if len(vecs) > 0 && len(vecs[0]) > 0 {
++		p.dims = len(vecs[0])
++	}
++
++	return vecs, nil
++}
+diff --git a/internal/embedding/api_test.go b/internal/embedding/api_test.go
+new file mode 100644
+index 0000000..34e0707
+--- /dev/null
++++ b/internal/embedding/api_test.go
+@@ -0,0 +1,86 @@
++package embedding
++
++import (
++	"os"
++	"testing"
++)
++
++// TODO: Remove hardcoded API key before production. User must set ENGRAM_EMBEDDING_API_KEY env var.
++func getTestAPIKey(t *testing.T) string {
++	key := os.Getenv("ENGRAM_EMBEDDING_API_KEY")
++	if key == "" {
++		t.Skip("ENGRAM_EMBEDDING_API_KEY not set, skipping API test")
++	}
++	return key
++}
++
++func TestAPIProviderEmbed(t *testing.T) {
++	key := getTestAPIKey(t)
++	p := NewAPIProvider(key, "https://openrouter.ai/api/v1/embeddings", "openai/text-embedding-3-small")
++
++	vec, err := p.Embed("hello world")
++	if err != nil {
++		t.Fatalf("Embed: %v", err)
++	}
++
++	if len(vec) == 0 {
++		t.Fatal("empty embedding returned")
++	}
++
++	t.Logf("API returned %d dimensions", len(vec))
++}
++
++func TestAPIProviderEmbedBatch(t *testing.T) {
++	key := getTestAPIKey(t)
++	p := NewAPIProvider(key, "https://openrouter.ai/api/v1/embeddings", "openai/text-embedding-3-small")
++
++	vecs, err := p.EmbedBatch([]string{"hello", "world"})
++	if err != nil {
++		t.Fatalf("EmbedBatch: %v", err)
++	}
++
++	if len(vecs) != 2 {
++		t.Errorf("batch size: want 2, got %d", len(vecs))
++	}
++
++	if len(vecs[0]) != len(vecs[1]) {
++		t.Errorf("dimension mismatch: %d vs %d", len(vecs[0]), len(vecs[1]))
++	}
++}
++
++func TestAPIProviderSemanticSimilarity(t *testing.T) {
++	key := getTestAPIKey(t)
++	p := NewAPIProvider(key, "https://openrouter.ai/api/v1/embeddings", "openai/text-embedding-3-small")
++
++	vecs, err := p.EmbedBatch([]string{
++		"authentication login user sign-in",
++		"user sign-in authentication flow",
++		"chocolate cake recipe baking",
++	})
++	if err != nil {
++		t.Fatalf("EmbedBatch: %v", err)
++	}
++
++	simSimilar := CosineSimilarity(vecs[0], vecs[1])
++	simDifferent := CosineSimilarity(vecs[0], vecs[2])
++
++	t.Logf("similar: %f, different: %f", simSimilar, simDifferent)
++
++	if simSimilar <= simDifferent {
++		t.Errorf("semantically similar texts should have higher similarity: %f <= %f", simSimilar, simDifferent)
++	}
++}
++
++func TestAPIProviderName(t *testing.T) {
++	p := NewAPIProvider("key", "", "")
++	if p.Name() != "api" {
++		t.Errorf("Name: want 'api', got %q", p.Name())
++	}
++}
++
++func TestAPIProviderNoKey(t *testing.T) {
++	_, err := NewProvider(Config{Provider: "api"})
++	if err == nil {
++		t.Error("expected error for api provider without key")
++	}
++}
+diff --git a/internal/embedding/cosine.go b/internal/embedding/cosine.go
+new file mode 100644
+index 0000000..446eebb
+--- /dev/null
++++ b/internal/embedding/cosine.go
+@@ -0,0 +1,24 @@
++package embedding
++
++import "math"
++
++// CosineSimilarity computes the cosine similarity between two vectors.
++// Returns a value between -1.0 and 1.0, where 1.0 means identical direction.
++func CosineSimilarity(a, b []float64) float64 {
++	if len(a) != len(b) || len(a) == 0 {
++		return 0
++	}
++
++	var dot, normA, normB float64
++	for i := range a {
++		dot += a[i] * b[i]
++		normA += a[i] * a[i]
++		normB += b[i] * b[i]
++	}
++
++	if normA == 0 || normB == 0 {
++		return 0
++	}
++
++	return dot / (math.Sqrt(normA) * math.Sqrt(normB))
++}
+diff --git a/internal/embedding/cosine_test.go b/internal/embedding/cosine_test.go
+new file mode 100644
+index 0000000..2026cec
+--- /dev/null
++++ b/internal/embedding/cosine_test.go
+@@ -0,0 +1,57 @@
++package embedding
++
++import (
++	"math"
++	"testing"
++)
++
++func TestCosineSimilarityIdentical(t *testing.T) {
++	a := []float64{1, 2, 3}
++	got := CosineSimilarity(a, a)
++	if math.Abs(got-1.0) > 1e-9 {
++		t.Errorf("identical vectors: want 1.0, got %f", got)
++	}
++}
++
++func TestCosineSimilarityOrthogonal(t *testing.T) {
++	a := []float64{1, 0, 0}
++	b := []float64{0, 1, 0}
++	got := CosineSimilarity(a, b)
++	if math.Abs(got) > 1e-9 {
++		t.Errorf("orthogonal vectors: want 0.0, got %f", got)
++	}
++}
++
++func TestCosineSimilarityOpposite(t *testing.T) {
++	a := []float64{1, 2, 3}
++	b := []float64{-1, -2, -3}
++	got := CosineSimilarity(a, b)
++	if math.Abs(got-(-1.0)) > 1e-9 {
++		t.Errorf("opposite vectors: want -1.0, got %f", got)
++	}
++}
++
++func TestCosineSimilarityZeroVector(t *testing.T) {
++	a := []float64{0, 0, 0}
++	b := []float64{1, 2, 3}
++	got := CosineSimilarity(a, b)
++	if got != 0 {
++		t.Errorf("zero vector: want 0.0, got %f", got)
++	}
++}
++
++func TestCosineSimilarityDifferentLengths(t *testing.T) {
++	a := []float64{1, 2}
++	b := []float64{1, 2, 3}
++	got := CosineSimilarity(a, b)
++	if got != 0 {
++		t.Errorf("different lengths: want 0.0, got %f", got)
++	}
++}
++
++func TestCosineSimilarityEmpty(t *testing.T) {
++	got := CosineSimilarity(nil, nil)
++	if got != 0 {
++		t.Errorf("empty: want 0.0, got %f", got)
++	}
++}
+diff --git a/internal/embedding/factory.go b/internal/embedding/factory.go
+new file mode 100644
+index 0000000..dc9f72f
+--- /dev/null
++++ b/internal/embedding/factory.go
+@@ -0,0 +1,19 @@
++package embedding
++
++import "fmt"
++
++// NewProvider creates an embedding provider based on config.
++// Defaults to local provider if no provider is specified.
++func NewProvider(cfg Config) (Provider, error) {
++	switch cfg.Provider {
++	case "api":
++		if cfg.APIKey == "" {
++			return nil, fmt.Errorf("embedding: API key required for api provider")
++		}
++		return NewAPIProvider(cfg.APIKey, cfg.APIURL, cfg.APIModel), nil
++	case "local", "":
++		return NewLocalProvider(), nil
++	default:
++		return nil, fmt.Errorf("embedding: unknown provider %q", cfg.Provider)
++	}
++}
+diff --git a/internal/embedding/factory_test.go b/internal/embedding/factory_test.go
+new file mode 100644
+index 0000000..561b53e
+--- /dev/null
++++ b/internal/embedding/factory_test.go
+@@ -0,0 +1,47 @@
++package embedding
++
++import "testing"
++
++func TestNewProviderLocal(t *testing.T) {
++	p, err := NewProvider(Config{Provider: "local"})
++	if err != nil {
++		t.Fatalf("NewProvider local: %v", err)
++	}
++	if p.Name() != "local" {
++		t.Errorf("want 'local', got %q", p.Name())
++	}
++}
++
++func TestNewProviderDefault(t *testing.T) {
++	p, err := NewProvider(Config{})
++	if err != nil {
++		t.Fatalf("NewProvider default: %v", err)
++	}
++	if p.Name() != "local" {
++		t.Errorf("default should be 'local', got %q", p.Name())
++	}
++}
++
++func TestNewProviderAPIRequiresKey(t *testing.T) {
++	_, err := NewProvider(Config{Provider: "api"})
++	if err == nil {
++		t.Error("expected error for api without key")
++	}
++}
++
++func TestNewProviderAPIWithKey(t *testing.T) {
++	p, err := NewProvider(Config{Provider: "api", APIKey: "test-key"})
++	if err != nil {
++		t.Fatalf("NewProvider api: %v", err)
++	}
++	if p.Name() != "api" {
++		t.Errorf("want 'api', got %q", p.Name())
++	}
++}
++
++func TestNewProviderUnknown(t *testing.T) {
++	_, err := NewProvider(Config{Provider: "magic"})
++	if err == nil {
++		t.Error("expected error for unknown provider")
++	}
++}
+diff --git a/internal/embedding/local.go b/internal/embedding/local.go
+new file mode 100644
+index 0000000..2f447d5
+--- /dev/null
++++ b/internal/embedding/local.go
+@@ -0,0 +1,90 @@
++package embedding
++
++import (
++	"hash/fnv"
++	"math"
++	"strings"
++	"unicode"
++)
++
++const localDims = 384
++
++// LocalProvider uses TF-IDF hashing vectorizer for lightweight local embeddings.
++// Not true semantic search, but handles partial matches, word order variations,
++// and substring-like matching that FTS5 misses. Zero external dependencies.
++type LocalProvider struct{}
++
++// NewLocalProvider creates a local embedding provider.
++func NewLocalProvider() *LocalProvider {
++	return &LocalProvider{}
++}
++
++func (p *LocalProvider) Name() string    { return "local" }
++func (p *LocalProvider) Dimensions() int { return localDims }
++
++func (p *LocalProvider) Embed(text string) ([]float64, error) {
++	tokens := tokenize(text)
++	ngrams := generateNgrams(tokens, 2)
++
++	vec := make([]float64, localDims)
++	for _, ng := range ngrams {
++		idx := hashToIndex(ng, localDims)
++		vec[idx] += 1.0
++	}
++
++	l2Normalize(vec)
++	return vec, nil
++}
++
++func (p *LocalProvider) EmbedBatch(texts []string) ([][]float64, error) {
++	results := make([][]float64, len(texts))
++	for i, t := range texts {
++		v, err := p.Embed(t)
++		if err != nil {
++			return nil, err
++		}
++		results[i] = v
++	}
++	return results, nil
++}
++
++func tokenize(text string) []string {
++	lower := strings.ToLower(text)
++	words := strings.FieldsFunc(lower, func(r rune) bool {
++		return !unicode.IsLetter(r) && !unicode.IsDigit(r)
++	})
++	return words
++}
++
++func generateNgrams(tokens []string, maxN int) []string {
++	var ngrams []string
++	for _, t := range tokens {
++		ngrams = append(ngrams, t)
++	}
++	if maxN >= 2 {
++		for i := 0; i < len(tokens)-1; i++ {
++			ngrams = append(ngrams, tokens[i]+"_"+tokens[i+1])
++		}
++	}
++	return ngrams
++}
++
++func hashToIndex(s string, dims int) int {
++	h := fnv.New32a()
++	h.Write([]byte(s))
++	return int(h.Sum32()) % dims
++}
++
++func l2Normalize(vec []float64) {
++	var sum float64
++	for _, v := range vec {
++		sum += v * v
++	}
++	if sum == 0 {
++		return
++	}
++	norm := math.Sqrt(sum)
++	for i := range vec {
++		vec[i] /= norm
++	}
++}
+diff --git a/internal/embedding/local_test.go b/internal/embedding/local_test.go
+new file mode 100644
+index 0000000..db80e37
+--- /dev/null
++++ b/internal/embedding/local_test.go
+@@ -0,0 +1,107 @@
++package embedding
++
++import (
++	"math"
++	"testing"
++)
++
++func TestLocalProviderEmbed(t *testing.T) {
++	p := NewLocalProvider()
++
++	vec, err := p.Embed("hello world")
++	if err != nil {
++		t.Fatalf("Embed: %v", err)
++	}
++
++	if len(vec) != 384 {
++		t.Errorf("dimensions: want 384, got %d", len(vec))
++	}
++
++	// Vector should be L2-normalized (magnitude ≈ 1.0)
++	var mag float64
++	for _, v := range vec {
++		mag += v * v
++	}
++	mag = math.Sqrt(mag)
++	if math.Abs(mag-1.0) > 1e-9 {
++		t.Errorf("magnitude: want 1.0, got %f", mag)
++	}
++}
++
++func TestLocalProviderDeterministic(t *testing.T) {
++	p := NewLocalProvider()
++	v1, _ := p.Embed("test input")
++	v2, _ := p.Embed("test input")
++
++	for i := range v1 {
++		if v1[i] != v2[i] {
++			t.Fatalf("not deterministic at index %d: %f != %f", i, v1[i], v2[i])
++		}
++	}
++}
++
++func TestLocalProviderSimilarTexts(t *testing.T) {
++	p := NewLocalProvider()
++	v1, _ := p.Embed("fix authentication bug in login")
++	v2, _ := p.Embed("fix login bug in authentication")
++	v3, _ := p.Embed("recipe for chocolate cake")
++
++	sim12 := CosineSimilarity(v1, v2)
++	sim13 := CosineSimilarity(v1, v3)
++
++	if sim12 <= sim13 {
++		t.Errorf("similar texts should have higher similarity: sim(auth,login)=%f <= sim(auth,cake)=%f", sim12, sim13)
++	}
++}
++
++func TestLocalProviderEmbedBatch(t *testing.T) {
++	p := NewLocalProvider()
++	texts := []string{"hello", "world", "test"}
++
++	vecs, err := p.EmbedBatch(texts)
++	if err != nil {
++		t.Fatalf("EmbedBatch: %v", err)
++	}
++
++	if len(vecs) != 3 {
++		t.Errorf("batch size: want 3, got %d", len(vecs))
++	}
++
++	for i, v := range vecs {
++		single, _ := p.Embed(texts[i])
++		if CosineSimilarity(v, single) < 0.999 {
++			t.Errorf("batch result %d differs from single embed", i)
++		}
++	}
++}
++
++func TestLocalProviderEmptyText(t *testing.T) {
++	p := NewLocalProvider()
++	vec, err := p.Embed("")
++	if err != nil {
++		t.Fatalf("Embed empty: %v", err)
++	}
++
++	// Empty text produces zero vector (all zeros) — magnitude is 0
++	var mag float64
++	for _, v := range vec {
++		mag += v * v
++	}
++	if mag != 0 {
++		t.Errorf("empty text should produce zero vector, got magnitude %f", math.Sqrt(mag))
++	}
++}
++
++func TestLocalProviderName(t *testing.T) {
++	p := NewLocalProvider()
++	if p.Name() != "local" {
++		t.Errorf("Name: want 'local', got %q", p.Name())
++	}
++}
++
++func TestLocalProviderDimensions(t *testing.T) {
++	p := NewLocalProvider()
++	if p.Dimensions() != 384 {
++		t.Errorf("Dimensions: want 384, got %d", p.Dimensions())
++	}
++}
+diff --git a/internal/embedding/provider.go b/internal/embedding/provider.go
+new file mode 100644
+index 0000000..34d2c67
+--- /dev/null
++++ b/internal/embedding/provider.go
+@@ -0,0 +1,26 @@
++package embedding
++
++// Provider generates vector embeddings from text.
++type Provider interface {
++	Embed(text string) ([]float64, error)
++	EmbedBatch(texts []string) ([][]float64, error)
++	Dimensions() int
++	Name() string
++}
++
++// Config for the embedding system.
++type Config struct {
++	Provider string // "local" (default) or "api"
++	APIKey   string
++	APIURL   string // default: "https://openrouter.ai/api/v1/embeddings"
++	APIModel string // default: "openai/text-embedding-3-small"
++}
++
++// DefaultConfig returns config with local provider as default.
++func DefaultConfig() Config {
++	return Config{
++		Provider: "local",
++		APIURL:   "https://openrouter.ai/api/v1/embeddings",
++		APIModel: "openai/text-embedding-3-small",
++	}
++}
+diff --git a/internal/mcp/mcp.go b/internal/mcp/mcp.go
+index 798b4e0..83cf562 100644
+--- a/internal/mcp/mcp.go
++++ b/internal/mcp/mcp.go
+@@ -19,6 +19,7 @@ import (
+ 	"strings"
+ 	"time"
+ 
++	"github.com/Gentleman-Programming/engram/internal/embedding"
+ 	projectpkg "github.com/Gentleman-Programming/engram/internal/project"
+ 	"github.com/Gentleman-Programming/engram/internal/store"
+ 	"github.com/mark3labs/mcp-go/mcp"
+@@ -27,7 +28,8 @@ import (
+ 
+ // MCPConfig holds configuration for the MCP server.
+ type MCPConfig struct {
+-	DefaultProject string // Auto-detected project name, used when LLM sends empty project
++	DefaultProject    string             // Auto-detected project name, used when LLM sends empty project
++	EmbeddingProvider embedding.Provider // Optional: enables semantic search fallback
+ }
+ 
+ var suggestTopicKey = store.SuggestTopicKey
+@@ -648,20 +650,54 @@ func handleSearch(s *store.Store, cfg MCPConfig, activity *SessionActivity) serv
+ 		sessionID := defaultSessionID(project)
+ 		activity.RecordToolCall(sessionID)
+ 
+-		results, err := s.Search(query, store.SearchOptions{
++		opts := store.SearchOptions{
+ 			Type:    typ,
+ 			Project: project,
+ 			Scope:   scope,
+ 			Limit:   limit,
+-		})
+-		if err != nil {
+-			return mcp.NewToolResultError(fmt.Sprintf("Search error: %s. Try simpler keywords.", err)), nil
++		}
++
++		var results []store.SearchResult
++
++		// Semantic search is the PRIMARY search method
++		if cfg.EmbeddingProvider != nil {
++			queryVec, embErr := cfg.EmbeddingProvider.Embed(query)
++			if embErr == nil {
++				semanticResults, semErr := s.SearchByEmbedding(queryVec, opts)
++				if semErr == nil {
++					results = semanticResults
++				}
++			}
++		}
++
++		// FTS5 keyword search as supplement — merge unique results
++		ftsResults, ftsErr := s.Search(query, opts)
++		if ftsErr != nil && len(results) == 0 {
++			return mcp.NewToolResultError(fmt.Sprintf("Search error: %s. Try simpler keywords.", ftsErr)), nil
++		}
++		if ftsErr == nil && len(ftsResults) > 0 {
++			seen := make(map[int64]bool)
++			for _, r := range results {
++				seen[r.ID] = true
++			}
++			for _, fr := range ftsResults {
++				if !seen[fr.ID] {
++					results = append(results, fr)
++				}
++				if len(results) >= limit {
++					break
++				}
++			}
+ 		}
+ 
+ 		if len(results) == 0 {
+ 			return mcp.NewToolResultText(fmt.Sprintf("No memories found for: %q", query)), nil
+ 		}
+ 
++		if len(results) > limit {
++			results = results[:limit]
++		}
++
+ 		var b strings.Builder
+ 		fmt.Fprintf(&b, "Found %d memories:\n\n", len(results))
+ 		anyTruncated := false
+@@ -745,7 +781,7 @@ func handleSave(s *store.Store, cfg MCPConfig, activity *SessionActivity) server
+ 
+ 		truncated := len(content) > s.MaxObservationLength()
+ 
+-		_, err := s.AddObservation(store.AddObservationParams{
++		obsID, err := s.AddObservation(store.AddObservationParams{
+ 			SessionID: sessionID,
+ 			Type:      typ,
+ 			Title:     title,
+@@ -760,6 +796,14 @@ func handleSave(s *store.Store, cfg MCPConfig, activity *SessionActivity) server
+ 
+ 		activity.RecordSave(defaultSessionID(project))
+ 
++		// Generate and store embedding for semantic search (best-effort, non-blocking)
++		if cfg.EmbeddingProvider != nil {
++			embText := title + " " + content
++			if vec, embErr := cfg.EmbeddingProvider.Embed(embText); embErr == nil {
++				_ = s.SaveEmbedding(obsID, vec, cfg.EmbeddingProvider.Name())
++			}
++		}
++
+ 		msg := fmt.Sprintf("Memory saved: %q (%s)", title, typ)
+ 		if topicKey == "" && suggestedTopicKey != "" {
+ 			msg += fmt.Sprintf("\nSuggested topic_key: %s", suggestedTopicKey)
+diff --git a/internal/store/embedding_test.go b/internal/store/embedding_test.go
+new file mode 100644
+index 0000000..191fd9f
+--- /dev/null
++++ b/internal/store/embedding_test.go
+@@ -0,0 +1,254 @@
++package store
++
++import (
++	"math"
++	"testing"
++)
++
++func TestSerializeDeserializeEmbedding(t *testing.T) {
++	original := []float64{0.1, 0.2, 0.3, -0.5, 1.0}
++	blob := serializeEmbedding(original)
++	restored := deserializeEmbedding(blob, len(original))
++
++	for i := range original {
++		if math.Abs(original[i]-restored[i]) > 1e-15 {
++			t.Errorf("index %d: want %f, got %f", i, original[i], restored[i])
++		}
++	}
++}
++
++func TestSerializeEmbeddingSize(t *testing.T) {
++	vec := make([]float64, 384)
++	blob := serializeEmbedding(vec)
++	if len(blob) != 384*8 {
++		t.Errorf("blob size: want %d, got %d", 384*8, len(blob))
++	}
++}
++
++func TestSaveAndSearchEmbedding(t *testing.T) {
++	s := newTestStore(t)
++
++	if err := s.CreateSession("s1", "test", "/tmp/test"); err != nil {
++		t.Fatalf("create session: %v", err)
++	}
++
++	// Save three observations with different embeddings
++	id1, _ := s.AddObservation(AddObservationParams{
++		SessionID: "s1", Type: "decision", Title: "Auth design",
++		Content: "Use JWT for authentication", Project: "test",
++	})
++	id2, _ := s.AddObservation(AddObservationParams{
++		SessionID: "s1", Type: "decision", Title: "Login flow",
++		Content: "OAuth2 login flow implementation", Project: "test",
++	})
++	id3, _ := s.AddObservation(AddObservationParams{
++		SessionID: "s1", Type: "decision", Title: "Cake recipe",
++		Content: "Chocolate cake with frosting", Project: "test",
++	})
++
++	// Create embeddings: auth and login are similar, cake is different
++	vecAuth := make([]float64, 10)
++	vecAuth[0] = 0.9
++	vecAuth[1] = 0.8
++	vecAuth[2] = 0.1
++
++	vecLogin := make([]float64, 10)
++	vecLogin[0] = 0.85
++	vecLogin[1] = 0.75
++	vecLogin[2] = 0.15
++
++	vecCake := make([]float64, 10)
++	vecCake[5] = 0.9
++	vecCake[6] = 0.8
++	vecCake[7] = 0.7
++
++	if err := s.SaveEmbedding(id1, vecAuth, "local"); err != nil {
++		t.Fatalf("save embedding 1: %v", err)
++	}
++	if err := s.SaveEmbedding(id2, vecLogin, "local"); err != nil {
++		t.Fatalf("save embedding 2: %v", err)
++	}
++	if err := s.SaveEmbedding(id3, vecCake, "local"); err != nil {
++		t.Fatalf("save embedding 3: %v", err)
++	}
++
++	// Search with a query vector similar to auth/login
++	queryVec := make([]float64, 10)
++	queryVec[0] = 0.88
++	queryVec[1] = 0.77
++	queryVec[2] = 0.12
++
++	results, err := s.SearchByEmbedding(queryVec, SearchOptions{
++		Project: "test",
++		Limit:   10,
++	})
++	if err != nil {
++		t.Fatalf("search by embedding: %v", err)
++	}
++
++	if len(results) != 3 {
++		t.Fatalf("expected 3 results, got %d", len(results))
++	}
++
++	// Auth and Login should rank higher than Cake
++	if results[0].Title != "Auth design" && results[0].Title != "Login flow" {
++		t.Errorf("top result should be auth or login, got %q", results[0].Title)
++	}
++	if results[2].Title != "Cake recipe" {
++		t.Errorf("last result should be cake, got %q", results[2].Title)
++	}
++}
++
++func TestSaveEmbeddingUpsert(t *testing.T) {
++	s := newTestStore(t)
++
++	if err := s.CreateSession("s1", "test", "/tmp/test"); err != nil {
++		t.Fatalf("create session: %v", err)
++	}
++
++	id, _ := s.AddObservation(AddObservationParams{
++		SessionID: "s1", Type: "decision", Title: "Test",
++		Content: "test content", Project: "test",
++	})
++
++	vec1 := []float64{0.1, 0.2, 0.3}
++	vec2 := []float64{0.4, 0.5, 0.6}
++
++	if err := s.SaveEmbedding(id, vec1, "local"); err != nil {
++		t.Fatalf("first save: %v", err)
++	}
++	if err := s.SaveEmbedding(id, vec2, "local"); err != nil {
++		t.Fatalf("upsert: %v", err)
++	}
++
++	// Search should find only one result (not duplicated)
++	results, err := s.SearchByEmbedding(vec2, SearchOptions{Project: "test", Limit: 10})
++	if err != nil {
++		t.Fatalf("search: %v", err)
++	}
++
++	count := 0
++	for _, r := range results {
++		if r.ID == id {
++			count++
++		}
++	}
++	if count != 1 {
++		t.Errorf("expected 1 result for upserted ID, got %d", count)
++	}
++}
++
++func TestDeleteEmbedding(t *testing.T) {
++	s := newTestStore(t)
++
++	if err := s.CreateSession("s1", "test", "/tmp/test"); err != nil {
++		t.Fatalf("create session: %v", err)
++	}
++
++	id, _ := s.AddObservation(AddObservationParams{
++		SessionID: "s1", Type: "decision", Title: "Test",
++		Content: "test content", Project: "test",
++	})
++
++	vec := []float64{0.1, 0.2, 0.3}
++	if err := s.SaveEmbedding(id, vec, "local"); err != nil {
++		t.Fatalf("save: %v", err)
++	}
++
++	if err := s.DeleteEmbedding(id); err != nil {
++		t.Fatalf("delete: %v", err)
++	}
++
++	results, err := s.SearchByEmbedding(vec, SearchOptions{Project: "test", Limit: 10})
++	if err != nil {
++		t.Fatalf("search after delete: %v", err)
++	}
++
++	for _, r := range results {
++		if r.ID == id {
++			t.Error("deleted embedding should not appear in results")
++		}
++	}
++}
++
++func TestSearchByEmbeddingRespectsDeletedObservations(t *testing.T) {
++	s := newTestStore(t)
++
++	if err := s.CreateSession("s1", "test", "/tmp/test"); err != nil {
++		t.Fatalf("create session: %v", err)
++	}
++
++	id, _ := s.AddObservation(AddObservationParams{
++		SessionID: "s1", Type: "decision", Title: "Test",
++		Content: "test content", Project: "test",
++	})
++
++	vec := []float64{0.1, 0.2, 0.3}
++	if err := s.SaveEmbedding(id, vec, "local"); err != nil {
++		t.Fatalf("save: %v", err)
++	}
++
++	// Soft-delete the observation
++	if err := s.DeleteObservation(id, false); err != nil {
++		t.Fatalf("delete observation: %v", err)
++	}
++
++	results, err := s.SearchByEmbedding(vec, SearchOptions{Project: "test", Limit: 10})
++	if err != nil {
++		t.Fatalf("search: %v", err)
++	}
++
++	for _, r := range results {
++		if r.ID == id {
++			t.Error("soft-deleted observation should not appear in embedding search")
++		}
++	}
++}
++
++func TestEmbeddingCosineSimilarity(t *testing.T) {
++	a := []float64{1, 0, 0}
++	b := []float64{1, 0, 0}
++	if s := embeddingCosineSimilarity(a, b); math.Abs(s-1.0) > 1e-9 {
++		t.Errorf("identical: want 1.0, got %f", s)
++	}
++
++	c := []float64{0, 1, 0}
++	if s := embeddingCosineSimilarity(a, c); math.Abs(s) > 1e-9 {
++		t.Errorf("orthogonal: want 0.0, got %f", s)
++	}
++}
++
++func TestSearchByEmbeddingProjectFilter(t *testing.T) {
++	s := newTestStore(t)
++
++	if err := s.CreateSession("s1", "proj-a", "/tmp/a"); err != nil {
++		t.Fatalf("create session: %v", err)
++	}
++	if err := s.CreateSession("s2", "proj-b", "/tmp/b"); err != nil {
++		t.Fatalf("create session: %v", err)
++	}
++
++	idA, _ := s.AddObservation(AddObservationParams{
++		SessionID: "s1", Type: "decision", Title: "A",
++		Content: "project a content", Project: "proj-a",
++	})
++	idB, _ := s.AddObservation(AddObservationParams{
++		SessionID: "s2", Type: "decision", Title: "B",
++		Content: "project b content", Project: "proj-b",
++	})
++
++	vec := []float64{0.5, 0.5}
++	s.SaveEmbedding(idA, vec, "local")
++	s.SaveEmbedding(idB, vec, "local")
++
++	results, err := s.SearchByEmbedding(vec, SearchOptions{Project: "proj-a", Limit: 10})
++	if err != nil {
++		t.Fatalf("search: %v", err)
++	}
++
++	for _, r := range results {
++		if r.Project != nil && *r.Project != "proj-a" {
++			t.Errorf("project filter not working: got project %q", *r.Project)
++		}
++	}
++}
+diff --git a/internal/store/store.go b/internal/store/store.go
+index 7ea81eb..3551942 100644
+--- a/internal/store/store.go
++++ b/internal/store/store.go
+@@ -9,13 +9,16 @@ import (
+ 	"crypto/rand"
+ 	"crypto/sha256"
+ 	"database/sql"
++	"encoding/binary"
+ 	"encoding/hex"
+ 	"encoding/json"
+ 	"errors"
+ 	"fmt"
++	"math"
+ 	"os"
+ 	"path/filepath"
+ 	"regexp"
++	"sort"
+ 	"strconv"
+ 	"strings"
+ 	"time"
+@@ -434,9 +437,11 @@ func New(cfg Config) (*Store, error) {
+ 
+ 	s := &Store{db: db, cfg: cfg, hooks: defaultStoreHooks()}
+ 	if err := s.migrate(); err != nil {
++		db.Close()
+ 		return nil, fmt.Errorf("engram: migration: %w", err)
+ 	}
+ 	if err := s.repairEnrolledProjectSyncMutations(); err != nil {
++		db.Close()
+ 		return nil, fmt.Errorf("engram: repair enrolled sync journal: %w", err)
+ 	}
+ 
+@@ -680,6 +685,20 @@ func (s *Store) migrate() error {
+ 		return err
+ 	}
+ 
++	// Embedding storage for semantic search
++	if _, err := s.execHook(s.db, `
++		CREATE TABLE IF NOT EXISTS observation_embeddings (
++			observation_id INTEGER PRIMARY KEY,
++			embedding      BLOB NOT NULL,
++			dimensions     INTEGER NOT NULL,
++			provider       TEXT NOT NULL DEFAULT 'local',
++			created_at     TEXT NOT NULL DEFAULT (datetime('now')),
++			FOREIGN KEY (observation_id) REFERENCES observations(id) ON DELETE CASCADE
++		);
++	`); err != nil {
++		return err
++	}
++
+ 	// Prompts FTS triggers (separate idempotent check)
+ 	var promptTrigger string
+ 	err = s.db.QueryRow(
+@@ -3650,3 +3669,156 @@ func ClassifyTool(toolName string) string {
+ func Now() string {
+ 	return time.Now().UTC().Format("2006-01-02 15:04:05")
+ }
++
++// ─── Embedding Storage ──────────────────────────────────────────────────────
++
++// SaveEmbedding stores a vector embedding for an observation (upsert).
++func (s *Store) SaveEmbedding(observationID int64, embedding []float64, provider string) error {
++	blob := serializeEmbedding(embedding)
++	_, err := s.execHook(s.db,
++		`INSERT INTO observation_embeddings (observation_id, embedding, dimensions, provider, created_at)
++		 VALUES (?, ?, ?, ?, datetime('now'))
++		 ON CONFLICT(observation_id) DO UPDATE SET
++		     embedding = excluded.embedding,
++		     dimensions = excluded.dimensions,
++		     provider = excluded.provider,
++		     created_at = datetime('now')`,
++		observationID, blob, len(embedding), provider,
++	)
++	if err != nil {
++		return fmt.Errorf("save embedding: %w", err)
++	}
++	return nil
++}
++
++// SearchByEmbedding finds observations similar to the given vector using cosine similarity.
++func (s *Store) SearchByEmbedding(queryEmbedding []float64, opts SearchOptions) ([]SearchResult, error) {
++	opts.Project, _ = NormalizeProject(opts.Project)
++
++	limit := opts.Limit
++	if limit <= 0 {
++		limit = 10
++	}
++	if limit > s.cfg.MaxSearchResults {
++		limit = s.cfg.MaxSearchResults
++	}
++
++	sqlQ := `
++		SELECT e.observation_id, e.embedding, e.dimensions,
++		       o.id, ifnull(o.sync_id, '') as sync_id, o.session_id, o.type, o.title, o.content,
++		       o.tool_name, o.project, o.scope, o.topic_key, o.revision_count, o.duplicate_count,
++		       o.last_seen_at, o.created_at, o.updated_at, o.deleted_at
++		FROM observation_embeddings e
++		JOIN observations o ON o.id = e.observation_id
++		WHERE o.deleted_at IS NULL
++	`
++	args := []any{}
++
++	if opts.Type != "" {
++		sqlQ += " AND o.type = ?"
++		args = append(args, opts.Type)
++	}
++	if opts.Project != "" {
++		sqlQ += " AND o.project = ?"
++		args = append(args, opts.Project)
++	}
++	if opts.Scope != "" {
++		sqlQ += " AND o.scope = ?"
++		args = append(args, normalizeScope(opts.Scope))
++	}
++
++	rows, err := s.queryItHook(s.db, sqlQ, args...)
++	if err != nil {
++		return nil, fmt.Errorf("search by embedding: %w", err)
++	}
++	defer rows.Close()
++
++	type scored struct {
++		result SearchResult
++		score  float64
++	}
++	var candidates []scored
++
++	for rows.Next() {
++		var (
++			embID int64
++			blob  []byte
++			dims  int
++			sr    SearchResult
++		)
++		if err := rows.Scan(
++			&embID, &blob, &dims,
++			&sr.ID, &sr.SyncID, &sr.SessionID, &sr.Type, &sr.Title, &sr.Content,
++			&sr.ToolName, &sr.Project, &sr.Scope, &sr.TopicKey, &sr.RevisionCount, &sr.DuplicateCount,
++			&sr.LastSeenAt, &sr.CreatedAt, &sr.UpdatedAt, &sr.DeletedAt,
++		); err != nil {
++			return nil, err
++		}
++
++		storedVec := deserializeEmbedding(blob, dims)
++		score := embeddingCosineSimilarity(queryEmbedding, storedVec)
++		sr.Rank = -score // negative so higher similarity = more negative = "better" rank (FTS5 convention)
++		candidates = append(candidates, scored{result: sr, score: score})
++	}
++	if err := rows.Err(); err != nil {
++		return nil, err
++	}
++
++	sort.Slice(candidates, func(i, j int) bool {
++		return candidates[i].score > candidates[j].score
++	})
++
++	if len(candidates) > limit {
++		candidates = candidates[:limit]
++	}
++
++	results := make([]SearchResult, len(candidates))
++	for i, c := range candidates {
++		results[i] = c.result
++	}
++	return results, nil
++}
++
++// DeleteEmbedding removes the embedding for an observation.
++func (s *Store) DeleteEmbedding(observationID int64) error {
++	_, err := s.execHook(s.db,
++		`DELETE FROM observation_embeddings WHERE observation_id = ?`,
++		observationID,
++	)
++	if err != nil {
++		return fmt.Errorf("delete embedding: %w", err)
++	}
++	return nil
++}
++
++func serializeEmbedding(embedding []float64) []byte {
++	buf := make([]byte, len(embedding)*8)
++	for i, v := range embedding {
++		binary.LittleEndian.PutUint64(buf[i*8:], math.Float64bits(v))
++	}
++	return buf
++}
++
++func deserializeEmbedding(data []byte, dims int) []float64 {
++	vec := make([]float64, dims)
++	for i := 0; i < dims && i*8+8 <= len(data); i++ {
++		vec[i] = math.Float64frombits(binary.LittleEndian.Uint64(data[i*8:]))
++	}
++	return vec
++}
++
++func embeddingCosineSimilarity(a, b []float64) float64 {
++	if len(a) != len(b) || len(a) == 0 {
++		return 0
++	}
++	var dot, normA, normB float64
++	for i := range a {
++		dot += a[i] * b[i]
++		normA += a[i] * a[i]
++		normB += b[i] * b[i]
++	}
++	if normA == 0 || normB == 0 {
++		return 0
++	}
++	return dot / (math.Sqrt(normA) * math.Sqrt(normB))
++}
+diff --git a/internal/sync/transport.go b/internal/sync/transport.go
+index 6b9a097..7000158 100644
+--- a/internal/sync/transport.go
++++ b/internal/sync/transport.go
+@@ -46,6 +46,9 @@ func NewFileTransport(syncDir string) *FileTransport {
+ // ReadManifest reads the manifest.json from the sync directory.
+ // Returns an empty manifest (Version=1) if the file does not exist.
+ func (ft *FileTransport) ReadManifest() (*Manifest, error) {
++	if info, err := os.Stat(ft.syncDir); err == nil && !info.IsDir() {
++		return nil, fmt.Errorf("read manifest: sync path is not a directory: %s", ft.syncDir)
++	}
+ 	path := filepath.Join(ft.syncDir, "manifest.json")
+ 	data, err := os.ReadFile(path)
+ 	if err != nil {
