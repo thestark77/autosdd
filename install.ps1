@@ -232,24 +232,34 @@ if ($selectedAgents -contains "opencode") {
   }
 }
 
-# --- Install autoSDD SKILL.md ---
+# --- Install core skills globally ---
 Write-Host ""
-Write-Host "Installing autoSDD skill..."
+Write-Host "Installing core skills (global)..."
+
+$CORE_SKILLS = @(
+  @{ name = "autosdd"; url = "$REPO_URL/skill/SKILL.md" },
+  @{ name = "prompt-engineering-patterns"; url = "$REPO_URL/skill/prompt-engineering-patterns/SKILL.md" }
+)
 
 $installedSkillPaths = @()
+$warnings = @()
+
 for ($i = 0; $i -lt $AGENTS.Count; $i++) {
   $agent = $AGENTS[$i]
   if ($selectedAgents -contains $agent) {
-    $skillDir = Join-Path $AGENT_DIRS[$i] "skills\autosdd"
-    try {
-      New-Item -ItemType Directory -Path $skillDir -Force | Out-Null
-      $skillFile = Join-Path $skillDir "SKILL.md"
-      Invoke-WebRequest -Uri $SKILL_URL -OutFile $skillFile -UseBasicParsing
-      $installedSkillPaths += $skillFile
-      Write-Host "  OK $agent -> $skillFile"
-    } catch {
-      Write-Host "  ! Failed to install SKILL.md for $agent at $skillDir" -ForegroundColor Red
-      Write-Host "    Error: $_" -ForegroundColor Yellow
+    foreach ($skill in $CORE_SKILLS) {
+      $skillDir = Join-Path $AGENT_DIRS[$i] "skills\$($skill.name)"
+      try {
+        New-Item -ItemType Directory -Path $skillDir -Force | Out-Null
+        $skillFile = Join-Path $skillDir "SKILL.md"
+        Invoke-WebRequest -Uri $skill.url -OutFile $skillFile -UseBasicParsing
+        if ($skill.name -eq "autosdd") { $installedSkillPaths += $skillFile }
+        Write-Host "  OK $($skill.name) ($agent) -> $skillFile"
+      } catch {
+        $msg = "Failed to install $($skill.name) for $agent at $skillDir — $_"
+        Write-Host "  ! $msg" -ForegroundColor Red
+        $warnings += $msg
+      }
     }
   }
 }
@@ -290,69 +300,6 @@ if ($rtkCmd) {
       Write-Host "  ! RTK auto-install failed. Install manually:" -ForegroundColor Yellow
       Write-Host "    cargo install rtk"
       Write-Host "    OR download from: https://github.com/rtk-ai/rtk/releases"
-    }
-  }
-}
-
-# --- Verify and repair prompt-engineering-patterns ---
-Write-Host ""
-Write-Host "Verifying prompt-engineering-patterns skill..."
-
-$pepFound = $false
-for ($i = 0; $i -lt $AGENTS.Count; $i++) {
-  $agent = $AGENTS[$i]
-  if ($selectedAgents -contains $agent) {
-    $pepFile = Join-Path $AGENT_DIRS[$i] "skills\prompt-engineering-patterns\SKILL.md"
-    if (Test-Path $pepFile) {
-      $pepFound = $true
-    }
-  }
-}
-
-if ($pepFound) {
-  Write-Host "  OK prompt-engineering-patterns found"
-} else {
-  Write-Host "  . prompt-engineering-patterns missing - attempting repair..." -ForegroundColor Yellow
-
-  # Try 1: gentle-ai sync
-  try {
-    & gentle-ai sync --skills prompt-engineering-patterns 2>$null
-  } catch {}
-
-  # Check again
-  $pepFound = $false
-  for ($i = 0; $i -lt $AGENTS.Count; $i++) {
-    $agent = $AGENTS[$i]
-    if ($selectedAgents -contains $agent) {
-      $pepFile = Join-Path $AGENT_DIRS[$i] "skills\prompt-engineering-patterns\SKILL.md"
-      if (Test-Path $pepFile) { $pepFound = $true }
-    }
-  }
-
-  if ($pepFound) {
-    Write-Host "  OK prompt-engineering-patterns repaired via gentle-ai sync"
-  } else {
-    # Try 2: download from Gentleman-Skills repo
-    Write-Host "  . gentle-ai sync didn't fix it - downloading from Gentleman-Skills..." -ForegroundColor Yellow
-    $pepUrl = "https://raw.githubusercontent.com/Gentleman-Programming/Gentleman-Skills/main/prompt-engineering-patterns/SKILL.md"
-    for ($i = 0; $i -lt $AGENTS.Count; $i++) {
-      $agent = $AGENTS[$i]
-      if ($selectedAgents -contains $agent) {
-        $pepDir = Join-Path $AGENT_DIRS[$i] "skills\prompt-engineering-patterns"
-        try {
-          New-Item -ItemType Directory -Path $pepDir -Force | Out-Null
-          Invoke-WebRequest -Uri $pepUrl -OutFile (Join-Path $pepDir "SKILL.md") -UseBasicParsing
-          Write-Host "  OK prompt-engineering-patterns -> $pepDir"
-          $pepFound = $true
-        } catch {
-          Write-Host "  ! Failed to download for $agent" -ForegroundColor Yellow
-        }
-      }
-    }
-
-    if (-not $pepFound) {
-      Write-Host "  ! prompt-engineering-patterns could NOT be installed." -ForegroundColor Red
-      Write-Host "    autoSDD will work but CREA prompt refinement will be degraded." -ForegroundColor Yellow
     }
   }
 }
@@ -501,13 +448,17 @@ for ($i = 0; $i -lt $AGENTS.Count; $i++) {
       $allGood = $false
     }
 
-    # Check prompt-engineering-patterns
-    $pepPath = Join-Path $AGENT_DIRS[$i] "skills\prompt-engineering-patterns\SKILL.md"
-    if (Test-Path $pepPath) {
-      Write-Host "  [OK] prompt-engineering-patterns ($agent)" -ForegroundColor Green
-    } else {
-      Write-Host "  [!!] prompt-engineering-patterns MISSING ($agent)" -ForegroundColor Red
-      $allGood = $false
+    # Check core skills installed by autoSDD
+    $coreSkillNames = @("autosdd", "prompt-engineering-patterns")
+    foreach ($cs in $coreSkillNames) {
+      $csPath = Join-Path $AGENT_DIRS[$i] "skills\$cs\SKILL.md"
+      if (Test-Path $csPath) {
+        Write-Host "  [OK] $cs ($agent)" -ForegroundColor Green
+      } else {
+        Write-Host "  [!!] $cs MISSING ($agent)" -ForegroundColor Red
+        $warnings += "$cs skill not found at $csPath"
+        $allGood = $false
+      }
     }
     break
   }
@@ -541,9 +492,23 @@ if ($allGood) {
   Write-Host "  +==========================================+" -ForegroundColor Yellow
   Write-Host "  |  autoSDD v3 installed (with warnings)    |" -ForegroundColor Yellow
   Write-Host "  +==========================================+" -ForegroundColor Yellow
-  Write-Host ""
-  Write-Host "  Some checks failed. Re-run the installer or fix manually." -ForegroundColor Yellow
 }
+
+# Show collected warnings/errors
+if ($warnings.Count -gt 0) {
+  Write-Host ""
+  Write-Host "  Warnings/Errors during installation:" -ForegroundColor Yellow
+  Write-Host "  ------------------------------------" -ForegroundColor Yellow
+  foreach ($w in $warnings) {
+    Write-Host "  - $w" -ForegroundColor Yellow
+  }
+  Write-Host ""
+  Write-Host "  If re-running the installer doesn't fix these:" -ForegroundColor Cyan
+  Write-Host "    Report:  https://github.com/thestark77/autosdd/issues/new" -ForegroundColor Cyan
+  Write-Host "    Fix it:  https://github.com/thestark77/autosdd/pulls" -ForegroundColor Cyan
+  Write-Host ""
+}
+
 Write-Host ""
 Write-Host "  Next steps:"
 Write-Host "    1. Open your project in your AI agent"

@@ -228,22 +228,35 @@ if echo "$selected_agents" | grep -q "opencode"; then
   echo "  ✓ OpenCode profiles configured"
 fi
 
-# --- Install autoSDD SKILL.md ---
+# --- Install core skills globally ---
 echo ""
-echo "Installing autoSDD skill..."
+echo "Installing core skills (global)..."
+
+CORE_SKILLS=(
+  "autosdd:$REPO_URL/skill/SKILL.md"
+  "prompt-engineering-patterns:$REPO_URL/skill/prompt-engineering-patterns/SKILL.md"
+)
 
 installed_skill_paths=()
+warnings=()
+
 for i in "${!AGENTS[@]}"; do
   agent="${AGENTS[$i]}"
   if echo "$selected_agents" | grep -q "$agent"; then
-    skill_dir="${AGENT_DIRS[$i]}/skills/autosdd"
-    mkdir -p "$skill_dir"
-    if curl -fsSL -o "$skill_dir/SKILL.md" "$SKILL_URL"; then
-      installed_skill_paths+=("$skill_dir/SKILL.md")
-      echo "  ✓ $agent → $skill_dir/SKILL.md"
-    else
-      echo "  ⚠ Failed to download SKILL.md for $agent"
-    fi
+    for entry in "${CORE_SKILLS[@]}"; do
+      skill_name="${entry%%:*}"
+      skill_url="${entry#*:}"
+      skill_dir="${AGENT_DIRS[$i]}/skills/$skill_name"
+      mkdir -p "$skill_dir"
+      if curl -fsSL -o "$skill_dir/SKILL.md" "$skill_url"; then
+        [[ "$skill_name" == "autosdd" ]] && installed_skill_paths+=("$skill_dir/SKILL.md")
+        echo "  ✓ $skill_name ($agent) → $skill_dir/SKILL.md"
+      else
+        msg="Failed to install $skill_name for $agent at $skill_dir"
+        echo "  ⚠ $msg"
+        warnings+=("$msg")
+      fi
+    done
   fi
 done
 
@@ -265,67 +278,6 @@ else
     echo "  ⚠ RTK auto-install failed. Install manually:"
     echo "    cargo install rtk"
     echo "    OR download from: https://github.com/rtk-ai/rtk/releases"
-  fi
-fi
-
-# --- Verify and repair prompt-engineering-patterns ---
-echo ""
-echo "Verifying prompt-engineering-patterns skill..."
-
-pep_found=false
-for i in "${!AGENTS[@]}"; do
-  agent="${AGENTS[$i]}"
-  if echo "$selected_agents" | grep -q "$agent"; then
-    pep_dir="${AGENT_DIRS[$i]}/skills/prompt-engineering-patterns"
-    if [[ -f "$pep_dir/SKILL.md" ]]; then
-      pep_found=true
-    fi
-  fi
-done
-
-if $pep_found; then
-  echo "  ✓ prompt-engineering-patterns found"
-else
-  echo "  · prompt-engineering-patterns missing — attempting repair..."
-
-  # Try 1: gentle-ai sync
-  gentle-ai sync --skills prompt-engineering-patterns 2>/dev/null || true
-
-  # Check again
-  pep_found=false
-  for i in "${!AGENTS[@]}"; do
-    agent="${AGENTS[$i]}"
-    if echo "$selected_agents" | grep -q "$agent"; then
-      if [[ -f "${AGENT_DIRS[$i]}/skills/prompt-engineering-patterns/SKILL.md" ]]; then
-        pep_found=true
-      fi
-    fi
-  done
-
-  if $pep_found; then
-    echo "  ✓ prompt-engineering-patterns repaired via gentle-ai sync"
-  else
-    # Try 2: download from Gentleman-Skills repo
-    echo "  · gentle-ai sync didn't fix it — downloading from Gentleman-Skills..."
-    pep_url="https://raw.githubusercontent.com/Gentleman-Programming/Gentleman-Skills/main/prompt-engineering-patterns/SKILL.md"
-    for i in "${!AGENTS[@]}"; do
-      agent="${AGENTS[$i]}"
-      if echo "$selected_agents" | grep -q "$agent"; then
-        pep_dir="${AGENT_DIRS[$i]}/skills/prompt-engineering-patterns"
-        mkdir -p "$pep_dir"
-        if curl -fsSL -o "$pep_dir/SKILL.md" "$pep_url"; then
-          echo "  ✓ prompt-engineering-patterns → $pep_dir"
-          pep_found=true
-        else
-          echo "  ⚠ Failed to download for $agent"
-        fi
-      fi
-    done
-
-    if ! $pep_found; then
-      echo "  ⚠ prompt-engineering-patterns could NOT be installed."
-      echo "    autoSDD will work but CREA prompt refinement will be degraded."
-    fi
   fi
 fi
 
@@ -470,13 +422,18 @@ for i in "${!AGENTS[@]}"; do
       all_good=false
     fi
 
-    # Check prompt-engineering-patterns
-    if [[ -f "${AGENT_DIRS[$i]}/skills/prompt-engineering-patterns/SKILL.md" ]]; then
-      echo "  [OK] prompt-engineering-patterns ($agent)"
-    else
-      echo "  [!!] prompt-engineering-patterns MISSING ($agent)"
-      all_good=false
-    fi
+    # Check core skills installed by autoSDD
+    core_skill_names=("autosdd" "prompt-engineering-patterns")
+    for cs in "${core_skill_names[@]}"; do
+      cs_path="${AGENT_DIRS[$i]}/skills/$cs/SKILL.md"
+      if [[ -f "$cs_path" ]]; then
+        echo "  [OK] $cs ($agent)"
+      else
+        echo "  [!!] $cs MISSING ($agent)"
+        warnings+=("$cs skill not found at $cs_path")
+        all_good=false
+      fi
+    done
     break
   fi
 done
@@ -507,9 +464,23 @@ else
   echo "  ╔══════════════════════════════════════════╗"
   echo "  ║  autoSDD v3 installed (with warnings)    ║"
   echo "  ╚══════════════════════════════════════════╝"
-  echo ""
-  echo "  Some checks failed. Re-run the installer or fix manually."
 fi
+
+# Show collected warnings/errors
+if [[ ${#warnings[@]} -gt 0 ]]; then
+  echo ""
+  echo "  Warnings/Errors during installation:"
+  echo "  ------------------------------------"
+  for w in "${warnings[@]}"; do
+    echo "  - $w"
+  done
+  echo ""
+  echo "  If re-running the installer doesn't fix these:"
+  echo "    Report:  https://github.com/thestark77/autosdd/issues/new"
+  echo "    Fix it:  https://github.com/thestark77/autosdd/pulls"
+  echo ""
+fi
+
 echo ""
 echo "  Next steps:"
 echo "    1. Open your project in your AI agent"
