@@ -175,6 +175,15 @@ Write-Host "  OK gentle-ai"
 
 Write-Host ""
 
+# --- Stop running engram process (Windows locks running executables) ---
+$engramProc = Get-Process -Name "engram" -ErrorAction SilentlyContinue
+if ($engramProc) {
+  Write-Host "  . Stopping running engram process (required to update binary)..." -ForegroundColor Yellow
+  Stop-Process -Name "engram" -Force -ErrorAction SilentlyContinue
+  Start-Sleep -Seconds 1
+  Write-Host "  OK engram process stopped"
+}
+
 # --- Install gentle-ai ---
 Write-Host "Installing gentle-ai..."
 Write-Host "  Agents:   $($selectedAgents -join ',')"
