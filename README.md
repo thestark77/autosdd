@@ -2,7 +2,8 @@
 
 <div align="center">
 
-**Talk to your AI. It asks questions. Then it builds everything autonomously — and gets better at it over time.**
+**AI doesn't replace your ability to think — it AMPLIFIES it.**<br>
+**That's what separates a developer who USES AI from one who DEPENDS on it.**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-Compatible-blue)](https://claude.ai/claude-code)
