@@ -55,7 +55,13 @@ for i in "${!AGENTS[@]}"; do
   printf "  %2d. %s\n" $((i + 1)) "${AGENTS[$i]}"
 done
 echo ""
-read -rp "  Agents (comma-separated numbers, e.g. 1,3,5): " agent_input
+
+# Read from /dev/tty so prompts work under `curl … | bash` (stdin is the script, not the user).
+# If /dev/tty isn't available (e.g. CI), fall back to defaults.
+agent_input=""
+if [[ -r /dev/tty ]]; then
+  read -rp "  Agents (comma-separated numbers, e.g. 1,3,5): " agent_input </dev/tty || agent_input=""
+fi
 
 selected_agents=""
 if [[ -z "$agent_input" ]]; then
@@ -84,7 +90,10 @@ echo "  1. gentleman  — Rioplatense Spanish, passionate, opinionated"
 echo "  2. neutral     — Professional, no regional style"
 echo "  3. custom      — Define your own"
 echo ""
-read -rp "  Persona (1/2/3): " persona_input
+persona_input=""
+if [[ -r /dev/tty ]]; then
+  read -rp "  Persona (1/2/3): " persona_input </dev/tty || persona_input=""
+fi
 
 selected_persona="neutral"
 case "$persona_input" in
@@ -266,8 +275,11 @@ SKILLS_SH=(
 )
 
 for entry in "${SKILLS_SH[@]}"; do
-  repo="${entry%%:*}"
-  skill="${entry#*:}"
+  # Split on the LAST ':' so the 'https://' prefix isn't mangled.
+  # %:*  = drop shortest suffix starting at ':'  → everything before the last ':' (the repo URL)
+  # ##*: = drop longest prefix ending at ':'     → everything after the last ':' (the skill name)
+  repo="${entry%:*}"
+  skill="${entry##*:}"
   echo "  · Installing $skill..."
   if npx -y skills add "$repo" --skill "$skill" -g -y 2>/dev/null; then
     echo "  ✓ $skill"
@@ -514,4 +526,4 @@ echo ""
 }
 
 _autosdd_install
-unset -f _autosdd_install
+unset -f _autosdd_install 2>/dev/null || true
