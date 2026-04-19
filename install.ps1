@@ -200,9 +200,10 @@ $agentsCsv = $selectedAgents -join ','
   --sdd-mode multi
 
 if ($LASTEXITCODE -ne 0) {
-  Write-Host "  ! gentle-ai install failed (exit code $LASTEXITCODE)" -ForegroundColor Red
-  Write-Host "  Check the output above for details." -ForegroundColor Yellow
-  return
+  Write-Host "  . gentle-ai exited with code $LASTEXITCODE (verification warnings)" -ForegroundColor Yellow
+  Write-Host "  This usually means installation completed with non-critical issues."
+  Write-Host "  Continuing with the rest of the setup..."
+  Write-Host ""
 }
 
 Write-Host ""

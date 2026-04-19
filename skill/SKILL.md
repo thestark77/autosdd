@@ -237,6 +237,26 @@ When Stop hook fires while waiting: stop cleanly, do NOT loop, do NOT start unre
 
 ---
 
+## 7.1 Root Cause Feedback Protocol
+
+When the user reports a **bug, error, or problem**, ALWAYS follow this sequence:
+
+1. **Diagnose**: Identify the exact root cause (code-level, architectural, or environmental)
+2. **Explain FIRST**: Before touching any file, give a concise summary:
+   - **Causa**: One sentence — what exactly is wrong and WHY it happens (technical root cause)
+   - **Solución**: One sentence — what the fix is at a technical level
+3. **Then fix**: Proceed with the implementation
+
+This teaches the user to recognize patterns and builds their technical intuition. The explanation should be SHORT (2-4 lines max), not a lecture. Focus on the WHY — the pattern they can recognize next time.
+
+Example:
+> **Causa**: `gentle-ai install` returns exit code 1 for non-critical verification warnings, and our script treats any non-zero exit as fatal. False positive.
+> **Solución**: Treat exit code 1 as warning (log + continue), not as hard failure.
+
+This applies to ALL flows (Dev, Debug, Review) whenever the trigger is a user-reported problem.
+
+---
+
 ## 8. Event-Driven Monitoring (Monitor-First Policy)
 
 **NEVER use `sleep` or polling.** ALWAYS use event-driven tools:
