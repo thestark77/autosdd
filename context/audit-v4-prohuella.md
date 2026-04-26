@@ -1,7 +1,7 @@
 # autoSDD v4 Audit Report — ProHuella Session Analysis
 
 **Session**: 0ca9347b-877d-43e6-88ac-53c03c016daf
-**Project**: ProHuella (C:\Users\sebas\Desktop\cba)
+**Project**: ProHuella
 **Versions analyzed**: v2.6.3 (Schema+Seeds), v2.6.4 (API Layer)
 **Date**: 2026-04-26
 **Auditor**: External analysis from autoSDD repo session

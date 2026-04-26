@@ -105,12 +105,25 @@ RTK: ALWAYS prefix with `rtk` (60-90% savings) · Monitor: event-driven waiting 
 - `context/user_context.md` - User profile and preferences
 - `context/business_logic.md` - Domain knowledge and workflows
 
-### Bidirectional Feedback (v5)
-- AI analyzes EVERY prompt for quality, skill gaps, optimization opportunities
-- User feedback detected and persisted automatically
-- Telemetry tracks pipeline stages, routing decisions, and token usage
-- `feedback.md` auto-generated at version close
+### Pipeline Gates (MANDATORY — verify BEFORE moving to next step)
+| Gate | Before... | VERIFY |
+|------|-----------|--------|
+| G1 | Planning | `mem_search("learnings/{project}")` done · `mem_search("pending")` done |
+| G2 | Delegating | prompt.md with CREA · pre-launch gate: template filled (all 6 sections) · `model` set · skills as TEXT |
+| G3 | Collecting | Observation saved for each delegation · ≥1 feedback question asked |
+| G4 | Closing | feedback.md generated · user feedback persisted · Engram summary saved |
+
+### Telemetry & Self-Improvement (v5)
+- **Session observations**: orchestrator saves compliance notes to Engram at each pipeline step (`telemetry/obs/{project}/{session-marker}/{step}`) — survives compaction and sessions
+- **Tiered knowledge**: observations (Engram, per-step) → consolidated learnings by category (Engram, per-pipeline-step retrieval) → promoted rules (SKILL.md, permanent)
+- **Bidirectional feedback (MANDATORY)**: ≥1 question per completed feature · feedback.md per version close · missing = NON-COMPLIANT
+- `/improve` consolidates observations → learnings → proposes SKILL.md changes → updates `LEARNING.md`
 - `/feedback [timerange]` for reports · `/knowledge-graph` for memory visualization
+
+### Hooks (1-line reminders — logic lives in SKILL.md Section 2 checkpoints)
+- **SubagentStop**: triggers Step 5 checkpoint (observation + feedback debt)
+- **PreCompact**: triggers Step 8 pre-compaction checkpoint (Engram save + plan state)
+- **Stop**: triggers pre-close checkpoint (non-blocking, skips if awaiting user input)
 
 ### Shared Protocols (gentle-ai owns _shared/, autoSDD adds rtk.md only)
 | Protocol | File |
