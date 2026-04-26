@@ -888,6 +888,26 @@ if ($rtkCmd) {
   }
 }
 
+# --- Install auto-resume wrapper ---
+Write-Host ""
+Write-Host "Installing auto-resume wrapper..."
+
+$arDir = Join-Path $env:USERPROFILE ".local\bin"
+New-Item -ItemType Directory -Path $arDir -Force | Out-Null
+
+try {
+  Invoke-WebRequest -Uri "$REPO_URL/scripts/auto-resume.ps1" -OutFile (Join-Path $arDir "autosdd-resume.ps1") -UseBasicParsing
+  Write-Host "  OK autosdd-resume.ps1 -> $arDir\autosdd-resume.ps1"
+  $currentPath = [Environment]::GetEnvironmentVariable("Path", "User")
+  if ($currentPath -notlike "*$arDir*") {
+    [Environment]::SetEnvironmentVariable("Path", "$currentPath;$arDir", "User")
+    $env:Path = "$env:Path;$arDir"
+    Write-Host "  OK Added $arDir to user PATH"
+  }
+} catch {
+  Write-Host "  ! auto-resume install failed. Manual: $REPO_URL/scripts/auto-resume.ps1" -ForegroundColor Yellow
+}
+
 # --- Bootstrap project templates ---
 Write-Host ""
 Write-Host "Bootstrapping project templates..."
@@ -978,7 +998,7 @@ Triage -> Route -> Plan (CREA prompt.md) -> Delegate (sub-agents with skill inje
 Engram (memory + semantic search) · Context7 (docs) · Playwright (browser) · Prisma (DB) · Linear (issues) · GitHub (PRs)
 
 #### Tools
-RTK: ALWAYS prefix with ``rtk`` (60-90% savings) · Monitor: event-driven waiting (NEVER poll)
+RTK: ALWAYS prefix with ``rtk`` (60-90% savings) · Monitor: event-driven waiting (NEVER poll) · Auto-Resume: use ``autosdd-resume`` instead of ``claude`` for rate-limit recovery (default ON, opt-out: ``--no-resume``)
 
 ### Three Critical Context Files (sacred, auto-updated)
 - ``context/guidelines.md`` - Technical rules and conventions
@@ -1064,6 +1084,14 @@ if (Get-Command rtk -ErrorAction SilentlyContinue) {
   Write-Host "  [OK] RTK" -ForegroundColor Green
 } else {
   Write-Host "  [..] RTK not in PATH - restart terminal or install: cargo install rtk" -ForegroundColor Yellow
+}
+
+# Check auto-resume
+$arPath = Join-Path $env:USERPROFILE ".local\bin\autosdd-resume.ps1"
+if (Test-Path $arPath) {
+  Write-Host "  [OK] auto-resume" -ForegroundColor Green
+} else {
+  Write-Host "  [..] autosdd-resume not found - check ~/.local/bin" -ForegroundColor Yellow
 }
 
 # Check autoSDD skill for each selected agent

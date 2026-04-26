@@ -890,6 +890,21 @@ else
   fi
 fi
 
+# --- Install auto-resume wrapper ---
+echo ""
+echo "Installing auto-resume wrapper..."
+
+AR_DIR="$HOME/.local/bin"
+mkdir -p "$AR_DIR"
+
+if curl -fsSL -o "$AR_DIR/autosdd-resume" "$REPO_URL/scripts/auto-resume.sh" 2>/dev/null; then
+  chmod +x "$AR_DIR/autosdd-resume"
+  echo "  ✓ autosdd-resume → $AR_DIR/autosdd-resume"
+  echo "$PATH" | grep -q "$AR_DIR" || echo "  ⚠ Add to PATH: export PATH=\"\$HOME/.local/bin:\$PATH\""
+else
+  echo "  ⚠ auto-resume install failed. Manual: $REPO_URL/scripts/auto-resume.sh"
+fi
+
 # --- Bootstrap project templates ---
 echo ""
 echo "Bootstrapping project templates..."
@@ -981,7 +996,7 @@ Triage -> Route -> Plan (CREA prompt.md) -> Delegate (sub-agents with skill inje
 Engram (memory + semantic search) · Context7 (docs) · Playwright (browser) · Prisma (DB) · Linear (issues) · GitHub (PRs)
 
 #### Tools
-RTK: ALWAYS prefix with \`rtk\` (60-90% savings) · Monitor: event-driven waiting (NEVER poll)
+RTK: ALWAYS prefix with \`rtk\` (60-90% savings) · Monitor: event-driven waiting (NEVER poll) · Auto-Resume: use \`autosdd-resume\` instead of \`claude\` for rate-limit recovery (default ON, opt-out: \`--no-resume\`)
 
 ### Three Critical Context Files (sacred, auto-updated)
 - \`context/guidelines.md\` - Technical rules and conventions
@@ -1061,6 +1076,13 @@ if command -v rtk &>/dev/null; then
   echo "  [OK] RTK"
 else
   echo "  [..] RTK not in PATH - restart terminal or install: cargo install rtk"
+fi
+
+# Check auto-resume
+if command -v autosdd-resume &>/dev/null; then
+  echo "  [OK] auto-resume"
+else
+  echo "  [..] autosdd-resume not in PATH - check ~/.local/bin"
 fi
 
 # Check autoSDD skill for each selected agent

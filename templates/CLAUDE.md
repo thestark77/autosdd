@@ -102,7 +102,7 @@ Triage -> Route -> Plan (CREA prompt.md) -> Delegate (sub-agents with skill inje
 Engram (memory + semantic search) · Context7 (docs) · Playwright (browser) · Prisma (DB) · Linear (issues) · GitHub (PRs)
 
 #### Tools
-RTK: ALWAYS prefix with `rtk` (60-90% savings) · Monitor: event-driven waiting (NEVER poll)
+RTK: ALWAYS prefix with `rtk` (60-90% savings) · Monitor: event-driven waiting (NEVER poll) · Auto-Resume: use `autosdd-resume` instead of `claude` for rate-limit recovery (default ON, opt-out: `--no-resume`)
 
 ### Three Critical Context Files (sacred, auto-updated)
 - `context/guidelines.md` - Technical rules and conventions
@@ -124,10 +124,10 @@ RTK: ALWAYS prefix with `rtk` (60-90% savings) · Monitor: event-driven waiting 
 - `/improve` consolidates observations → learnings → proposes SKILL.md changes → updates `LEARNING.md`
 - `/feedback [timerange]` for reports · `/knowledge-graph` for memory visualization
 
-### Hooks (structural enforcement — configure in `.claude/settings.json`)
-- **SubagentStop**: checkpoint reminder (observation saved? feedback asked? feedback.md exists?)
-- **PreCompact**: mandatory Engram save before compaction (session summary, observations, plan state)
-- **Stop**: close checklist (feedback.md, questions asked, pending TODOs, observations saved)
+### Hooks (1-line reminders — logic lives in SKILL.md Section 2 checkpoints)
+- **SubagentStop**: triggers Step 5 checkpoint (observation + feedback debt)
+- **PreCompact**: triggers Step 8 pre-compaction checkpoint (Engram save + plan state)
+- **Stop**: triggers pre-close checkpoint (non-blocking, skips if awaiting user input)
 
 ### Shared Protocols (gentle-ai owns _shared/, autoSDD adds rtk.md only)
 | Protocol | File |

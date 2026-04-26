@@ -27,7 +27,7 @@ metadata:
 > "Am I orchestrating or executing? If executing, I must delegate."
 
 **DO inline**: Read 1-3 files · Write prompt.md/feedback.md/PROGRESS.md · git commands · Analyze results · Update Engram
-**DELEGATE via Agent**: Read 4+ files · Write any source file (.ts .tsx .prisma .css .py .go) · Tests/builds/lints · Read-then-edit tasks
+**DELEGATE via Agent**: Read 4+ files · Write any source file (.ts .tsx .prisma .css .py .go .sh .ps1) · Tests/builds/lints · Read-then-edit tasks
 
 **When Sub-Agents Fail**: DIAGNOSE -> IMPROVE prompt -> RE-DELEGATE. Never code yourself. After 2 failures -> ask user.
 **Exception**: Single-line mechanical edits (version bump, import typo) = OK inline.
@@ -51,11 +51,12 @@ Detect feedback? -> persist to Engram + context files FIRST.
 
 **Step 5 - COLLECT**: Gather sub-agent results. Validate via delegated agents. Fix by re-delegating.
 Review TODO list — resolve pending items. **Ask user feedback (MANDATORY, Section 9)**: ≥1 question per completed feature. Persist answers to Engram + user_context.md.
+> **Checkpoint**: observation saved for this delegation? feedback debt ≥1 question this session? If not, address NOW.
 
 **Step 6 - CLOSE VERSION**: Generate feedback.md (MANDATORY — with telemetry from Section 8). Update PROGRESS.md. Save Engram summary.
 Review both TODO lists. Remind user of pending questions/tasks. **If feedback.md not generated, session is NON-COMPLIANT.**
 
-**Step 7 - KNOWLEDGE UPDATE**: Update context files if anything changed. Save discoveries to Engram.
+**Step 7 - KNOWLEDGE UPDATE**: Update context files if anything changed. Save discoveries to Engram. **Pre-close**: feedback.md exists? unsaved observations? pending items surfaced? Awaiting user input = valid pause.
 
 **Step 8 - COMPACTION CHECK**: Evaluate context window usage. If > 50% consumed AND a milestone was reached (version closed, major phase complete), tell user: "Contexto al {X}%. Recomiendo compactar — ejecutá /compact y luego decime 'sigue'." Before suggesting: ensure Engram summary saved, all pending state persisted, and a clear resumption plan exists.
 
@@ -266,7 +267,7 @@ Metrics tracked per session — reported in feedback.md at version close.
 **Context files** (orchestrator reads; sub-agents don't): `context/guidelines.md` (tech conventions) · `context/user_context.md` (user profile) · `context/business_logic.md` (domain)
 **Action clarity**: EXECUTE ("do it") -> delegate · RESPOND ("analyze") -> no file changes · PLAN ("propose") -> prompt.md only · UNCLEAR -> ask. Bug reports -> explain root cause first (2-4 lines), then delegate fix.
 
-**Monitoring**: NEVER sleep/poll. Use Monitor for builds. Background Agent auto-notifies. ScheduleWakeup only on explicit user request.
+**Monitoring**: NEVER sleep/poll. Use Monitor for builds. Background Agent auto-notifies. ScheduleWakeup only on explicit user request. Use `autosdd-resume` for rate-limit auto-recovery.
 
 **Compaction**: See Step 8. Proactively suggest /compact at milestones when context > 50%. Save Engram summary + persist plan BEFORE suggesting. After compaction: `mem_context` → re-read Sections 1-4.
 

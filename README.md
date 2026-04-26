@@ -140,7 +140,8 @@ The installer asks 2 questions (which AI agents? response style?) and handles ev
 3. Installs **14 core skills** globally (from original sources)
 4. Installs **shared protocols** (persona, RTK, orchestrator, engram, model assignments)
 5. Installs **RTK** (token optimization — 60-90% savings)
-6. Bootstraps **project templates** (context/ + CLAUDE.md)
+6. Installs **auto-resume** (rate-limit recovery wrapper — default ON)
+7. Bootstraps **project templates** (context/ + CLAUDE.md)
 
 ### After Installation
 
@@ -192,6 +193,7 @@ curl -o ~/.claude/skills/autosdd/SKILL.md \
 | Engram MCP | Persistent cross-session memory |
 | Context7 MCP | Live library/framework documentation |
 | RTK | Token-optimized CLI output |
+| auto-resume | Rate-limit recovery — wraps `claude` CLI, auto-waits and resumes on rate limits |
 
 ### Recommended (not auto-installed)
 
@@ -227,6 +229,9 @@ curl -o ~/.claude/skills/autosdd/SKILL.md \
 autosdd/
 ├── README.md
 ├── install.sh / install.ps1      # One-command installers
+├── scripts/
+│   ├── auto-resume.sh            # Bash wrapper: rate-limit recovery (macOS/Linux)
+│   └── auto-resume.ps1           # PowerShell wrapper: rate-limit recovery (Windows)
 ├── skill/
 │   └── SKILL.md                  # autoSDD v5 framework (installed to ~/.{agent}/skills/autosdd/)
 ├── shared/                       # Extracted protocols (installed to ~/.{agent}/skills/_shared/)
