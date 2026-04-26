@@ -7,6 +7,11 @@ _autosdd_install() {
 
 set -uo pipefail
 
+UPDATE_MODE=false
+if [[ "${1:-}" == "--update" ]]; then
+  UPDATE_MODE=true
+fi
+
 REPO_URL="https://raw.githubusercontent.com/thestark77/autosdd/main"
 SKILL_URL="$REPO_URL/skill/SKILL.md"
 
@@ -157,7 +162,21 @@ echo "  ║     Self-Improving Autonomous Dev        ║"
 echo "  ╚══════════════════════════════════════════╝"
 echo ""
 
+if [[ "$UPDATE_MODE" == true ]]; then
+  echo "  → Update mode: keeping existing configuration, updating skills + CLAUDE.md"
+  echo ""
+  selected_agents=$(IFS=,; echo "${AGENTS[*]}")
+  selected_persona=$(cat "$HOME/.engram/persona" 2>/dev/null || echo "neutral")
+  embedding_mode=$(cat "$HOME/.engram/mode" 2>/dev/null || echo "none")
+  embed_idx=0
+  if [[ "$embedding_mode" == "api" ]]; then
+    embed_idx=2
+  fi
+  reinstall_confirmed=false
+fi
+
 # --- Step 1: Agent Selection ---
+if [[ "$UPDATE_MODE" != true ]]; then
 echo "Step 1/3 — Select AI agents to configure"
 echo "  (ENTER = all agents)"
 echo ""
@@ -265,10 +284,11 @@ elif [[ "$embedding_mode" == "api" ]] && api_configured; then
     embedding_mode="keep"
   fi
 fi
+fi # end update mode guard for steps 1-3
 
 # For api mode, collect and validate key up-front. Loops until valid.
 api_key=""
-if [[ "$embedding_mode" == "api" ]]; then
+if [[ "$UPDATE_MODE" != true ]] && [[ "$embedding_mode" == "api" ]]; then
   embed_url="${EMBED_PROVIDER_URLS[$embed_idx]}"
   embed_model="${EMBED_PROVIDER_MODELS[$embed_idx]}"
   echo ""
@@ -299,6 +319,10 @@ if [[ "$embedding_mode" == "api" ]]; then
   done
 fi
 
+if [[ "$UPDATE_MODE" == true ]]; then
+  echo "Skipping prerequisites and dependency installation (update mode)..."
+  mkdir -p "$ENGRAM_STATE_DIR" && chmod 700 "$ENGRAM_STATE_DIR" 2>/dev/null || true
+else
 # --- Check prerequisites ---
 echo "Checking prerequisites..."
 
@@ -554,6 +578,8 @@ fi
 if [[ "$embedding_mode" != "keep" ]]; then
   echo "$embedding_mode" > "$ENGRAM_STATE_DIR/mode"
 fi
+
+fi # end update mode guard for prerequisites + dependencies
 
 # Write the wrapper script that selects the backend at each MCP launch.
 cat > "$ENGRAM_STATE_DIR/engram-wrapper.sh" <<WRAPPER_EOF
@@ -906,7 +932,7 @@ if [[ -f "./CLAUDE.md" ]]; then
     # v2/v3 without markers → replace from section header to end of file
     sed -i '/^## autoSDD/,$d' "./CLAUDE.md"
     printf '%s\n' "$AUTOSDD_BLOCK" >> "./CLAUDE.md"
-    echo "  ✓ CLAUDE.md → autoSDD v2/v3 section migrated to v4 (markers added)"
+    echo "  ✓ CLAUDE.md → old autoSDD section replaced (markers added)"
   else
     # No autoSDD section → append
     printf '\n%s\n' "$AUTOSDD_BLOCK" >> "./CLAUDE.md"

@@ -6,6 +6,8 @@
 
 $ErrorActionPreference = "Stop"
 
+$UpdateMode = $args -contains "--update"
+
 $REPO_URL = "https://raw.githubusercontent.com/thestark77/autosdd/main"
 $SKILL_URL = "$REPO_URL/skill/SKILL.md"
 
@@ -130,6 +132,17 @@ Write-Host "  |     Self-Improving Autonomous Dev        |" -ForegroundColor Cya
 Write-Host "  +==========================================+" -ForegroundColor Cyan
 Write-Host ""
 
+if ($UpdateMode) {
+  Write-Host "  -> Update mode: keeping existing configuration, updating skills + CLAUDE.md" -ForegroundColor Cyan
+  Write-Host ""
+  $selectedAgents = $AGENTS
+  $selectedPersona = if (Test-Path (Join-Path $ENGRAM_STATE_DIR "persona")) { (Get-Content (Join-Path $ENGRAM_STATE_DIR "persona") -Raw).Trim() } else { "neutral" }
+  $embeddingMode = if (Test-Path (Join-Path $ENGRAM_STATE_DIR "mode")) { (Get-Content (Join-Path $ENGRAM_STATE_DIR "mode") -Raw).Trim() } else { "none" }
+  $embedIdx = 0
+  $embedProvider = $EMBED_PROVIDERS[0]
+  $reinstallConfirmed = $false
+  $apiKey = ""
+} else {
 # --- Step 1: Agent Selection ---
 Write-Host "Step 1/3 - Select AI agents to configure" -ForegroundColor Yellow
 Write-Host "  (ENTER = all agents)"
@@ -252,6 +265,12 @@ if ($embeddingMode -eq "api") {
   }
 }
 
+} # end interactive steps guard
+
+if ($UpdateMode) {
+  Write-Host "Skipping prerequisites and dependency installation (update mode)..."
+  New-Item -ItemType Directory -Path $ENGRAM_STATE_DIR -Force -ErrorAction SilentlyContinue | Out-Null
+} else {
 # --- Check prerequisites ---
 Write-Host "Checking prerequisites..."
 
@@ -535,6 +554,8 @@ if ($embeddingMode -eq "api") {
 if ($embeddingMode -ne "keep") {
   Set-Content -Path (Join-Path $ENGRAM_STATE_DIR "mode") -Value $embeddingMode -NoNewline
 }
+
+} # end update mode guard for prerequisites + dependencies
 
 # Write the wrapper PowerShell script that selects the backend at each MCP launch.
 $wrapperPath = Join-Path $ENGRAM_STATE_DIR "engram-wrapper.ps1"
@@ -908,7 +929,7 @@ if (Test-Path $claudeMd) {
     # v2/v3 without markers -> replace from section header to end of file
     $content = $content -replace "(?s)(?m)^## autoSDD.*$", $AUTOSDD_BLOCK
     Set-Content -Path $claudeMd -Value $content -NoNewline
-    Write-Host "  OK CLAUDE.md -> autoSDD v2/v3 section migrated to v4 (markers added)"
+    Write-Host "  OK CLAUDE.md -> old autoSDD section replaced (markers added)"
   } else {
     # No autoSDD section -> append
     Add-Content -Path $claudeMd -Value "`n$AUTOSDD_BLOCK"
