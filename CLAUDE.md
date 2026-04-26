@@ -19,7 +19,7 @@ Markdown · Bash · PowerShell · Go (gentle-ai dependency)
 ## Critical Constraints
 
 - All content (code, docs, commits) in **English**
-- `skill/SKILL.md` must stay **under 300 lines** (currently 277)
+- `skill/SKILL.md` must stay **under 300 lines** (currently 299)
 - Changes to `skill/SKILL.md` must be reflected in **both installers** (`install.sh` + `install.ps1`)
 - `templates/CLAUDE.md` must match the **current SKILL.md version** at all times
 - **Never duplicate** what gentle-ai already provides (Engram, SDD phases, persona, model-assignments)
@@ -43,7 +43,11 @@ After template changes:
 
 ## Dogfooding
 
-This project uses autoSDD to develop autoSDD. The audit report at `context/audit-v4-prohuella.md` documents the compliance issues that drove v4.1 and v5.0 improvements. Use `/audit` on autoSDD sessions to measure framework compliance.
+This project uses autoSDD to develop autoSDD. The audit report at `context/audit-v4-prohuella.md` documents the compliance issues that drove v4.1 and v5.0 improvements.
+
+- `/audit` — post-hoc JSONL analysis of session compliance
+- `/self-analysis` — in-session self-audit against v5.0 checkpoints (see `context/questions.md`)
+- `/improve` — aggregate telemetry across sessions, propose SKILL.md changes
 
 ---
 
@@ -64,6 +68,7 @@ Read: `skill/SKILL.md` (local, canonical) · `~/.claude/skills/autosdd/SKILL.md`
 - **Section 3**: CREA applied ONCE on prompt.md
 - **Section 4**: Sub-agent launch template (mandatory)
 - **Section 5**: Skill routing (pattern match -> inject rules)
+- **Step 8**: Compaction protocol (suggest /compact at >50% context)
 
 ### Skills (orchestrator resolves automatically)
 `prompt-engineering-patterns` · `frontend-design` · `interface-design` · `branch-pr` · `judgment-day` · `e2e-testing-patterns` · `error-handling-patterns` · `playwright-cli` · `claude-md-improver` · `feedback-report` · `knowledge-graph`

@@ -55,10 +55,12 @@ You are a senior developer with FULL autonomy over the local environment.
 - **Ask before guessing**: If clarifying questions would significantly increase success, ASK FIRST
 - **Suggest improvements**: Proactively propose enhancements
 
-## autoSDD v4.1 - Active Framework (DO NOT REMOVE)
-
 <!-- autosdd:start -->
-autoSDD v4.1 is the ACTIVE development framework. ALL prompts go through autoSDD unless opted out with `[raw]`, `[no-sdd]`, or `skip autosdd`.
+## autoSDD v5.0 - Active Framework (DO NOT REMOVE)
+
+autoSDD v5.0 is the ACTIVE development framework. ALL prompts go through autoSDD unless opted out with `[raw]`, `[no-sdd]`, or `skip autosdd`.
+
+Foundation layer (SDD phases, MCPs, shared protocols) provided by **gentle-ai**. autoSDD extends it with the meta-framework, telemetry, and additional skills.
 
 ### Core Rule
 **The orchestrator DELEGATES. It never writes source code (.ts, .tsx, .prisma, etc.) inline.** See SKILL.md Section 1.
@@ -66,36 +68,61 @@ autoSDD v4.1 is the ACTIVE development framework. ALL prompts go through autoSDD
 ### Pipeline
 Triage -> Route -> Plan (CREA prompt.md) -> Delegate (sub-agents with skill injection) -> Collect -> Close Version -> Knowledge Update -> Compaction Check
 
-### Full Framework
-Read: `~/.claude/skills/autosdd/SKILL.md`
-
 ### Key Sections to Internalize
 - **Section 1**: Orchestrator identity (delegate, don't execute)
 - **Section 3**: CREA applied ONCE on prompt.md (not 3x)
 - **Section 4**: Sub-agent launch template (fill-in-the-blank, mandatory)
 - **Section 5**: Skill routing (pattern match -> inject rules)
+- **Step 8**: Compaction protocol (suggest /compact at >50% context)
 
-### Skills (orchestrator resolves automatically)
-`prompt-engineering-patterns` . `frontend-design` . `interface-design` . `branch-pr` . `judgment-day` . `e2e-testing-patterns` . `error-handling-patterns` . `playwright-cli` . `claude-md-improver` . `feedback-report` . `knowledge-graph`
+### Ecosystem
 
-### SDD Phases (via gentle-ai)
-`sdd-init` . `sdd-explore` . `sdd-propose` . `sdd-spec` . `sdd-design` . `sdd-tasks` . `sdd-apply` . `sdd-verify` . `sdd-archive` . `sdd-onboard`
+#### Skills installed by autoSDD
+| Skill | When |
+|-------|------|
+| `autosdd` | ALWAYS - flow router + CREA + feedback engine |
+| `autosdd-telemetry` | `/audit`, `/improve`, `/self-analysis` - session analysis + self-improvement |
+| `prompt-engineering-patterns` | Every prompt creation - CREA techniques |
+| `frontend-design` | Public-facing UI - pages, components |
+| `interface-design` | Admin/internal UI - dashboards, tables |
+| `e2e-testing-patterns` | E2E tests - Playwright/Cypress |
+| `error-handling-patterns` | Error management - API routes, validation |
+| `playwright-cli` | Browser automation (ALWAYS --headed) |
+| `claude-md-improver` | CLAUDE.md - audit, improve |
+| `feedback-report` | `/feedback [timerange]` - improvement reports |
+| `knowledge-graph` | `/knowledge-graph` - memory visualization |
+
+#### Skills provided by gentle-ai (DO NOT reinstall)
+`branch-pr` · `judgment-day` · `skill-creator` · `issue-creation` · `skill-registry` · `go-testing`
+
+#### SDD Phases (via gentle-ai)
+`sdd-init` · `sdd-explore` · `sdd-propose` · `sdd-spec` · `sdd-design` · `sdd-tasks` · `sdd-apply` · `sdd-verify` · `sdd-archive` · `sdd-onboard`
+
+#### MCPs (via gentle-ai + autoSDD embedding layer)
+Engram (memory + semantic search) · Context7 (docs) · Playwright (browser) · Prisma (DB) · Linear (issues) · GitHub (PRs)
+
+#### Tools
+RTK: ALWAYS prefix with `rtk` (60-90% savings) · Monitor: event-driven waiting (NEVER poll)
 
 ### Three Critical Context Files (sacred, auto-updated)
 - `context/guidelines.md` - Technical rules and conventions
 - `context/user_context.md` - User profile and preferences
 - `context/business_logic.md` - Domain knowledge and workflows
 
-### Tools
-- **RTK**: ALWAYS prefix commands with `rtk` (60-90% savings). Read: `~/.claude/skills/_shared/rtk.md`
-- **Monitor**: Event-driven waiting (NEVER sleep/poll)
+### Bidirectional Feedback (v5)
+- AI analyzes EVERY prompt for quality, skill gaps, optimization opportunities
+- User feedback detected and persisted automatically
+- Telemetry tracks pipeline stages, routing decisions, and token usage
+- `feedback.md` auto-generated at version close
+- `/feedback [timerange]` for reports · `/knowledge-graph` for memory visualization
 
-### Shared Protocols
+### Shared Protocols (gentle-ai owns _shared/, autoSDD adds rtk.md only)
 | Protocol | File |
 |----------|------|
-| Persona | `~/.claude/skills/_shared/persona.md` |
-| RTK | `~/.claude/skills/_shared/rtk.md` |
-| SDD Orchestrator | `~/.claude/skills/_shared/sdd-orchestrator.md` |
-| Engram Memory | `~/.claude/skills/_shared/engram-protocol.md` |
-| Model Assignments | `~/.claude/skills/_shared/model-assignments.md` |
+| RTK Token Optimization | `~/.claude/skills/_shared/rtk.md` |
+| Persona & Rules | `~/.claude/skills/_shared/persona.md` (gentle-ai) |
+| SDD Orchestrator | `~/.claude/skills/_shared/sdd-orchestrator.md` (gentle-ai) |
+| Engram Memory | `~/.claude/skills/_shared/engram-protocol.md` (gentle-ai) |
+
+Read the full framework: `~/.claude/skills/autosdd/SKILL.md`
 <!-- autosdd:end -->

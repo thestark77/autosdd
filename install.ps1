@@ -957,7 +957,7 @@ Triage -> Route -> Plan (CREA prompt.md) -> Delegate (sub-agents with skill inje
 | Skill | When |
 |-------|------|
 | ``autosdd`` | ALWAYS - flow router + CREA + feedback engine |
-| ``autosdd-telemetry`` | ALWAYS - pipeline metrics and analytics |
+| ``autosdd-telemetry`` | ``/audit``, ``/improve``, ``/self-analysis`` - session analysis + self-improvement |
 | ``prompt-engineering-patterns`` | Every prompt creation - CREA techniques |
 | ``frontend-design`` | Public-facing UI - pages, components |
 | ``interface-design`` | Admin/internal UI - dashboards, tables |
