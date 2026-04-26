@@ -136,8 +136,8 @@ function Confirm-Reinstall {
 
 Write-Host ""
 Write-Host "  +==========================================+" -ForegroundColor Cyan
-Write-Host "  |     autoSDD v4 - Installer               |" -ForegroundColor Cyan
-Write-Host "  |     Self-Improving Autonomous Dev        |" -ForegroundColor Cyan
+Write-Host "  |     autoSDD v5.0 - Installer             |" -ForegroundColor Cyan
+Write-Host "  |     Extension for gentle-ai              |" -ForegroundColor Cyan
 Write-Host "  +==========================================+" -ForegroundColor Cyan
 Write-Host ""
 
@@ -768,11 +768,27 @@ for ($i = 0; $i -lt $AGENTS.Count; $i++) {
   }
 }
 
+# 1b. Install autosdd-telemetry skill (from this repo)
+for ($i = 0; $i -lt $AGENTS.Count; $i++) {
+  $agent = $AGENTS[$i]
+  if ($selectedAgents -contains $agent) {
+    $skillDir = Join-Path $AGENT_DIRS[$i] "skills\autosdd-telemetry"
+    try {
+      New-Item -ItemType Directory -Path $skillDir -Force | Out-Null
+      $skillFile = Join-Path $skillDir "SKILL.md"
+      Invoke-WebRequest -Uri "$REPO_URL/skills/autosdd-telemetry/SKILL.md" -OutFile $skillFile -UseBasicParsing
+      Write-Host "  OK autosdd-telemetry ($agent)"
+    } catch {
+      $msg = "Failed to install autosdd-telemetry for $agent - $_"
+      Write-Host "  ! $msg" -ForegroundColor Yellow
+      $warnings += $msg
+    }
+  }
+}
+
 # 2. Install remaining core skills via skills.sh (canonical sources)
 $SKILLS_SH = @(
   @{ repo = "https://github.com/wshobson/agents"; skill = "prompt-engineering-patterns" },
-  @{ repo = "https://github.com/gentleman-programming/sdd-agent-team"; skill = "branch-pr" },
-  @{ repo = "https://github.com/gentleman-programming/sdd-agent-team"; skill = "judgment-day" },
   @{ repo = "https://github.com/anthropics/skills"; skill = "frontend-design" },
   @{ repo = "https://github.com/dammyjay93/interface-design"; skill = "interface-design" },
   @{ repo = "https://github.com/anthropics/claude-plugins-official"; skill = "claude-md-improver" },
@@ -814,24 +830,21 @@ foreach ($skill in $BUNDLED_SKILLS) {
   }
 }
 
-# 4. Install shared protocols (extracted from CLAUDE.md for slim index)
-$SHARED_FILES = @("persona.md", "rtk.md", "sdd-orchestrator.md", "engram-protocol.md", "model-assignments.md")
+# 4. Install RTK shared protocol (autoSDD-specific, gentle-ai owns the rest of _shared/)
 Write-Host ""
-Write-Host "Installing shared protocols..."
+Write-Host "Installing RTK shared protocol..."
 for ($i = 0; $i -lt $AGENTS.Count; $i++) {
   $agent = $AGENTS[$i]
   if ($selectedAgents -contains $agent) {
     $sharedDir = Join-Path $AGENT_DIRS[$i] "skills/_shared"
     New-Item -ItemType Directory -Path $sharedDir -Force | Out-Null
-    foreach ($sf in $SHARED_FILES) {
-      try {
-        Invoke-WebRequest -Uri "$REPO_URL/shared/$sf" -OutFile (Join-Path $sharedDir $sf) -UseBasicParsing
-      } catch {
-        $msg = "Failed to install shared/$sf for $agent"
-        $warnings += $msg
-      }
+    try {
+      Invoke-WebRequest -Uri "$REPO_URL/shared/rtk.md" -OutFile (Join-Path $sharedDir "rtk.md") -UseBasicParsing
+      Write-Host "  OK rtk.md ($agent)"
+    } catch {
+      $msg = "Failed to install shared/rtk.md for $agent"
+      $warnings += $msg
     }
-    Write-Host "  OK shared protocols ($agent)"
   }
 }
 
@@ -919,24 +932,25 @@ $skillPathRefs = ($installedSkillPaths | ForEach-Object { "- ``$_``" }) -join "`
 
 $AUTOSDD_BLOCK = @"
 <!-- autosdd:start -->
-## autoSDD v4 - Active Framework (DO NOT REMOVE)
+## autoSDD v5.0 - Active Framework (DO NOT REMOVE)
 
-autoSDD v4 is the ACTIVE development framework. ALL prompts go through autoSDD unless opted out with ``[raw]``, ``[no-sdd]``, or ``skip autosdd``.
+autoSDD v5.0 is the ACTIVE development framework. ALL prompts go through autoSDD unless opted out with ``[raw]``, ``[no-sdd]``, or ``skip autosdd``.
+
+Foundation layer (SDD phases, MCPs, shared protocols) provided by **gentle-ai**. autoSDD extends it with the meta-framework, telemetry, and additional skills.
 
 ### Core Pipeline
-Prompt Analyst -> Feedback Detector -> Flow Router -> CREA Refine -> Execute -> Outcome Collection -> Knowledge Update
+Prompt Analyst -> Feedback Detector -> Flow Router -> CREA Refine -> Execute -> Telemetry -> Outcome Collection -> Knowledge Update
 
-### Ecosystem (auto-installed)
+### Ecosystem
 
-#### Skills (orchestrator resolves automatically)
+#### Skills installed by autoSDD
 | Skill | When |
 |-------|------|
 | ``autosdd`` | ALWAYS - flow router + CREA + feedback engine |
+| ``autosdd-telemetry`` | ALWAYS - pipeline metrics and analytics |
 | ``prompt-engineering-patterns`` | Every prompt creation - CREA techniques |
 | ``frontend-design`` | Public-facing UI - pages, components |
 | ``interface-design`` | Admin/internal UI - dashboards, tables |
-| ``branch-pr`` | Shipping work - PR creation |
-| ``judgment-day`` | Critical code - security, finance, 5+ files |
 | ``e2e-testing-patterns`` | E2E tests - Playwright/Cypress |
 | ``error-handling-patterns`` | Error management - API routes, validation |
 | ``playwright-cli`` | Browser automation (ALWAYS --headed) |
@@ -944,11 +958,14 @@ Prompt Analyst -> Feedback Detector -> Flow Router -> CREA Refine -> Execute -> 
 | ``feedback-report`` | ``/feedback [timerange]`` - improvement reports |
 | ``knowledge-graph`` | ``/knowledge-graph`` - memory visualization |
 
+#### Skills provided by gentle-ai (DO NOT reinstall)
+``branch-pr`` · ``judgment-day`` · ``skill-creator`` · ``issue-creation`` · ``skill-registry`` · ``go-testing``
+
 #### SDD Phases (via gentle-ai)
 ``sdd-init`` · ``sdd-explore`` · ``sdd-propose`` · ``sdd-spec`` · ``sdd-design`` · ``sdd-tasks`` · ``sdd-apply`` · ``sdd-verify`` · ``sdd-archive`` · ``sdd-onboard``
 
-#### MCPs
-Engram (memory) · Context7 (docs) · Playwright (browser) · Prisma (DB) · Linear (issues) · GitHub (PRs)
+#### MCPs (via gentle-ai + autoSDD embedding layer)
+Engram (memory + semantic search) · Context7 (docs) · Playwright (browser) · Prisma (DB) · Linear (issues) · GitHub (PRs)
 
 #### Tools
 RTK: ALWAYS prefix with ``rtk`` (60-90% savings) · Monitor: event-driven waiting (NEVER poll)
@@ -958,20 +975,20 @@ RTK: ALWAYS prefix with ``rtk`` (60-90% savings) · Monitor: event-driven waitin
 - ``context/user_context.md`` - User profile and preferences
 - ``context/business_logic.md`` - Domain knowledge and workflows
 
-### Bidirectional Feedback (v4)
+### Bidirectional Feedback (v5)
 - AI analyzes EVERY prompt for quality, skill gaps, optimization opportunities
 - User feedback detected and persisted automatically
+- Telemetry tracks pipeline stages, routing decisions, and token usage
 - ``feedback.md`` auto-generated at version close
 - ``/feedback [timerange]`` for reports · ``/knowledge-graph`` for memory visualization
 
-### Shared Protocols
+### Shared Protocols (gentle-ai owns _shared/, autoSDD adds rtk.md only)
 | Protocol | File |
 |----------|------|
-| Persona & Rules | ``~/.claude/skills/_shared/persona.md`` |
 | RTK Token Optimization | ``~/.claude/skills/_shared/rtk.md`` |
-| SDD Orchestrator | ``~/.claude/skills/_shared/sdd-orchestrator.md`` |
-| Engram Memory | ``~/.claude/skills/_shared/engram-protocol.md`` |
-| Model Assignments | ``~/.claude/skills/_shared/model-assignments.md`` |
+| Persona & Rules | ``~/.claude/skills/_shared/persona.md`` (gentle-ai) |
+| SDD Orchestrator | ``~/.claude/skills/_shared/sdd-orchestrator.md`` (gentle-ai) |
+| Engram Memory | ``~/.claude/skills/_shared/engram-protocol.md`` (gentle-ai) |
 
 Read the full framework: ``~/.claude/skills/autosdd/SKILL.md``
 autoSDD skill installed at:
@@ -993,7 +1010,7 @@ if (-not (Test-Path $claudeMd)) {
 if (Test-Path $claudeMd) {
   $content = Get-Content $claudeMd -Raw
   if ($content -match "autosdd:start") {
-    # v4+ with markers -> replace marked block
+    # v4+/v5+ with markers -> replace marked block
     $content = $content -replace "(?s)<!-- autosdd:start -->.*?<!-- autosdd:end -->", $AUTOSDD_BLOCK
     Set-Content -Path $claudeMd -Value $content -NoNewline
     Write-Host "  OK CLAUDE.md -> autoSDD block updated (markers replaced)"
@@ -1067,7 +1084,7 @@ for ($i = 0; $i -lt $AGENTS.Count; $i++) {
     }
 
     # Check core skills installed by autoSDD
-    $coreSkillNames = @("autosdd") + ($SKILLS_SH | ForEach-Object { $_.skill }) + $BUNDLED_SKILLS
+    $coreSkillNames = @("autosdd", "autosdd-telemetry") + ($SKILLS_SH | ForEach-Object { $_.skill }) + $BUNDLED_SKILLS
     foreach ($cs in $coreSkillNames) {
       $csPath = Join-Path $AGENT_DIRS[$i] "skills\$cs\SKILL.md"
       if (Test-Path $csPath) {
@@ -1140,11 +1157,11 @@ if ((Test-Path $claudeMd) -and ((Get-Content $claudeMd -Raw) -match "autosdd:sta
 Write-Host ""
 if ($allGood) {
   Write-Host "  +==========================================+" -ForegroundColor Green
-  Write-Host "  |     autoSDD v4 installed!                |" -ForegroundColor Green
+  Write-Host "  |     autoSDD v5.0 installed!               |" -ForegroundColor Green
   Write-Host "  +==========================================+" -ForegroundColor Green
 } else {
   Write-Host "  +==========================================+" -ForegroundColor Yellow
-  Write-Host "  |  autoSDD v4 installed (with warnings)    |" -ForegroundColor Yellow
+  Write-Host "  |  autoSDD v5.0 installed (with warnings)   |" -ForegroundColor Yellow
   Write-Host "  +==========================================+" -ForegroundColor Yellow
 }
 

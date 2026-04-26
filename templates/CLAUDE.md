@@ -64,7 +64,7 @@ autoSDD v4.1 is the ACTIVE development framework. ALL prompts go through autoSDD
 **The orchestrator DELEGATES. It never writes source code (.ts, .tsx, .prisma, etc.) inline.** See SKILL.md Section 1.
 
 ### Pipeline
-Triage -> Route -> Plan (CREA prompt.md) -> Delegate (sub-agents with skill injection) -> Collect -> Close Version -> Knowledge Update
+Triage -> Route -> Plan (CREA prompt.md) -> Delegate (sub-agents with skill injection) -> Collect -> Close Version -> Knowledge Update -> Compaction Check
 
 ### Full Framework
 Read: `~/.claude/skills/autosdd/SKILL.md`

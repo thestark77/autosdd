@@ -1,4 +1,4 @@
-# AutoSDD v4 — Self-Improving Autonomous Development
+# AutoSDD v5 — Self-Improving Autonomous Development
 
 <div align="center">
 
@@ -19,18 +19,17 @@
 
 autoSDD is a **methodology layer** on top of [gentle-ai](https://github.com/Gentleman-Programming/gentle-ai). gentle-ai provides the infrastructure (skills, MCPs, agents). autoSDD provides the process.
 
-**v4 adds bidirectional feedback**: the AI educates the user to write better prompts, and the user teaches the AI their preferences and conventions. Every interaction makes both sides better.
+**v5 adds telemetry and self-improvement**: the framework measures its own compliance and actively improves. Every session can be audited, every version gets telemetry metrics, and the orchestrator delegates all code to sub-agents — never writes inline.
 
 ### What autoSDD Adds
 
-- **5 Flows** — auto-detect if you're developing, debugging, reviewing, researching, or improving
-- **CREA Framework** — structured prompt engineering on every prompt (Context, Role, Specificity, Action)
-- **Prompt Analyst** — proactive analysis of every user prompt for quality, skill gaps, and optimization opportunities
+- **4 Flows** — DEV, DEBUG, REVIEW, RESEARCH (self-improvement absorbed into telemetry)
+- **CREA Framework** — applied ONCE on prompt.md (not on every individual prompt)
+- **Telemetry** — `/audit` and `/improve` commands measure and improve framework compliance
+- **Active Feedback Collection** — non-blocking questions after UI, features, refactors, and design decisions
 - **Bidirectional Feedback** — AI→User prompt coaching + User→AI preference learning, persisted across sessions
-- **Self-Improvement Engine** — measures its own performance and A/B tests its own process
-- **3 Sacred Context Files** — living docs the AI auto-updates: guidelines, user profile, business logic
-- **Knowledge Graph** — Obsidian-like visualization of everything the AI knows about your project
-- **Event-Driven** — Monitor tool for all waiting, never polling or sleep loops
+- **Orchestrator-First** — delegates ALL code to sub-agents, never writes source code inline
+- **Event-Driven** — Monitor tool for all waiting, never sleep or polling loops
 
 ---
 
@@ -38,13 +37,13 @@ autoSDD is a **methodology layer** on top of [gentle-ai](https://github.com/Gent
 
 Every user prompt flows through this pipeline:
 
-1. **Prompt Analyst** — checks prompt quality (0-100), detects missing context, skill gaps, security concerns. Stops execution if score < 40.
-2. **Feedback Detector** — checks if user is giving feedback ("no", "don't do that", "cambiá esto"). If yes, persists the correction to memory/files immediately.
-3. **Flow Router** — detects intent: development, debugging, code review, research, or self-improvement.
-4. **CREA Refine** — structures the prompt with Context, Role, Specificity, Action + prompt-engineering-patterns techniques.
-5. **Execute Flow** — runs the selected flow (see below).
-6. **Outcome Collection** — records tokens, duration, pass/fail, prompt quality score.
-7. **Knowledge Update** — updates context files, Engram memory, wiki. Auto-generates feedback.md at version close.
+1. **TRIAGE** — Is the prompt clear? Assign HIGH/MEDIUM/LOW priority. Check TODO lists for pending work.
+2. **ROUTE** — Detect intent: feature→DEV, fix→DEBUG, review→REVIEW, research→RESEARCH.
+3. **PLAN (CREA)** — Build `prompt.md` with full CREA structure (Context, Role, Specificity, Action).
+4. **DELEGATE** — Launch sub-agents with skill injection using the mandatory launch template.
+5. **COLLECT** — Gather results, validate output, fix failures by re-delegating (never inline).
+6. **CLOSE VERSION** — Generate `feedback.md` with telemetry metrics, update `PROGRESS.md`.
+7. **KNOWLEDGE UPDATE** — Update context files, save to Engram memory.
 
 ### Development Flow
 
@@ -62,13 +61,9 @@ INGEST → ANALYZE (6 agents + judgment-day in parallel) → REPORT → FIX (opt
 
 SCOPE → GATHER → EVALUATE (scoring matrix) → SYNTHESIZE → DECIDE
 
-### Self-Improvement Flow
-
-MEASURE → HYPOTHESIZE → EXPERIMENT → EVALUATE → APPLY/DISCARD
-
 ---
 
-## Bidirectional Feedback (v4)
+## Bidirectional Feedback (v5)
 
 ### AI → User
 
@@ -80,7 +75,7 @@ The AI proactively identifies weaknesses in your prompts and educates you:
 - **Skill gaps**: "You consistently skip database normalization — here's how to improve"
 - **Token waste**: "3 debug cycles could have been avoided with clearer error reproduction steps"
 
-At version close, a `feedback.md` report is auto-generated with all findings.
+At version close, a `feedback.md` report is auto-generated with all findings and telemetry metrics.
 
 ### User → AI
 
@@ -92,6 +87,11 @@ When you correct the AI, it persists the lesson:
 
 The AI confirms: "Anotado. Guardé que [X]. No va a pasar de nuevo."
 
+### v5 Enhancements
+
+- **Active feedback**: the orchestrator asks non-blocking questions after every UI change, new feature, refactor, or design decision — feedback is collected without blocking execution
+- **TODO list review**: TODO lists are checked at triage, collect, and close phases to ensure nothing is missed
+
 ### Commands
 
 | Command | What it does |
@@ -100,6 +100,8 @@ The AI confirms: "Anotado. Guardé que [X]. No va a pasar de nuevo."
 | `/feedback week` | Aggregate feedback for last 7 days |
 | `/feedback month` | Aggregate feedback for last 30 days |
 | `/feedback v1.0..v2.0` | Feedback for a specific version range |
+| `/audit [session-id\|last\|last-N]` | Analyze session for autoSDD compliance |
+| `/improve [target]` | Run audit + generate improvement plan |
 | `/knowledge-graph` | Visualize AI's memory as interactive graph |
 | `/knowledge-graph obsidian` | Export as Obsidian vault with wikilinks |
 | `/knowledge-graph stats` | Memory statistics summary |
@@ -165,10 +167,9 @@ curl -o ~/.claude/skills/autosdd/SKILL.md \
 
 | Component | Purpose |
 |-----------|---------|
-| `autosdd` skill | This framework — flow router, CREA, feedback engine, prompt analyst |
+| `autosdd` skill | This framework — flow router, CREA, feedback engine, telemetry |
+| `autosdd-telemetry` skill | Session auditing, compliance scoring, /audit and /improve commands |
 | `prompt-engineering-patterns` | CREA prompt techniques (CoT, Few-Shot, Structured Output) |
-| `branch-pr` | PR creation workflow with issue-first enforcement |
-| `judgment-day` | Parallel adversarial code review (two blind judges) |
 | `frontend-design` | Production-grade frontend interfaces |
 | `interface-design` | Dashboards, admin panels, internal tools |
 | `claude-md-improver` | CLAUDE.md audit and improvement |
@@ -179,13 +180,15 @@ curl -o ~/.claude/skills/autosdd/SKILL.md \
 | `knowledge-graph` | Memory visualization as graph |
 | `skill-creator` | Create new skills |
 | `postgresql-table-design` | PostgreSQL schema best practices |
-| Shared protocols (5) | persona, RTK, orchestrator, engram, model assignments |
+| Shared protocols (1) | RTK token optimization |
 
 ### Auto-installed by gentle-ai
 
 | Component | Purpose |
 |-----------|---------|
 | SDD skills (10) | sdd-init, explore, propose, spec, design, tasks, apply, verify, archive, onboard |
+| `branch-pr` | PR creation workflow with issue-first enforcement |
+| `judgment-day` | Parallel adversarial code review (two blind judges) |
 | Engram MCP | Persistent cross-session memory |
 | Context7 MCP | Live library/framework documentation |
 | RTK | Token-optimized CLI output |
@@ -212,6 +215,8 @@ curl -o ~/.claude/skills/autosdd/SKILL.md \
 
 **Get feedback**: `/feedback week` → aggregate report of prompt quality, skill gaps, token waste, recommendations
 
+**Audit compliance**: `/audit last` → analyze last session for autoSDD compliance violations and improvement opportunities
+
 **See AI's memory**: `/knowledge-graph` → interactive D3.js graph of all decisions, conventions, entities, and relationships
 
 ---
@@ -223,7 +228,7 @@ autosdd/
 ├── README.md
 ├── install.sh / install.ps1      # One-command installers
 ├── skill/
-│   └── SKILL.md                  # autoSDD v4 framework (installed to ~/.{agent}/skills/autosdd/)
+│   └── SKILL.md                  # autoSDD v5 framework (installed to ~/.{agent}/skills/autosdd/)
 ├── shared/                       # Extracted protocols (installed to ~/.{agent}/skills/_shared/)
 │   ├── persona.md                # Agent persona, rules, language
 │   ├── rtk.md                    # RTK token optimization instructions
@@ -231,6 +236,7 @@ autosdd/
 │   ├── engram-protocol.md        # Engram memory protocol
 │   └── model-assignments.md      # Phase → model mapping
 ├── skills/                       # Bundled skills (installed to ~/.{agent}/skills/)
+│   ├── autosdd-telemetry/SKILL.md  # Session auditing, /audit and /improve commands
 │   ├── feedback-report/SKILL.md  # Time-based feedback reports
 │   └── knowledge-graph/SKILL.md  # Memory visualization
 ├── templates/                    # Project templates (copied to project on install)
@@ -272,12 +278,14 @@ gentle-ai upgrade && gentle-ai sync
 | Agent configuration | Yes | No (uses gentle-ai) |
 | SDD phase skills (10) | Yes | References them |
 | Engram memory | Yes | Uses it |
-| **5-flow routing** | No | **Yes** |
+| `branch-pr` workflow | Yes | No (gentle-ai provides it) |
+| `judgment-day` review | Yes | No (gentle-ai provides it) |
+| **4-flow routing** | No | **Yes** |
 | **CREA prompt engineering** | No | **Yes** |
-| **Prompt Analyst** | No | **Yes** |
+| **Telemetry (/audit, /improve)** | No | **Yes** |
 | **Bidirectional Feedback** | No | **Yes** |
-| **Self-improvement engine** | No | **Yes** |
-| **Knowledge Graph** | No | **Yes** |
+| **Active feedback collection** | No | **Yes** |
+| **TODO list management** | No | **Yes** |
 | **3 Critical Context Files** | No | **Yes** |
 
 gentle-ai = infrastructure. autoSDD = methodology + continuous improvement.
@@ -293,8 +301,9 @@ gentle-ai = infrastructure. autoSDD = methodology + continuous improvement.
 5. **No silent failures** — escalate after 3 retries, never loop infinitely
 6. **Specs are truth** — implementation matches specs, not the other way around
 7. **Skills are the orchestrator's responsibility** — use them proactively
-8. **Feedback is mandatory** — every version gets a feedback report, every prompt gets analyzed
-9. **English framework** — all skills, prompts, Engram content in English
+8. **Telemetry is mandatory** — every session can be audited, every version gets telemetry metrics
+9. **The orchestrator DELEGATES** — never writes source code inline
+10. **English framework** — all skills, prompts, Engram content in English
 
 ---
 

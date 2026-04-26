@@ -161,8 +161,8 @@ confirm_reinstall() {
 
 echo ""
 echo "  ╔══════════════════════════════════════════╗"
-echo "  ║     autoSDD v4 - Installer               ║"
-echo "  ║     Self-Improving Autonomous Dev        ║"
+echo "  ║     autoSDD v5.0 - Installer             ║"
+echo "  ║     Extension for gentle-ai              ║"
 echo "  ╚══════════════════════════════════════════╝"
 echo ""
 
@@ -790,11 +790,25 @@ for i in "${!AGENTS[@]}"; do
   fi
 done
 
+# 1b. Install autosdd-telemetry skill (from this repo)
+for i in "${!AGENTS[@]}"; do
+  agent="${AGENTS[$i]}"
+  if echo "$selected_agents" | grep -q "$agent"; then
+    skill_dir="${AGENT_DIRS[$i]}/skills/autosdd-telemetry"
+    mkdir -p "$skill_dir"
+    if curl -fsSL -o "$skill_dir/SKILL.md" "$REPO_URL/skills/autosdd-telemetry/SKILL.md"; then
+      echo "  ✓ autosdd-telemetry ($agent)"
+    else
+      msg="Failed to install autosdd-telemetry for $agent"
+      echo "  ⚠ $msg"
+      warnings+=("$msg")
+    fi
+  fi
+done
+
 # 2. Install remaining core skills via skills.sh (canonical sources)
 SKILLS_SH=(
   "https://github.com/wshobson/agents:prompt-engineering-patterns"
-  "https://github.com/gentleman-programming/sdd-agent-team:branch-pr"
-  "https://github.com/gentleman-programming/sdd-agent-team:judgment-day"
   "https://github.com/anthropics/skills:frontend-design"
   "https://github.com/dammyjay93/interface-design:interface-design"
   "https://github.com/anthropics/claude-plugins-official:claude-md-improver"
@@ -838,24 +852,20 @@ for skill in "${BUNDLED_SKILLS[@]}"; do
   done
 done
 
-# 4. Install shared protocols (extracted from CLAUDE.md for slim index)
-SHARED_FILES=("persona.md" "rtk.md" "sdd-orchestrator.md" "engram-protocol.md" "model-assignments.md")
+# 4. Install RTK shared protocol (autoSDD-specific, gentle-ai owns the rest of _shared/)
 echo ""
-echo "Installing shared protocols..."
+echo "Installing RTK shared protocol..."
 for i in "${!AGENTS[@]}"; do
   agent="${AGENTS[$i]}"
   if echo "$selected_agents" | grep -q "$agent"; then
     shared_dir="${AGENT_DIRS[$i]}/skills/_shared"
     mkdir -p "$shared_dir"
-    for sf in "${SHARED_FILES[@]}"; do
-      if curl -fsSL -o "$shared_dir/$sf" "$REPO_URL/shared/$sf" 2>/dev/null; then
-        :
-      else
-        msg="Failed to install shared/$sf for $agent"
-        warnings+=("$msg")
-      fi
-    done
-    echo "  ✓ shared protocols ($agent)"
+    if curl -fsSL -o "$shared_dir/rtk.md" "$REPO_URL/shared/rtk.md" 2>/dev/null; then
+      echo "  ✓ rtk.md ($agent)"
+    else
+      msg="Failed to install shared/rtk.md for $agent"
+      warnings+=("$msg")
+    fi
   fi
 done
 
@@ -925,24 +935,25 @@ for p in "${installed_skill_paths[@]}"; do
 done
 
 AUTOSDD_BLOCK="<!-- autosdd:start -->
-## autoSDD v4 - Active Framework (DO NOT REMOVE)
+## autoSDD v5.0 - Active Framework (DO NOT REMOVE)
 
-autoSDD v4 is the ACTIVE development framework. ALL prompts go through autoSDD unless opted out with \`[raw]\`, \`[no-sdd]\`, or \`skip autosdd\`.
+autoSDD v5.0 is the ACTIVE development framework. ALL prompts go through autoSDD unless opted out with \`[raw]\`, \`[no-sdd]\`, or \`skip autosdd\`.
+
+Foundation layer (SDD phases, MCPs, shared protocols) provided by **gentle-ai**. autoSDD extends it with the meta-framework, telemetry, and additional skills.
 
 ### Core Pipeline
-Prompt Analyst → Feedback Detector → Flow Router → CREA Refine → Execute → Outcome Collection → Knowledge Update
+Prompt Analyst -> Feedback Detector -> Flow Router -> CREA Refine -> Execute -> Telemetry -> Outcome Collection -> Knowledge Update
 
-### Ecosystem (auto-installed)
+### Ecosystem
 
-#### Skills (orchestrator resolves automatically)
+#### Skills installed by autoSDD
 | Skill | When |
 |-------|------|
 | \`autosdd\` | ALWAYS - flow router + CREA + feedback engine |
+| \`autosdd-telemetry\` | ALWAYS - pipeline metrics and analytics |
 | \`prompt-engineering-patterns\` | Every prompt creation - CREA techniques |
 | \`frontend-design\` | Public-facing UI - pages, components |
 | \`interface-design\` | Admin/internal UI - dashboards, tables |
-| \`branch-pr\` | Shipping work - PR creation |
-| \`judgment-day\` | Critical code - security, finance, 5+ files |
 | \`e2e-testing-patterns\` | E2E tests - Playwright/Cypress |
 | \`error-handling-patterns\` | Error management - API routes, validation |
 | \`playwright-cli\` | Browser automation (ALWAYS --headed) |
@@ -950,11 +961,14 @@ Prompt Analyst → Feedback Detector → Flow Router → CREA Refine → Execute
 | \`feedback-report\` | \`/feedback [timerange]\` - improvement reports |
 | \`knowledge-graph\` | \`/knowledge-graph\` - memory visualization |
 
+#### Skills provided by gentle-ai (DO NOT reinstall)
+\`branch-pr\` · \`judgment-day\` · \`skill-creator\` · \`issue-creation\` · \`skill-registry\` · \`go-testing\`
+
 #### SDD Phases (via gentle-ai)
 \`sdd-init\` · \`sdd-explore\` · \`sdd-propose\` · \`sdd-spec\` · \`sdd-design\` · \`sdd-tasks\` · \`sdd-apply\` · \`sdd-verify\` · \`sdd-archive\` · \`sdd-onboard\`
 
-#### MCPs
-Engram (memory) · Context7 (docs) · Playwright (browser) · Prisma (DB) · Linear (issues) · GitHub (PRs)
+#### MCPs (via gentle-ai + autoSDD embedding layer)
+Engram (memory + semantic search) · Context7 (docs) · Playwright (browser) · Prisma (DB) · Linear (issues) · GitHub (PRs)
 
 #### Tools
 RTK: ALWAYS prefix with \`rtk\` (60-90% savings) · Monitor: event-driven waiting (NEVER poll)
@@ -964,20 +978,20 @@ RTK: ALWAYS prefix with \`rtk\` (60-90% savings) · Monitor: event-driven waitin
 - \`context/user_context.md\` - User profile and preferences
 - \`context/business_logic.md\` - Domain knowledge and workflows
 
-### Bidirectional Feedback (v4)
+### Bidirectional Feedback (v5)
 - AI analyzes EVERY prompt for quality, skill gaps, optimization opportunities
 - User feedback detected and persisted automatically
+- Telemetry tracks pipeline stages, routing decisions, and token usage
 - \`feedback.md\` auto-generated at version close
 - \`/feedback [timerange]\` for reports · \`/knowledge-graph\` for memory visualization
 
-### Shared Protocols
+### Shared Protocols (gentle-ai owns _shared/, autoSDD adds rtk.md only)
 | Protocol | File |
 |----------|------|
-| Persona & Rules | \`~/.claude/skills/_shared/persona.md\` |
 | RTK Token Optimization | \`~/.claude/skills/_shared/rtk.md\` |
-| SDD Orchestrator | \`~/.claude/skills/_shared/sdd-orchestrator.md\` |
-| Engram Memory | \`~/.claude/skills/_shared/engram-protocol.md\` |
-| Model Assignments | \`~/.claude/skills/_shared/model-assignments.md\` |
+| Persona & Rules | \`~/.claude/skills/_shared/persona.md\` (gentle-ai) |
+| SDD Orchestrator | \`~/.claude/skills/_shared/sdd-orchestrator.md\` (gentle-ai) |
+| Engram Memory | \`~/.claude/skills/_shared/engram-protocol.md\` (gentle-ai) |
 
 Read the full framework: \`~/.claude/skills/autosdd/SKILL.md\`
 autoSDD skill installed at:${skill_refs}
@@ -994,7 +1008,7 @@ fi
 # Inject or update autoSDD block (even in freshly downloaded template)
 if [[ -f "./CLAUDE.md" ]]; then
   if grep -q "autosdd:start" "./CLAUDE.md"; then
-    # v4+ with markers → replace marked block
+    # v4+/v5+ with markers → replace marked block
     sed -i '/<!-- autosdd:start -->/,/<!-- autosdd:end -->/d' "./CLAUDE.md"
     printf '%s\n' "$AUTOSDD_BLOCK" >> "./CLAUDE.md"
     echo "  ✓ CLAUDE.md → autoSDD block updated (markers replaced)"
@@ -1068,7 +1082,7 @@ for i in "${!AGENTS[@]}"; do
     fi
 
     # Check core skills installed by autoSDD (via skills.sh -g)
-    core_skill_names=("autosdd" "prompt-engineering-patterns" "branch-pr" "judgment-day" "frontend-design" "interface-design" "claude-md-improver" "e2e-testing-patterns" "error-handling-patterns" "playwright-cli" "feedback-report" "knowledge-graph")
+    core_skill_names=("autosdd" "autosdd-telemetry" "prompt-engineering-patterns" "frontend-design" "interface-design" "claude-md-improver" "e2e-testing-patterns" "error-handling-patterns" "playwright-cli" "feedback-report" "knowledge-graph")
     for cs in "${core_skill_names[@]}"; do
       cs_path="${AGENT_DIRS[$i]}/skills/$cs/SKILL.md"
       if [[ -f "$cs_path" ]]; then
@@ -1136,11 +1150,11 @@ fi
 echo ""
 if $all_good; then
   echo "  ╔══════════════════════════════════════════╗"
-  echo "  ║     autoSDD v4 installed!                ║"
+  echo "  ║     autoSDD v5.0 installed!               ║"
   echo "  ╚══════════════════════════════════════════╝"
 else
   echo "  ╔══════════════════════════════════════════╗"
-  echo "  ║  autoSDD v4 installed (with warnings)    ║"
+  echo "  ║  autoSDD v5.0 installed (with warnings)   ║"
   echo "  ╚══════════════════════════════════════════╝"
 fi
 
