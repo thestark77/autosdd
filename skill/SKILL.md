@@ -231,6 +231,7 @@ Metrics tracked per session — reported in feedback.md at version close.
 3. Compare against version prompt.md · Generate compliance report · Save to Engram `telemetry/audit/{id}`
 
 **`/improve [session-id | last | last-N]`**: Run `/audit` -> compare vs SKILL.md -> prioritize improvements -> propose changes (user approves before applying).
+**`/self-analysis`**: In-session. Self-report vs v5.0 checkpoints, solicit user feedback, generate cross-session artifact. See `autosdd-telemetry`.
 
 ---
 

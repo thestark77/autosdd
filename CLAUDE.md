@@ -73,7 +73,7 @@ Read: `skill/SKILL.md` (local, canonical) · `~/.claude/skills/autosdd/SKILL.md`
 
 ### Context Files
 - `context/audit-v4-prohuella.md` - Compliance audit history
-- `context/questions.md` - Open questions
+- `context/questions.md` - Self-analysis protocol (v5.0 session audit prompt)
 - `context/knowledge-vault/` - Architecture decisions, workflows, entities
 
 ### Tools

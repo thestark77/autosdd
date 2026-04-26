@@ -168,7 +168,7 @@ curl -o ~/.claude/skills/autosdd/SKILL.md \
 | Component | Purpose |
 |-----------|---------|
 | `autosdd` skill | This framework — flow router, CREA, feedback engine, telemetry |
-| `autosdd-telemetry` skill | Session auditing, compliance scoring, /audit and /improve commands |
+| `autosdd-telemetry` skill | Session auditing, compliance scoring, /audit, /improve, and /self-analysis |
 | `prompt-engineering-patterns` | CREA prompt techniques (CoT, Few-Shot, Structured Output) |
 | `frontend-design` | Production-grade frontend interfaces |
 | `interface-design` | Dashboards, admin panels, internal tools |
@@ -236,7 +236,7 @@ autosdd/
 │   ├── engram-protocol.md        # Engram memory protocol
 │   └── model-assignments.md      # Phase → model mapping
 ├── skills/                       # Bundled skills (installed to ~/.{agent}/skills/)
-│   ├── autosdd-telemetry/SKILL.md  # Session auditing, /audit and /improve commands
+│   ├── autosdd-telemetry/SKILL.md  # Session auditing, /audit, /improve, /self-analysis
 │   ├── feedback-report/SKILL.md  # Time-based feedback reports
 │   └── knowledge-graph/SKILL.md  # Memory visualization
 ├── templates/                    # Project templates (copied to project on install)

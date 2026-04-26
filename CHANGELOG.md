@@ -14,6 +14,7 @@ autoSDD is an orchestration framework for Claude Code that enforces a structured
 ### Added
 - Compaction Protocol (Step 8): proactive context window management. Suggests /compact at milestones when context > 50%. Mandatory at 70%+. Persists Engram summary and resumption plan before compacting.
 - Reference Solicitation: orchestrator proactively asks for references (repos, docs, designs, existing code) at triage when they would improve execution quality. Non-blocking — saved to TODO if user defers. References flow through CREA context and sub-agent launch template.
+- Self-Analysis Protocol (`/self-analysis`): in-session self-audit against v5.0 checkpoints. Solicits user feedback, generates cross-session consumable artifacts (session analysis report + Engram), and feeds into `/improve` for framework evolution. Rewrote `context/questions.md` from v4 audit to v5.0 protocol.
 
 ### Changed
 - gentle-ai relationship: changed from hard prerequisite to optional enhancement. autoSDD degrades gracefully if gentle-ai is missing or outdated (WARN + continue, never STOP). Shared protocols are optional enhancements.
