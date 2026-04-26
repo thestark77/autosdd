@@ -664,6 +664,8 @@ echo "  ✓ Wrapper installed at $ENGRAM_STATE_DIR/engram-wrapper.sh"
 
 # Point Claude Code's MCP config at the wrapper so the right env vars load at launch.
 # Other agents continue to use the default engram invocation (TF-IDF fallback).
+
+# User-level MCP override
 claude_mcp="$HOME/.claude/mcp/engram.json"
 if [[ -d "$HOME/.claude/mcp" ]]; then
   cat > "$claude_mcp" <<EOF
@@ -675,6 +677,27 @@ EOF
   echo "  ✓ Claude Code MCP config rewired to wrapper"
 else
   echo "  ⚠ $HOME/.claude/mcp not found - skipped MCP rewire"
+fi
+
+# Plugin cache MCP override (plugin config takes precedence over user-level)
+plugin_mcp="$HOME/.claude/plugins/cache/engram/engram"
+if [[ -d "$plugin_mcp" ]]; then
+  for ver_dir in "$plugin_mcp"/*/; do
+    mcp_json="$ver_dir.mcp.json"
+    if [[ -f "$mcp_json" ]]; then
+      cat > "$mcp_json" <<EOF
+{
+  "mcpServers": {
+    "engram": {
+      "command": "$ENGRAM_STATE_DIR/engram-wrapper.sh",
+      "args": []
+    }
+  }
+}
+EOF
+      echo "  ✓ Engram plugin config rewired to wrapper ($(basename "$ver_dir"))"
+    fi
+  done
 fi
 
 # Report active mode

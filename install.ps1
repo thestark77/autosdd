@@ -639,18 +639,34 @@ $wrapperContent = $wrapperContent.Replace("__OLLAMA_MODEL__", $OLLAMA_LOCAL_MODE
 Set-Content -Path $wrapperPath -Value $wrapperContent -NoNewline
 Write-Host "  OK Wrapper installed at $wrapperPath" -ForegroundColor Green
 
-# Point Claude Code's MCP config at the wrapper
+# Point Claude Code's MCP config at the wrapper (both user-level and plugin cache)
+$wrapperMcpConfig = @{
+  command = "powershell.exe"
+  args    = @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", $wrapperPath)
+}
+
+# User-level MCP override
 $claudeMcpDir = Join-Path $env:USERPROFILE ".claude\mcp"
 if (Test-Path $claudeMcpDir) {
   $claudeMcp = Join-Path $claudeMcpDir "engram.json"
-  $mcpConfig = @{
-    command = "powershell.exe"
-    args    = @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", $wrapperPath)
-  } | ConvertTo-Json -Compress
-  Set-Content -Path $claudeMcp -Value $mcpConfig -NoNewline
+  Set-Content -Path $claudeMcp -Value ($wrapperMcpConfig | ConvertTo-Json -Compress) -NoNewline
   Write-Host "  OK Claude Code MCP config rewired to wrapper" -ForegroundColor Green
 } else {
   Write-Host "  ! $claudeMcpDir not found - skipped MCP rewire" -ForegroundColor Yellow
+}
+
+# Plugin cache MCP override (plugin config takes precedence over user-level)
+$pluginMcp = Join-Path $env:USERPROFILE ".claude\plugins\cache\engram\engram"
+if (Test-Path $pluginMcp) {
+  $versions = Get-ChildItem -Path $pluginMcp -Directory | Sort-Object Name -Descending
+  foreach ($ver in $versions) {
+    $mcpJson = Join-Path $ver.FullName ".mcp.json"
+    if (Test-Path $mcpJson) {
+      $pluginCfg = @{ mcpServers = @{ engram = $wrapperMcpConfig } }
+      Set-Content -Path $mcpJson -Value ($pluginCfg | ConvertTo-Json -Depth 3) -NoNewline
+      Write-Host "  OK Engram plugin config rewired to wrapper ($($ver.Name))" -ForegroundColor Green
+    }
+  }
 }
 
 $activeMode = if (Test-Path (Join-Path $ENGRAM_STATE_DIR "mode")) { (Get-Content (Join-Path $ENGRAM_STATE_DIR "mode") -Raw).Trim() } else { "local" }
