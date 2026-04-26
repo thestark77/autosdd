@@ -18,6 +18,7 @@ autoSDD is an orchestration framework for Claude Code that enforces a structured
 ### Changed
 - gentle-ai relationship: changed from hard prerequisite to optional enhancement. autoSDD degrades gracefully if gentle-ai is missing or outdated (WARN + continue, never STOP). Shared protocols are optional enhancements.
 - Dependency Gate: changed from WARN+STOP to WARN+CONTINUE (degraded mode). autoSDD never hard-blocks on external dependencies.
+- Engram Memory Protocol (Section 6): rewritten as session-continuity-critical system. mem_search now MANDATORY on every prompt (not just session start). Pending tasks use structured topic keys (`pending/{project}/{task}`, `pending/general/{task}`, `pending/user-reminders/{item}`) for filtering by project/category. Session close requires explicit Pending Items list.
 
 ---
 

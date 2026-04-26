@@ -36,7 +36,8 @@ metadata:
 
 ## 2. Core Pipeline (7 Steps)
 
-**Step 1 - TRIAGE** (15s, inline): Is the prompt clear? HIGH=proceed · MEDIUM=ask 1-3 things · LOW=stop+clarify.
+**Step 1 - TRIAGE** (15s, inline): `mem_search` for pending tasks related to this prompt FIRST.
+Is the prompt clear? HIGH=proceed · MEDIUM=ask 1-3 things · LOW=stop+clarify.
 Check agent TODO list and user TODO list for pending items — surface any relevant to this prompt.
 Detect feedback? -> persist to Engram + context files FIRST.
 **Reference check**: Would a reference (repo, doc, page, existing code, design system) significantly improve execution? If yes, ask: "Tenes alguna referencia (repo, doc, diseño) que pueda usar como base?" Non-blocking — save to TODO if user defers.
@@ -163,15 +164,21 @@ Inject TEXT of rules, not file paths. Read SKILL.md once/session and cache. ~400
 
 ---
 
-## 6. Engram Memory Protocol
+## 6. Engram Memory Protocol (CRITICAL — Session Continuity)
 
-**Session Start** (MANDATORY): `mem_context` -> `mem_search` for prior work on current topic.
+The user can switch sessions at ANY time (context full, plan change, rate limits). Memory is how you survive this.
 
-**Save IMMEDIATELY when**: architecture/design decision · bug fix (with root cause) · convention established · user preference learned · gotcha discovered
+**Every Prompt** (MANDATORY): `mem_search` for pending tasks, prior decisions, and context relevant to current request. Check `pending/{project}` and `pending/general` topic keys.
 
-**Session Close** (MANDATORY): `mem_session_summary` with Goal, Discoveries, Accomplished, Next Steps, Relevant Files.
+**Session Start** (MANDATORY): `mem_context` -> `mem_search("pending")` -> surface pending items to user.
 
-**After Compaction** (see Step 8): `mem_session_summary` -> `mem_context` -> re-read Sections 1-4. Resume from persisted plan.
+**Save IMMEDIATELY when**: architecture/design decision · bug fix (with root cause) · convention established · user preference learned · gotcha discovered · task assigned but not completed · user reminder/request
+
+**Pending Tasks** — topic keys: `pending/{project}/{task}` (project-specific) · `pending/general/{task}` (cross-project) · `pending/user-reminders/{item}` (user requests). Mark done via `mem_update` (don't delete — audit trail).
+
+**Session Close** (MANDATORY): `mem_session_summary` with Goal, Discoveries, Accomplished, **Pending Items** (explicit list), Next Steps, Relevant Files.
+
+**After Compaction** (see Step 8): `mem_session_summary` -> `mem_context` -> `mem_search("pending")` -> re-read Sections 1-4. Resume from persisted plan.
 
 ---
 
