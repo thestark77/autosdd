@@ -125,7 +125,7 @@ function Confirm-Reinstall {
 
 Write-Host ""
 Write-Host "  +==========================================+" -ForegroundColor Cyan
-Write-Host "  |     autoSDD v3 - Installer               |" -ForegroundColor Cyan
+Write-Host "  |     autoSDD v4 - Installer               |" -ForegroundColor Cyan
 Write-Host "  |     Self-Improving Autonomous Dev        |" -ForegroundColor Cyan
 Write-Host "  +==========================================+" -ForegroundColor Cyan
 Write-Host ""
@@ -1011,11 +1011,11 @@ if ((Test-Path $claudeMd) -and ((Get-Content $claudeMd -Raw) -match "autosdd:sta
 Write-Host ""
 if ($allGood) {
   Write-Host "  +==========================================+" -ForegroundColor Green
-  Write-Host "  |     autoSDD v3 installed!                |" -ForegroundColor Green
+  Write-Host "  |     autoSDD v4 installed!                |" -ForegroundColor Green
   Write-Host "  +==========================================+" -ForegroundColor Green
 } else {
   Write-Host "  +==========================================+" -ForegroundColor Yellow
-  Write-Host "  |  autoSDD v3 installed (with warnings)    |" -ForegroundColor Yellow
+  Write-Host "  |  autoSDD v4 installed (with warnings)    |" -ForegroundColor Yellow
   Write-Host "  +==========================================+" -ForegroundColor Yellow
 }
 

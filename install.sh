@@ -152,7 +152,7 @@ confirm_reinstall() {
 
 echo ""
 echo "  ╔══════════════════════════════════════════╗"
-echo "  ║     autoSDD v3 — Installer               ║"
+echo "  ║     autoSDD v4 — Installer               ║"
 echo "  ║     Self-Improving Autonomous Dev        ║"
 echo "  ╚══════════════════════════════════════════╝"
 echo ""
@@ -998,11 +998,11 @@ fi
 echo ""
 if $all_good; then
   echo "  ╔══════════════════════════════════════════╗"
-  echo "  ║     autoSDD v3 installed!                ║"
+  echo "  ║     autoSDD v4 installed!                ║"
   echo "  ╚══════════════════════════════════════════╝"
 else
   echo "  ╔══════════════════════════════════════════╗"
-  echo "  ║  autoSDD v3 installed (with warnings)    ║"
+  echo "  ║  autoSDD v4 installed (with warnings)    ║"
   echo "  ╚══════════════════════════════════════════╝"
 fi
 
