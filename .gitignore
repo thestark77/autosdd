@@ -68,8 +68,9 @@ temp/
 .tmp/
 
 # Generated files (auto-created by /knowledge-graph command)
-context/knowledge-graph.html
 context/knowledge-graph.json
+context/knowledge-graph-data.js
+context/knowledge-graph.html
 context/knowledge-vault/
 
 # Claude Code local (never commit these)

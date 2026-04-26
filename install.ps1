@@ -790,6 +790,15 @@ foreach ($tmpl in $templates) {
   }
 }
 
+# Install knowledge-graph HTML viewer (static template, always overwrite to keep up-to-date)
+$kgHtml = Join-Path $contextDir "knowledge-graph.html"
+try {
+  Invoke-WebRequest -Uri "$TEMPLATE_URL/knowledge-graph.html" -OutFile $kgHtml -UseBasicParsing
+  Write-Host "  OK knowledge-graph.html -> $kgHtml"
+} catch {
+  Write-Host "  ! Failed to download knowledge-graph.html viewer" -ForegroundColor Yellow
+}
+
 # --- Inject autoSDD block into CLAUDE.md ---
 
 # Build skill path references for all selected agents

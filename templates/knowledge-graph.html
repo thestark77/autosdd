@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>autoSDD Knowledge Graph</title>
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0d1117; color: #e6edf3; overflow: hidden; }
+#container { display: flex; height: 100vh; }
+#graph { flex: 1; position: relative; }
+svg { width: 100%; height: 100%; }
+#sidebar { width: 0; overflow: hidden; transition: width 0.3s; background: #161b22; border-left: 1px solid #30363d; }
+#sidebar.open { width: 350px; }
+#sidebar-content { padding: 20px; width: 350px; }
+#sidebar h2 { font-size: 18px; margin-bottom: 8px; }
+#sidebar .type-badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 12px; margin-bottom: 12px; }
+#sidebar .description { color: #8b949e; line-height: 1.5; margin-bottom: 16px; }
+#close-btn { position: absolute; top: 10px; right: 10px; background: none; border: none; color: #8b949e; font-size: 20px; cursor: pointer; }
+#controls { position: absolute; top: 16px; left: 16px; display: flex; gap: 8px; flex-wrap: wrap; z-index: 10; }
+#controls button { padding: 6px 12px; background: #21262d; border: 1px solid #30363d; color: #e6edf3; border-radius: 6px; cursor: pointer; font-size: 12px; }
+#controls button:hover { background: #30363d; }
+#controls button.active { background: #1f6feb; border-color: #1f6feb; }
+#search { padding: 6px 12px; background: #0d1117; border: 1px solid #30363d; color: #e6edf3; border-radius: 6px; font-size: 12px; width: 180px; }
+#stats { position: absolute; bottom: 16px; left: 16px; font-size: 12px; color: #8b949e; z-index: 10; }
+#title-box { position: absolute; top: 16px; right: 16px; text-align: right; z-index: 10; }
+#title-box h1 { font-size: 20px; font-weight: 600; }
+#title-box p { font-size: 12px; color: #8b949e; }
+.node-label { font-size: 11px; fill: #e6edf3; pointer-events: none; text-anchor: middle; }
+.link-label { font-size: 9px; fill: #484f58; pointer-events: none; text-anchor: middle; }
+.conn-item { padding: 4px 0; font-size: 13px; color: #58a6ff; cursor: pointer; }
+.conn-item:hover { text-decoration: underline; }
+.conn-title { font-size: 14px; color: #8b949e; margin: 12px 0 8px; }
+#loading { display: flex; justify-content: center; align-items: center; height: 100vh; flex-direction: column; gap: 16px; }
+#loading h2 { font-size: 24px; }
+#loading p { color: #8b949e; max-width: 500px; text-align: center; line-height: 1.6; }
+#loading code { background: #161b22; padding: 4px 8px; border-radius: 4px; font-size: 14px; }
+</style>
+</head>
+<body>
+
+<script src="knowledge-graph-data.js"></script>
+
+<div id="container">
+  <div id="graph">
+    <div id="controls">
+      <input type="text" id="search" placeholder="Search nodes...">
+      <button class="active" data-filter="all">All</button>
+      <button data-filter="architecture">Architecture</button>
+      <button data-filter="decision">Decisions</button>
+      <button data-filter="workflow">Flows</button>
+      <button data-filter="entity">Skills/Tools</button>
+      <button data-filter="guideline">Guidelines</button>
+      <button data-filter="version">Versions</button>
+    </div>
+    <div id="title-box">
+      <h1>autoSDD Knowledge Graph</h1>
+      <p id="title-meta"></p>
+    </div>
+    <div id="stats"></div>
+    <svg></svg>
+  </div>
+  <div id="sidebar">
+    <div id="sidebar-content">
+      <button id="close-btn">&times;</button>
+      <h2 id="sb-label"></h2>
+      <span class="type-badge" id="sb-type"></span>
+      <div class="description" id="sb-desc"></div>
+      <div id="sb-created" style="font-size:12px;color:#8b949e;margin-bottom:12px;"></div>
+      <div id="sb-connections">
+        <h3 class="conn-title">Connections</h3>
+        <div id="sb-conn-list"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  if (typeof d3 === 'undefined') {
+    document.body.innerHTML = '<div id="loading"><h2>Loading D3.js...</h2><p>This page needs internet access to load D3.js. Refresh if it does not appear.</p></div>';
+    return;
+  }
+
+  if (typeof window.GRAPH_DATA === 'undefined') {
+    document.body.innerHTML = '<div id="loading"><h2>No graph data found</h2>'
+      + '<p>Run <code>/knowledge-graph</code> in your AI agent to generate the data file, then refresh this page.</p>'
+      + '<p style="margin-top:8px;font-size:13px;color:#484f58;">Expected file: <code>knowledge-graph-data.js</code> in the same directory as this HTML.</p></div>';
+    return;
+  }
+
+  var graphData = window.GRAPH_DATA;
+  var meta = graphData.metadata || {};
+  document.getElementById('title-meta').textContent =
+    (meta.total_nodes || graphData.nodes.length) + ' nodes | '
+    + (meta.total_edges || graphData.edges.length) + ' edges'
+    + (meta.generated ? ' | Generated ' + meta.generated.split('T')[0] : '');
+
+  var typeColors = {
+    user: '#58a6ff', architecture: '#f0883e', decision: '#a371f7',
+    workflow: '#3fb950', entity: '#8b949e', guideline: '#39d353',
+    bugfix: '#f85149', discovery: '#d2a8ff', version: '#e6edf3',
+    'skill-gap': '#d29922', preference: '#768390'
+  };
+
+  var svg = d3.select('svg');
+  var width = window.innerWidth;
+  var height = window.innerHeight;
+  var g = svg.append('g');
+
+  var zoom = d3.zoom().scaleExtent([0.2, 4]).on('zoom', function(e) { g.attr('transform', e.transform); });
+  svg.call(zoom);
+
+  var simulation = d3.forceSimulation(graphData.nodes)
+    .force('link', d3.forceLink(graphData.edges).id(function(d) { return d.id; }).distance(130))
+    .force('charge', d3.forceManyBody().strength(-350))
+    .force('center', d3.forceCenter(width / 2, height / 2))
+    .force('collision', d3.forceCollide().radius(45));
+
+  var link = g.append('g').selectAll('line').data(graphData.edges).join('line')
+    .attr('stroke', '#30363d').attr('stroke-width', 1.5).attr('stroke-opacity', 0.4);
+
+  var linkLabel = g.append('g').selectAll('text').data(graphData.edges.filter(function(d) { return d.label; })).join('text')
+    .attr('font-size', 9).attr('fill', '#484f58').attr('text-anchor', 'middle').attr('pointer-events', 'none')
+    .text(function(d) { return d.label; });
+
+  var connCount = {};
+  graphData.edges.forEach(function(e) {
+    var sid = e.source.id || e.source;
+    var tid = e.target.id || e.target;
+    connCount[sid] = (connCount[sid] || 0) + 1;
+    connCount[tid] = (connCount[tid] || 0) + 1;
+  });
+
+  var nodeGroup = g.append('g').selectAll('g').data(graphData.nodes).join('g')
+    .call(d3.drag()
+      .on('start', function(e, d) { if (!e.active) simulation.alphaTarget(0.3).restart(); d.fx = d.x; d.fy = d.y; })
+      .on('drag', function(e, d) { d.fx = e.x; d.fy = e.y; })
+      .on('end', function(e, d) { if (!e.active) simulation.alphaTarget(0); d.fx = null; d.fy = null; })
+    );
+
+  nodeGroup.append('circle')
+    .attr('r', function(d) { return Math.max(8, Math.min(24, (connCount[d.id] || 1) * 2.5)); })
+    .attr('fill', function(d) { return typeColors[d.type] || '#8b949e'; })
+    .attr('stroke', '#0d1117').attr('stroke-width', 2).style('cursor', 'pointer');
+
+  nodeGroup.append('text')
+    .attr('font-size', 11).attr('fill', '#e6edf3').attr('text-anchor', 'middle').attr('pointer-events', 'none')
+    .attr('dy', function(d) { return Math.max(8, Math.min(24, (connCount[d.id] || 1) * 2.5)) + 14; })
+    .text(function(d) { return d.label; });
+
+  function showSidebar(d) {
+    document.getElementById('sidebar').classList.add('open');
+    document.getElementById('sb-label').textContent = d.label;
+    var badge = document.getElementById('sb-type');
+    badge.textContent = d.type;
+    badge.style.background = typeColors[d.type] || '#8b949e';
+    badge.style.color = '#0d1117';
+    document.getElementById('sb-desc').textContent = d.description || '';
+    document.getElementById('sb-created').textContent = d.created ? 'Created: ' + d.created : '';
+    var connList = document.getElementById('sb-conn-list');
+    connList.innerHTML = '';
+    graphData.edges.forEach(function(e) {
+      var sid = e.source.id || e.source;
+      var tid = e.target.id || e.target;
+      if (sid === d.id || tid === d.id) {
+        var otherId = sid === d.id ? tid : sid;
+        var otherNode = graphData.nodes.find(function(n) { return n.id === otherId; });
+        if (otherNode) {
+          var div = document.createElement('div');
+          div.className = 'conn-item';
+          var direction = sid === d.id ? '→' : '←';
+          div.textContent = direction + ' ' + e.type + ': ' + otherNode.label;
+          div.onclick = function() { showSidebar(otherNode); };
+          connList.appendChild(div);
+        }
+      }
+    });
+  }
+
+  nodeGroup.on('click', function(e, d) { showSidebar(d); });
+
+  nodeGroup.on('mouseover', function(event, d) {
+    d3.select(this).select('circle').attr('stroke', typeColors[d.type]).attr('stroke-width', 3);
+    var connected = new Set();
+    graphData.edges.forEach(function(e) {
+      var sid = e.source.id || e.source;
+      var tid = e.target.id || e.target;
+      if (sid === d.id) connected.add(tid);
+      if (tid === d.id) connected.add(sid);
+    });
+    nodeGroup.style('opacity', function(n) { return n.id === d.id || connected.has(n.id) ? 1 : 0.12; });
+    link.style('opacity', function(e) {
+      var sid = e.source.id || e.source;
+      var tid = e.target.id || e.target;
+      return sid === d.id || tid === d.id ? 0.8 : 0.03;
+    });
+  });
+
+  nodeGroup.on('mouseout', function() {
+    d3.select(this).select('circle').attr('stroke', '#0d1117').attr('stroke-width', 2);
+    nodeGroup.style('opacity', 1);
+    link.style('opacity', 0.4);
+  });
+
+  simulation.on('tick', function() {
+    link.attr('x1', function(d) { return d.source.x; }).attr('y1', function(d) { return d.source.y; })
+        .attr('x2', function(d) { return d.target.x; }).attr('y2', function(d) { return d.target.y; });
+    linkLabel.attr('x', function(d) { return (d.source.x + d.target.x) / 2; })
+             .attr('y', function(d) { return (d.source.y + d.target.y) / 2; });
+    nodeGroup.attr('transform', function(d) { return 'translate(' + d.x + ',' + d.y + ')'; });
+  });
+
+  document.getElementById('close-btn').onclick = function() { document.getElementById('sidebar').classList.remove('open'); };
+
+  document.querySelectorAll('#controls button').forEach(function(btn) {
+    btn.onclick = function() {
+      document.querySelectorAll('#controls button').forEach(function(b) { b.classList.remove('active'); });
+      btn.classList.add('active');
+      var f = btn.dataset.filter;
+      nodeGroup.style('display', function(d) { return f === 'all' || d.type === f ? 'block' : 'none'; });
+      link.style('display', function(e) {
+        if (f === 'all') return 'block';
+        var st = e.source.type || (graphData.nodes.find(function(n) { return n.id === e.source; }) || {}).type;
+        var tt = e.target.type || (graphData.nodes.find(function(n) { return n.id === e.target; }) || {}).type;
+        return st === f || tt === f ? 'block' : 'none';
+      });
+    };
+  });
+
+  document.getElementById('search').oninput = function() {
+    var q = this.value.toLowerCase();
+    if (!q) { nodeGroup.style('opacity', 1); link.style('opacity', 0.4); return; }
+    nodeGroup.style('opacity', function(d) {
+      return d.label.toLowerCase().includes(q) || (d.description || '').toLowerCase().includes(q) ? 1 : 0.1;
+    });
+  };
+
+  document.getElementById('stats').textContent = graphData.nodes.length + ' nodes | ' + graphData.edges.length + ' edges';
+});
+</script>
+</body>
+</html>

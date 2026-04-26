@@ -784,6 +784,14 @@ for tmpl in "${templates[@]}"; do
   fi
 done
 
+# Install knowledge-graph HTML viewer (static template, always overwrite to keep up-to-date)
+kg_html="$CONTEXT_DIR/knowledge-graph.html"
+if curl -fsSL -o "$kg_html" "$TEMPLATE_URL/knowledge-graph.html"; then
+  echo "  ✓ knowledge-graph.html → $kg_html"
+else
+  echo "  ⚠ Failed to download knowledge-graph.html viewer"
+fi
+
 # --- Inject autoSDD block into CLAUDE.md ---
 
 # Build skill path references for all selected agents

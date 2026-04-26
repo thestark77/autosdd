@@ -144,20 +144,20 @@ Output to `context/knowledge-graph.json`:
 }
 ```
 
-### HTML Viewer
+### HTML Viewer (pre-installed template)
 
-When generating JSON, also create `context/knowledge-graph.html` — a self-contained HTML file with embedded D3.js force-directed graph:
+The HTML viewer is a **static template** pre-installed by the autoSDD installer at `context/knowledge-graph.html`. **Do NOT regenerate the HTML file.** It loads data dynamically from a JS file.
 
-- Load `knowledge-graph.json` via fetch or embed inline
-- Color nodes by type (use the color column above)
-- Size nodes by connection count (more connections = larger)
-- Hovering shows: label, type, description
-- Clicking opens a side panel with full details
-- Clusters are visually grouped with dotted borders
-- Search/filter by node type
-- Zoom and pan controls
+After generating `context/knowledge-graph.json`, also write a data loader file:
 
-The HTML should be SELF-CONTAINED (no external CDN dependencies for offline use). Embed D3.js v7 minified inline.
+**`context/knowledge-graph-data.js`:**
+```js
+window.GRAPH_DATA = <contents of knowledge-graph.json>;
+```
+
+This is the ONLY file the HTML viewer needs. The user opens `context/knowledge-graph.html` in a browser and the graph renders automatically from the data file.
+
+Features (built into the template): color-coded nodes by type, size by connection count, hover highlighting, click sidebar, search/filter, zoom/pan.
 
 ### Obsidian Export
 
@@ -184,7 +184,7 @@ Each .md file uses Obsidian wikilinks: `[[decisions/auth-pattern|Auth Pattern De
 
 ## Token Budget
 
-- `/knowledge-graph`: Max 5000 tokens for data collection. Summarize aggressively.
+- `/knowledge-graph`: Max 3000 tokens. Only generates JSON + data.js (HTML is pre-installed).
 - `/knowledge-graph stats`: Max 500 tokens. Just counts and top-5 lists.
 - `/knowledge-graph focus:{topic}`: Max 2000 tokens. Only nodes within 2 hops of topic.
 - `/knowledge-graph obsidian`: Max 8000 tokens (more files to write).
