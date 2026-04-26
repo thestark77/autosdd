@@ -128,13 +128,25 @@ Were rules injected as TEXT or as file path references?
 - [ ] **Session observations saved** at each pipeline step (topic key: `telemetry/obs/{project}/{session-marker}/{step}`). Count: ___
 - [ ] Session summary saved with: Goal · Discoveries · Accomplished · Pending Items · Next Steps
 
-### E2. Feedback Detection (SKILL.md Section 9)
+### E2. Feedback Detection (SKILL.md Section 9) — CRITICAL
 - User corrections detected: {count}
 - Each classified (technical / style / agent error)? ___
 - Each persisted to context files + Engram? ___
 - Confirmation given ("Anotado. [summary].")? ___
-- Proactive questions asked: {count} (max 2/phase rule respected?)
+- **Proactive questions ACTUALLY ASKED to user**: {count} (MUST be ≥1 per completed feature)
+  - List each question asked and the user's response: ___
+  - If count is 0: **this is a NON-COMPLIANT session** — explain WHY no questions were asked
 - Answers persisted to user_context.md + Engram? ___
+- **feedback.md generated per version close?**
+  - List each version closed in this session and whether feedback.md was created:
+  | Version | feedback.md created? | Path |
+  |---------|---------------------|------|
+  - If any version is missing feedback.md: **NON-COMPLIANT** — explain why
+
+### E3. Learning Retrieval (SKILL.md Section 6)
+- [ ] `mem_search("learnings/{project}")` called at TRIAGE to surface anti-patterns
+- [ ] Relevant learnings found: {count}. Were they applied to planning/delegation?
+- [ ] Any new learnings discovered during session that should be consolidated? List them.
 
 ---
 

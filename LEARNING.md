@@ -1,21 +1,9 @@
 # autoSDD Learning Log
 
-Consolidated record of what autoSDD has learned from real-world usage across sessions.
-Each entry is produced by `/improve` after analyzing session observations from Engram.
+> **INDEX** — each entry points to consolidated learnings in Engram. Content lives there, not here.
+> Updated by `/improve` after user approval. Entries appended chronologically (newest at bottom).
 
-This file is the **human-readable audit trail** of framework evolution. Engram observations
-(topic key: `telemetry/obs/*`) are the machine-readable counterpart.
-
-**Format**: Entries are appended chronologically (newest at bottom). Each entry links
-back to the session observations that produced it and lists the concrete changes applied.
-
----
-
-## How This File Gets Updated
-
-1. Orchestrator saves observations at each pipeline step during sessions → Engram (`telemetry/obs/{project}/{session-marker}/{step}`)
-2. User runs `/improve` → searches Engram for pending observations → generates improvement plan
-3. On user approval → changes applied to SKILL.md → entry appended here → observations marked as `applied` in Engram
+**How it works**: Observations (per-step, per-session) → `/improve` consolidates by theme → learnings saved to Engram (`learnings/{project}/{category}/{id}`) → entry added here → observations marked `applied`.
 
 ---
 

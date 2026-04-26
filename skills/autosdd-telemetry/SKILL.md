@@ -5,10 +5,10 @@ description: >
   detect orchestrator anti-patterns, and generate improvement recommendations.
   Manages session observations lifecycle and consolidated learning changelog.
   Triggered by /audit, /improve, and /self-analysis commands.
-version: "2.0.0"
+version: "2.1.0"
 ---
 
-# autosdd-telemetry v2.0 — Session Analysis, Observations & Self-Improvement
+# autosdd-telemetry v2.1 — Session Analysis, Observations & Self-Improvement
 
 ## When to Use
 - User says "dame las oportunidades de mejora", "/audit", "/improve"
@@ -94,6 +94,86 @@ Observations are NEVER deleted — they form the audit trail of framework evolut
 
 ---
 
+## Consolidated Learning Protocol
+
+Raw observations accumulate across sessions (7+ per session). To prevent context saturation, `/improve` CONSOLIDATES them into compact learnings stored by category.
+
+### Learning Topic Key Taxonomy
+
+```
+learnings/{project}/{category}/{short-id}     # Project-specific
+learnings/general/{category}/{short-id}        # Cross-project
+```
+
+**Categories** (semantic, not chronological):
+| Category | Contains |
+|----------|---------|
+| `delegation` | Patterns about when/how to delegate, sub-agent prompt quality |
+| `frontend` | UI/component patterns, styling, layout decisions |
+| `backend` | API, database, server patterns |
+| `testing` | Test patterns, coverage gaps, E2E strategies |
+| `architecture` | Structural decisions, module boundaries |
+| `anti-patterns` | Things that went wrong — highest priority for retrieval |
+| `user-preferences` | User-specific workflow, style, and tool preferences |
+
+### Learning Format (compact — 5-8 lines max)
+
+```
+mem_save({
+  title: "Learning: {short descriptive title}",
+  type: "learning",
+  scope: "project",
+  project: "{project}",
+  topic_key: "learnings/{project}/{category}/{short-id}",
+  content: `
+    ## Learning: {title}
+    **Category**: {category} · **Severity**: HIGH/MEDIUM/LOW
+    **Source**: {observation IDs or session markers that produced this}
+    **Pattern**: {when this applies — the trigger condition, 1 line}
+    **Rule**: {what to do or not do, 1-2 lines}
+    **Evidence**: {what happened that taught us this, 1 line}
+  `
+})
+```
+
+### Consolidation Rules (applied by `/improve`)
+
+1. Group pending observations by THEME (not by session/step)
+2. For each theme with **2+ observations**: create or update a consolidated learning
+3. For each theme with **1 observation + HIGH severity**: create learning immediately
+4. For each theme with **1 observation + LOW/MEDIUM severity**: wait for recurrence (leave observation as pending)
+5. When updating an existing learning: merge evidence, update severity if pattern is stronger
+6. Mark source observations as `applied` (never delete — audit trail)
+
+**Data reduction target**: 10 sessions × 7 steps = 70 observations → consolidate into 5-15 learnings
+
+### Learning Retrieval Strategy (baked into pipeline)
+
+The orchestrator retrieves learnings at specific pipeline steps — never loads ALL learnings at once.
+
+| Pipeline Step | Search Query | Purpose |
+|---------------|-------------|---------|
+| TRIAGE | `mem_search("learnings/{project}/anti-patterns")` + `mem_search("learnings/{project}")` | Surface known failures and relevant rules BEFORE planning |
+| PLAN | `mem_search("learnings/{project}/{task-categories}")` | Pull category-specific learnings based on task type |
+| DELEGATE | Inject relevant learnings into sub-agent `## Standards` | Sub-agents benefit from past learnings |
+| COLLECT | `mem_search("learnings/{project}/anti-patterns")` | Validate results against known failure patterns |
+
+**Context budget**: Each learning is ~50 tokens. Loading 3-5 relevant learnings = 150-250 tokens. This is manageable even in a constrained context window.
+
+### Learning Lifecycle
+
+```
+Raw Observations (per-step, per-session)
+    ↓ /improve consolidates
+Consolidated Learnings (per-category, cross-session)
+    ↓ /improve promotes (when learning is validated across 3+ sessions)
+Framework Rules (SKILL.md, permanent)
+```
+
+Promotion criteria: a learning that has been validated across 3+ sessions with HIGH severity and consistent application should be proposed for promotion to a SKILL.md rule.
+
+---
+
 ## /audit [target]
 
 Analyzes one or more sessions for autoSDD compliance.
@@ -128,6 +208,9 @@ Session logs live at: `~/.claude/projects/{project-slug}/{session-id}.jsonl`
    compactions: count of compaction markers in the log
    feedback_items: count of user corrections detected
    skill_reads: count of Read calls to SKILL.md files
+   feedback_questions_asked: count of proactive questions asked to user (target: >= 1 per completed feature)
+   feedback_md_generated: count of feedback.md files created at version close (target: 1 per version)
+   learning_retrievals: count of mem_search calls with "learnings/" in the query
    ```
 
 3. **Search Engram for Session Observations**:
@@ -161,6 +244,9 @@ Session logs live at: `~/.claude/projects/{project-slug}/{session-id}.jsonl`
    | Engram proactive saves | {N} | >= 5 | OK/FAIL |
    | Session observations saved | {N} | >= 4 (one per major step) | OK/FAIL |
    | feedback.md generated | yes/no | yes | OK/FAIL |
+   | Feedback questions asked | {N} | >= 1/feature | OK/FAIL |
+   | feedback.md generated | {yes/no} | yes per version | OK/FAIL |
+   | Learning retrievals | {N} | >= 1 at triage | OK/FAIL |
 
    ## Session Observations Summary
    {aggregated from Engram observations — deviations, friction points, what worked}
@@ -173,6 +259,33 @@ Session logs live at: `~/.claude/projects/{project-slug}/{session-id}.jsonl`
    ```
 
 6. **Save to Engram**: `mem_save(topic_key: "telemetry/audit/{session-id}")`
+
+---
+
+## Feedback Compliance Audit
+
+Missing feedback is a critical framework violation. `/audit` and `/self-analysis` MUST check:
+
+### Automated Checks
+1. **feedback.md existence**: For each version folder in `context/appVersions/v*/`, verify `feedback.md` exists
+2. **feedback.md quality**: Each feedback.md must contain:
+   - `## Telemetry` section with all metrics from SKILL.md Section 8
+   - `## Discoveries + User Feedback` table with at least 1 entry
+3. **Proactive questions**: Search JSONL for evidence of feedback questions asked to user
+   - Pattern: assistant messages containing "?" directed at user (not rhetorical)
+   - Target: >= 1 per completed feature
+
+### Validation Script
+At CLOSE (Step 6), the orchestrator SHOULD verify:
+```bash
+# Check feedback.md exists for current version
+test -f "context/appVersions/v${VERSION}/feedback.md" && echo "OK" || echo "MISSING feedback.md"
+```
+
+### Common Causes of Missing Feedback
+- **Segmented versions**: When a large change is split into multiple versions, feedback.md must be generated for EACH version, not just the last one
+- **Context compaction**: If feedback.md was planned but context was compacted before CLOSE, it gets lost. Fix: save feedback draft to Engram BEFORE compaction
+- **Pipeline skip**: Agent jumps from DELEGATE directly to next task without COLLECT/CLOSE. Fix: Pipeline Gates in CLAUDE.md enforce step ordering
 
 ---
 
@@ -190,14 +303,21 @@ Runs `/audit` then generates actionable improvement plan using BOTH JSONL analys
 
 2. **Execute `/audit`** on target sessions (JSONL analysis provides quantitative metrics)
 
-3. **Aggregate findings** across all sources:
+3. **Consolidate observations into learnings**:
+   - Group pending observations by THEME (what do they have in common?)
+   - For each theme: apply Consolidation Rules (see Consolidated Learning Protocol)
+   - Create/update learning entries in Engram using the Learning Format
+   - This is the DATA REDUCTION step: many observations → few learnings
+
+4. **Aggregate findings** across all sources:
+   - Newly created/updated consolidated learnings
    - Engram observations (qualitative: friction, gaps, what worked)
    - JSONL audit metrics (quantitative: counts, rates, scores)
    - Prior improvement plans: `mem_search("telemetry/improvement-plan")`
 
-4. **Identify patterns**: What consistently fails? What consistently works? What's new?
+5. **Identify patterns**: What consistently fails? What consistently works? What's new?
 
-5. **Generate improvement plan**:
+6. **Generate improvement plan**:
    ```markdown
    # Improvement Plan — Based on {N} sessions, {M} observations
 
@@ -223,9 +343,9 @@ Runs `/audit` then generates actionable improvement plan using BOTH JSONL analys
    {draft entry for the consolidated changelog}
    ```
 
-6. **Ask user**: "Aplico estos cambios?"
+7. **Ask user**: "Aplico estos cambios?"
 
-7. **On approval — execute all post-improvement actions**:
+8. **On approval — execute all post-improvement actions**:
    a. Apply changes to SKILL.md / CLAUDE.md / skills
    b. Mark consumed observations as "applied":
       ```
@@ -237,7 +357,7 @@ Runs `/audit` then generates actionable improvement plan using BOTH JSONL analys
    c. Append entry to `LEARNING.md` (see LEARNING.md Protocol below)
    d. Save improvement plan to Engram: `telemetry/improvement-plan/{date}`
 
-8. **On rejection**: Save as `telemetry/improvement-plan/{date}-rejected` with user's reasoning. Do NOT mark observations as applied.
+9. **On rejection**: Save as `telemetry/improvement-plan/{date}-rejected` with user's reasoning. Do NOT mark observations as applied.
 
 ---
 
@@ -245,25 +365,25 @@ Runs `/audit` then generates actionable improvement plan using BOTH JSONL analys
 
 `LEARNING.md` lives at the root of the autoSDD repo. It is the consolidated changelog of everything the framework has learned from real-world usage.
 
-### Entry Format
+### Entry Format (INDEX — details live in Engram)
 
 ```markdown
 ## {YYYY-MM-DD} — {short title}
 
-**Source**: {session markers or audit IDs that contributed}
-**Observations consumed**: {count}
-**Sections affected**: {SKILL.md Section N, ...}
+**Source**: {session markers} · **Observations consumed**: {count} · **Sections affected**: {SKILL.md Section N}
 
-### What We Learned
-{2-4 sentences: the insight, pattern, or anti-pattern discovered}
+### Learnings Created/Updated
+| Category | Engram Key | Severity | Summary |
+|----------|-----------|----------|---------|
+| {cat} | `learnings/{project}/{cat}/{id}` | HIGH/MED/LOW | {1-line} |
 
 ### Changes Applied
 - {specific change 1}
 - {specific change 2}
-
-### Impact
-{expected improvement: "reduces inline code violations", "improves skill injection rate", etc.}
 ```
+
+### Why an Index?
+LEARNING.md is a human-readable AUDIT TRAIL — it records WHEN learnings were created and WHAT changed. The actual learning content lives in Engram (`learnings/{project}/{category}/{id}`), where it's retrievable by category during pipeline execution. This keeps LEARNING.md small forever while Engram handles the retrieval.
 
 ### Rules
 - Entries are appended chronologically (newest at bottom)
@@ -307,4 +427,4 @@ Quick self-check template (run at each pipeline step AND at version close):
 
 ---
 
-*autosdd-telemetry v2.0.0 — April 2026 · Observation-driven self-improvement*
+*autosdd-telemetry v2.1.0 — April 2026 · Observation-driven self-improvement*

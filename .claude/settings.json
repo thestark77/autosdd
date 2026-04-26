@@ -1,0 +1,37 @@
+{
+  "hooks": {
+    "SubagentStop": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "prompt",
+            "prompt": "Sub-agent completed. autoSDD checkpoint — verify BEFORE continuing: (1) Save session observation to Engram: mem_save with topic_key telemetry/obs/{project}/{session-marker}/{step}. (2) Have you asked ≥1 feedback question to the user this session? If 0 asked, ask one NOW. (3) If a version was closed, does feedback.md exist? Missing feedback.md = NON-COMPLIANT."
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "prompt",
+            "prompt": "Context compaction imminent. MANDATORY before proceeding: (1) Call mem_session_summary with Goal, Discoveries, Accomplished, Pending Items, Next Steps, Relevant Files. (2) Save any unsaved session observations to Engram. (3) Verify feedback.md exists for every closed version. (4) Persist current plan state and resumption instructions. After compaction: mem_context → mem_search pending → re-read SKILL.md Sections 1-4."
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "prompt",
+            "prompt": "Response complete. autoSDD close checklist: (1) feedback.md generated for every version closed this session? (2) ≥1 feedback question asked to user? (3) Pending TODO items to surface? (4) Session observations saved for completed pipeline steps? If anything is missing, complete it NOW before ending."
+          }
+        ]
+      }
+    ]
+  }
+}

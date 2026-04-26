@@ -40,7 +40,8 @@ metadata:
 Is the prompt clear? HIGH=proceed · MEDIUM=ask 1-3 things · LOW=stop+clarify.
 Check agent TODO list and user TODO list for pending items — surface any relevant to this prompt.
 Detect feedback? -> persist to Engram + context files FIRST.
-**Reference check**: Would a reference (repo, doc, page, existing code, design system) significantly improve execution? If yes, ask: "Tenes alguna referencia (repo, doc, diseño) que pueda usar como base?" Non-blocking — save to TODO if user defers.
+**Reference check**: Would a reference improve execution? Ask: "Tenes alguna referencia (repo, doc, diseño) que pueda usar como base?" Non-blocking — save to TODO if deferred.
+**Learning retrieval**: `mem_search("learnings/{project}")` — surface anti-patterns and relevant learnings BEFORE planning.
 
 **Step 2 - ROUTE**: feature/add/create/refactor -> DEV · fix/bug/broken -> DEBUG · review/PR -> REVIEW · research/compare -> RESEARCH
 
@@ -49,10 +50,10 @@ Detect feedback? -> persist to Engram + context files FIRST.
 **Step 4 - DELEGATE**: Launch sub-agents via Agent tool with CREA context + skill rules + model. See Section 4.
 
 **Step 5 - COLLECT**: Gather sub-agent results. Validate via delegated agents. Fix by re-delegating.
-Review TODO list — resolve pending items if possible. Remind user of pending feedback questions.
+Review TODO list — resolve pending items. **Ask user feedback (MANDATORY, Section 9)**: ≥1 question per completed feature. Persist answers to Engram + user_context.md.
 
-**Step 6 - CLOSE VERSION**: Generate feedback.md (with telemetry from Section 8). Update PROGRESS.md. Save Engram summary.
-Review both TODO lists. Remind user of any pending questions or tasks.
+**Step 6 - CLOSE VERSION**: Generate feedback.md (MANDATORY — with telemetry from Section 8). Update PROGRESS.md. Save Engram summary.
+Review both TODO lists. Remind user of pending questions/tasks. **If feedback.md not generated, session is NON-COMPLIANT.**
 
 **Step 7 - KNOWLEDGE UPDATE**: Update context files if anything changed. Save discoveries to Engram.
 
@@ -173,9 +174,8 @@ The user can switch sessions at ANY time (context full, plan change, rate limits
 **Session Start** (MANDATORY): `mem_context` -> `mem_search("pending")` -> surface pending items to user.
 
 **Save IMMEDIATELY when**: architecture/design decision · bug fix (with root cause) · convention established · user preference learned · gotcha discovered · task assigned but not completed · user reminder/request
-
 **Session Observations (MANDATORY)**: After EACH pipeline step (triage/route/plan/delegate/collect/close), `mem_save` a compliance note. Topic key: `telemetry/obs/{project}/{YYYY-MM-DD-HHmm}/{step}`. Content: what happened, deviations from SKILL.md, metrics snapshot. These observations feed `/improve` across sessions — they are the primary input for framework self-improvement.
-
+**Consolidated Learnings**: `/improve` distills observations into compact learnings: `learnings/{project}/{category}` (delegation · frontend · backend · testing · architecture · anti-patterns · user-preferences) and `learnings/general/{category}`. Retrieved by CATEGORY per pipeline step — never dump all. See autosdd-telemetry.
 **Pending Tasks** — topic keys: `pending/{project}/{task}` (project-specific) · `pending/general/{task}` (cross-project) · `pending/user-reminders/{item}` (user requests). Mark done via `mem_update` (don't delete — audit trail).
 
 **Session Close** (MANDATORY): `mem_session_summary` with Goal, Discoveries, Accomplished, **Pending Items** (explicit list), Next Steps, Relevant Files.
@@ -241,7 +241,7 @@ Metrics tracked per session — reported in feedback.md at version close.
 
 **Passive** — user says "no", "mal", "don't do X": Classify (technical | style | agent error) -> Persist to guidelines.md or user_context.md + Engram -> Confirm: "Anotado. [summary]. No va a pasar de nuevo." -> Include in feedback.md.
 
-**Active** — orchestrator asks user proactively. Rules: NOT blocking (save to TODO, keep working) · 1-line questions (yes/no or A/B) · max 2/phase · no answer = assume OK · persist answers to user_context.md + Engram.
+**Active (MANDATORY)** — orchestrator MUST ask user at feature completion and key decisions. Rules: NOT blocking (keep working) · 1-line questions (yes/no or A/B) · max 2/phase · no answer after prompt = assume OK · persist to user_context.md + Engram.
 
 | After... | Example question |
 |----------|-----------------|

@@ -14,17 +14,27 @@ autoSDD is an orchestration framework for Claude Code that enforces a structured
 ### Added
 - Session Observation Protocol (Section 6): orchestrator MUST save compliance notes to Engram at each pipeline step with topic key `telemetry/obs/{project}/{session-marker}/{step}`. Observations capture what actually happened, deviations, metrics snapshot, and friction points. They survive compaction and sessions.
 - Observation Lifecycle: each observation has a `Status` field (`pending` → `applied`). `/improve` marks consumed observations as applied — never deletes them. Full audit trail of framework evolution.
-- `LEARNING.md` consolidated changelog: framework-level record of what autoSDD has learned from real-world usage. Updated by `/improve` after user approval.
-- autosdd-telemetry v2.0.0: complete rewrite with Session Observation Protocol, Engram-driven `/improve` (searches `telemetry/obs/*` for pending observations as primary input), observation lifecycle management, and `LEARNING.md` maintenance protocol.
+- `LEARNING.md` consolidated changelog: framework-level record of what autoSDD has learned from real-world usage. Updated by `/improve` after user approval. INDEX format — content lives in Engram, LEARNING.md is a pointer table.
+- autosdd-telemetry v2.1.0: complete rewrite with Session Observation Protocol, Consolidated Learning Protocol (tiered knowledge: observations → learnings → rules), Feedback Compliance Audit, Engram-driven `/improve`, observation lifecycle management, and `LEARNING.md` maintenance protocol.
+- Tiered Knowledge Architecture: raw observations (Engram, per-step per-session) → consolidated learnings by category (Engram, retrieved per pipeline step) → promoted rules (SKILL.md, permanent). Data reduction target: 70 observations → 5-15 learnings. Category-based retrieval at ~50 tokens/learning.
+- Consolidated Learning Protocol: 7 categories (delegation, frontend, backend, testing, architecture, anti-patterns, user-preferences). Topic keys: `learnings/{project}/{category}/{id}` and `learnings/general/{category}/{id}`. Consolidation rules: 2+ observations = learning, 1 HIGH = immediate, 1 LOW = wait. Promotion to SKILL.md after 3+ sessions HIGH severity.
+- Learning Retrieval Strategy: TRIAGE searches anti-patterns, PLAN searches task-specific categories, DELEGATE injects into Standards, COLLECT validates against anti-patterns. Never loads all learnings at once.
+- Pipeline Gates: MANDATORY checkpoints visible in CLAUDE.md template. G1 (before planning): learnings + pending searched. G2 (before delegating): CREA prompt.md + skills. G3 (before collecting): observations saved + feedback asked. G4 (before closing): feedback.md + Engram summary.
+- Claude Code Hooks for structural enforcement: SubagentStop (checkpoint reminder), PreCompact (mandatory Engram save), Stop (close checklist). Configured in `.claude/settings.json`. Agent sees reminders automatically — doesn't need to remember.
+- Feedback Compliance Audit in autosdd-telemetry: automated checks for feedback.md existence per version, feedback.md quality (telemetry section + discoveries table), and proactive questions count. Common failure causes documented (segmented versions, compaction, pipeline skip).
 - Compaction Protocol (Step 8): proactive context window management. Suggests /compact at milestones when context > 50%. Mandatory at 70%+. Persists Engram summary and resumption plan before compacting.
-- Reference Solicitation: orchestrator proactively asks for references (repos, docs, designs, existing code) at triage when they would improve execution quality. Non-blocking — saved to TODO if user defers. References flow through CREA context and sub-agent launch template.
-- Self-Analysis Protocol (`/self-analysis`): in-session self-audit against v5.0 checkpoints. Solicits user feedback, generates cross-session consumable artifacts (session analysis report + Engram), and feeds into `/improve` for framework evolution. Rewrote `context/questions.md` from v4 audit to v5.0 protocol.
+- Reference Solicitation: orchestrator proactively asks for references at triage. Non-blocking — saved to TODO if deferred. References flow through CREA context and sub-agent launch template.
+- Self-Analysis Protocol (`/self-analysis`): in-session self-audit against v5.0 checkpoints with feedback gap detection (NON-COMPLIANT markers for missing feedback.md or zero questions asked), learning retrieval compliance (E3 section), and per-version feedback.md table.
 
 ### Changed
-- `/improve` flow: now searches Engram for session observations as PRIMARY input (not just JSONL audit). Aggregates both qualitative (observations) and quantitative (JSONL metrics) data. After applying changes, marks observations as `applied` and appends entry to `LEARNING.md`.
-- gentle-ai relationship: changed from hard prerequisite to optional enhancement. autoSDD degrades gracefully if gentle-ai is missing or outdated (WARN + continue, never STOP). Shared protocols are optional enhancements.
-- Dependency Gate: changed from WARN+STOP to WARN+CONTINUE (degraded mode). autoSDD never hard-blocks on external dependencies.
-- Engram Memory Protocol (Section 6): rewritten as session-continuity-critical system. mem_search now MANDATORY on every prompt (not just session start). Pending tasks use structured topic keys (`pending/{project}/{task}`, `pending/general/{task}`, `pending/user-reminders/{item}`) for filtering by project/category. Session close requires explicit Pending Items list.
+- `/improve` flow: now includes Consolidation Step — groups pending observations by THEME, creates/updates consolidated learnings (not just audit reports). Searches Engram observations as PRIMARY input, aggregates qualitative + quantitative data. Marks consumed observations as `applied` and appends index entry to `LEARNING.md`.
+- Feedback enforcement: Steps 5 (COLLECT) and 6 (CLOSE) now use MANDATORY language. "Ask user feedback (MANDATORY)" in Step 5, "If feedback.md not generated, session is NON-COMPLIANT" in Step 6. Section 9 Active feedback changed from "Active" to "Active (MANDATORY)" with explicit rules.
+- New telemetry metrics: `feedback_questions_asked`, `feedback_md_generated`, `learning_retrievals` added to /audit metric extraction.
+- Learning retrieval at TRIAGE: `mem_search("learnings/{project}")` added to Step 1 to surface anti-patterns and relevant learnings BEFORE planning.
+- gentle-ai relationship: changed from hard prerequisite to optional enhancement. autoSDD degrades gracefully if gentle-ai is missing or outdated.
+- Dependency Gate: changed from WARN+STOP to WARN+CONTINUE (degraded mode).
+- Engram Memory Protocol (Section 6): added Consolidated Learnings paragraph with category taxonomy and retrieval-by-category rule. Session observations and learnings are two complementary layers.
+- `templates/CLAUDE.md`: added Pipeline Gates table, Hooks section, tiered knowledge description, and MANDATORY feedback language.
 
 ---
 
