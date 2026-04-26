@@ -5,6 +5,7 @@
 & {
 
 $ErrorActionPreference = "Stop"
+Add-Type -AssemblyName System.Security -ErrorAction SilentlyContinue
 
 $REPO_URL = "https://raw.githubusercontent.com/thestark77/autosdd/main"
 $SKILL_URL = "$REPO_URL/skill/SKILL.md"
@@ -86,14 +87,14 @@ function Test-EmbeddingApiKey {
 }
 
 # --- Helper: store API key via Windows DPAPI (encrypted at rest with user account) ---
-# Returns the friendly storage method name.
+# Uses raw .NET DPAPI to avoid dependency on Microsoft.PowerShell.Security module.
 function Save-ApiKeySecure {
   param([string]$Key)
   New-Item -ItemType Directory -Path $ENGRAM_STATE_DIR -Force | Out-Null
-  $secure    = ConvertTo-SecureString -String $Key -AsPlainText -Force
-  $encrypted = $secure | ConvertFrom-SecureString
+  $bytes     = [System.Text.Encoding]::UTF8.GetBytes($Key)
+  $encrypted = [System.Security.Cryptography.ProtectedData]::Protect($bytes, $null, 'CurrentUser')
   $path      = Join-Path $ENGRAM_STATE_DIR "api-key.dpapi"
-  Set-Content -Path $path -Value $encrypted -NoNewline
+  [System.IO.File]::WriteAllBytes($path, $encrypted)
   # Restrict ACL to current user only
   try {
     $acl = Get-Acl $path
@@ -617,6 +618,7 @@ $wrapperContent = @'
 # Selects the embedding backend based on %USERPROFILE%\.engram\mode, then launches engram mcp.
 
 $ErrorActionPreference = "Stop"
+Add-Type -AssemblyName System.Security -ErrorAction SilentlyContinue
 $stateDir = Join-Path $env:USERPROFILE ".engram"
 $modeFile = Join-Path $stateDir "mode"
 $mode = if (Test-Path $modeFile) { (Get-Content $modeFile -Raw).Trim() } else { "local" }
@@ -632,6 +634,15 @@ function Resolve-OpenRouterKey {
   return ""
 }
 
+function Read-DpapiKey {
+  param([string]$Path)
+  try {
+    $encrypted = [System.IO.File]::ReadAllBytes($Path)
+    $decrypted = [System.Security.Cryptography.ProtectedData]::Unprotect($encrypted, $null, 'CurrentUser')
+    return [System.Text.Encoding]::UTF8.GetString($decrypted)
+  } catch { return "" }
+}
+
 switch ($mode) {
   "local" {
     $env:ENGRAM_EMBEDDING_PROVIDER  = "api"
@@ -645,15 +656,7 @@ switch ($mode) {
     $env:ENGRAM_EMBEDDING_API_MODEL = (Get-Content (Join-Path $stateDir "api-model") -Raw).Trim()
     $keyPath = Join-Path $stateDir "api-key.dpapi"
     $key = ""
-    if (Test-Path $keyPath) {
-      try {
-        $encrypted = Get-Content $keyPath -Raw
-        $secure = ConvertTo-SecureString -String $encrypted
-        $bstr = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($secure)
-        $key = [Runtime.InteropServices.Marshal]::PtrToStringAuto($bstr)
-        [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($bstr)
-      } catch { }
-    }
+    if (Test-Path $keyPath) { $key = Read-DpapiKey -Path $keyPath }
     if (-not $key) { $key = Resolve-OpenRouterKey }
     $env:ENGRAM_EMBEDDING_API_KEY = $key
   }
