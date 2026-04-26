@@ -268,13 +268,12 @@ Metrics tracked per session — reported in feedback.md at version close.
 
 ## 11. Auto-Installed Ecosystem
 
-### Prerequisite: gentle-ai
-autoSDD is built ON TOP of gentle-ai. gentle-ai provides: Engram MCP, SDD orchestrator, 10 SDD phase skills, skill-resolver, skill-registry, engram-convention, persistence-contract, Context7 MCP, persona.
+### Relationship with gentle-ai
+autoSDD is designed to work WITH gentle-ai but does NOT depend on it. gentle-ai provides: Engram MCP, SDD orchestrator, 10 SDD phase skills, skill-resolver, Context7 MCP, persona.
 
 autoSDD adds: meta-pipeline (triage/route/plan/delegate/collect/close), CREA structure, additional skills, telemetry, bidirectional feedback, RTK optimization, active feedback collection.
 
-If gentle-ai is not installed, autoSDD installer will install it first.
-Shared protocols (engram, sdd-orchestrator, persona, model-assignments) are managed by gentle-ai. Do NOT duplicate them.
+**Decoupling rules**: autoSDD operates independently. If gentle-ai is missing or outdated, autoSDD degrades gracefully (WARN, continue without missing features). Never import gentle-ai internals or rely on its file structure. Shared protocols used by autoSDD (engram, persona, model-assignments) are optional enhancements — autoSDD works without them.
 
 ### Skills (autoSDD installs globally)
 `prompt-engineering-patterns` · `branch-pr` · `judgment-day` · `frontend-design` · `interface-design` · `e2e-testing-patterns` · `error-handling-patterns` · `playwright-cli` · `claude-md-improver` · `feedback-report` · `knowledge-graph`
@@ -284,7 +283,7 @@ Shared protocols (engram, sdd-orchestrator, persona, model-assignments) are mana
 
 ### RTK: Always prefix commands with `rtk`. 60-90% token savings.
 
-### Dependency Gate: Missing Engram, Context7, prompt-engineering-patterns, or RTK -> WARN and STOP.
+### Dependency Gate: Missing Engram, Context7, prompt-engineering-patterns, or RTK -> WARN and CONTINUE (degraded mode). autoSDD never hard-blocks on external dependencies.
 
 For installation, skill combinations, A/B testing, self-improvement engine -> see `autoSDD-reference.md` in the repo.
 
