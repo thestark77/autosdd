@@ -36,6 +36,8 @@ metadata:
 
 ## 2. Core Pipeline (7 Steps)
 
+**Mid-Pipeline Interrupt**: When user sends a NEW message during execution: **PAUSE** — acknowledge IMMEDIATELY (never ignore/defer). **CLASSIFY**: feedback on current work → integrate and continue · higher priority or blocking → save state to Engram, pivot · same/lower priority → acknowledge, add to TODO list, continue current task. Then resume pipeline from where you paused.
+
 **Step 1 - TRIAGE** (15s, inline): `mem_search` for pending tasks related to this prompt FIRST.
 Is the prompt clear? HIGH=proceed · MEDIUM=ask 1-3 things · LOW=stop+clarify.
 Check agent TODO list and user TODO list for pending items — surface any relevant to this prompt.
@@ -61,11 +63,8 @@ Review both TODO lists. Remind user of pending questions/tasks. **If feedback.md
 
 **Step 8 - COMPACTION CHECK**: Evaluate context window usage. If > 50% consumed AND a milestone was reached (version closed, major phase complete), tell user: "Contexto al {X}%. Recomiendo compactar — ejecutá /compact y luego decime 'sigue'." Before suggesting: ensure Engram summary saved, all pending state persisted, and a clear resumption plan exists.
 
-**Context Window Rules**:
-- **~20%**: Prime zone. Maximum coherence and quality.
-- **50%**: Suggest compaction at next milestone. Never mid-task.
-- **70%+**: MANDATORY compaction suggestion. Quality is degrading.
-- After compaction: `mem_context` → re-read Sections 1-4 → resume from plan.
+**Context Window Rules**: ~20% = prime zone · 50% = suggest compaction at next milestone (never mid-task) · 70%+ = MANDATORY compaction.
+After compaction: `mem_context` → re-read Sections 1-4 → resume from plan.
 
 ---
 
@@ -254,8 +253,6 @@ Metrics tracked per session — reported in feedback.md at version close.
 ---
 
 ## 10. Flows, Context Files, Action Clarity
-
-**Flow diagram**: TRIAGE -> ROUTE -> PLAN -> DELEGATE -> COLLECT -> CLOSE -> UPDATE
 
 **Version folder**: `context/appVersions/vX.Y.Z/` — `original_prompt.md` · `prompt.md` · `feedback.md`
 
