@@ -48,6 +48,7 @@ Detect feedback? -> persist to Engram + context files FIRST.
 **Step 3 - PLAN (CREA)**: Build prompt.md. **One place CREA is fully applied.** See Section 3.
 
 **Step 4 - DELEGATE**: Launch sub-agents via Agent tool with CREA context + skill rules + model. See Section 4.
+> **Pre-launch gate**: BEFORE calling Agent, verify: Context+Role+Standards+Task+Validation+Return Contract filled? `model` set? Skills injected as TEXT? If any missing, STOP and fill — do NOT launch.
 
 **Step 5 - COLLECT**: Gather sub-agent results. Validate via delegated agents. Fix by re-delegating.
 Review TODO list — resolve pending items. **Ask user feedback (MANDATORY, Section 9)**: ≥1 question per completed feature. Persist answers to Engram + user_context.md.
@@ -113,9 +114,7 @@ Sub-agents act as {senior implementers / reviewers / architects} with expertise 
 
 ---
 
-## 4. Sub-Agent Launch Template
-
-**EVERY delegation uses this template.**
+## 4. Sub-Agent Launch Template (MANDATORY — always set `model` and `description`)
 
 ```
 ## Context
@@ -141,8 +140,6 @@ You are a senior {implementer/reviewer/tester} specializing in {domain}.
 ## Return Contract
 Report: files_changed, tests_added, issues_found, Engram-worthy discoveries
 ```
-
-**Agent tool**: always set `model` (sonnet=apply/verify, opus=architecture) and `description` (short task name).
 
 ---
 

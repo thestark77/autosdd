@@ -113,7 +113,7 @@ RTK: ALWAYS prefix with `rtk` (60-90% savings) · Monitor: event-driven waiting 
 | Gate | Before... | VERIFY |
 |------|-----------|--------|
 | G1 | Planning | `mem_search("learnings/{project}")` done · `mem_search("pending")` done |
-| G2 | Delegating | prompt.md created with CREA · skills identified per task |
+| G2 | Delegating | prompt.md with CREA · pre-launch gate: template filled (all 6 sections) · `model` set · skills as TEXT |
 | G3 | Collecting | Observation saved for each delegation · ≥1 feedback question asked |
 | G4 | Closing | feedback.md generated · user feedback persisted · Engram summary saved |
 
