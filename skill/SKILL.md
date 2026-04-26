@@ -174,6 +174,8 @@ The user can switch sessions at ANY time (context full, plan change, rate limits
 
 **Save IMMEDIATELY when**: architecture/design decision · bug fix (with root cause) · convention established · user preference learned · gotcha discovered · task assigned but not completed · user reminder/request
 
+**Session Observations (MANDATORY)**: After EACH pipeline step (triage/route/plan/delegate/collect/close), `mem_save` a compliance note. Topic key: `telemetry/obs/{project}/{YYYY-MM-DD-HHmm}/{step}`. Content: what happened, deviations from SKILL.md, metrics snapshot. These observations feed `/improve` across sessions — they are the primary input for framework self-improvement.
+
 **Pending Tasks** — topic keys: `pending/{project}/{task}` (project-specific) · `pending/general/{task}` (cross-project) · `pending/user-reminders/{item}` (user requests). Mark done via `mem_update` (don't delete — audit trail).
 
 **Session Close** (MANDATORY): `mem_session_summary` with Goal, Discoveries, Accomplished, **Pending Items** (explicit list), Next Steps, Relevant Files.
@@ -230,7 +232,7 @@ Metrics tracked per session — reported in feedback.md at version close.
 2. Extract Agent calls, inline edits, skill injections, Engram usage
 3. Compare against version prompt.md · Generate compliance report · Save to Engram `telemetry/audit/{id}`
 
-**`/improve [session-id | last | last-N]`**: Run `/audit` -> compare vs SKILL.md -> prioritize improvements -> propose changes (user approves before applying).
+**`/improve [session-id | last | last-N]`**: `mem_search("telemetry/obs")` for session observations + run `/audit` on JSONL -> aggregate findings -> compare vs SKILL.md -> propose changes (user approves) -> `mem_update` consumed observations to `status: applied` -> append to `LEARNING.md`.
 **`/self-analysis`**: In-session. Self-report vs v5.0 checkpoints, solicit user feedback, generate cross-session artifact. See `autosdd-telemetry`.
 
 ---
@@ -261,9 +263,7 @@ Metrics tracked per session — reported in feedback.md at version close.
 
 **Other flows**: Debug: Engram search -> diagnose -> explain -> delegate fix -> verify · Review: judgment-day parallel -> CRITICAL/WARNING/INFO · Research: WebSearch+Context7+Engram -> matrix -> save
 
-**Context files** (orchestrator reads; sub-agents don't):
-`context/guidelines.md` (tech conventions) · `context/user_context.md` (user profile) · `context/business_logic.md` (domain)
-
+**Context files** (orchestrator reads; sub-agents don't): `context/guidelines.md` (tech conventions) · `context/user_context.md` (user profile) · `context/business_logic.md` (domain)
 **Action clarity**: EXECUTE ("do it") -> delegate · RESPOND ("analyze") -> no file changes · PLAN ("propose") -> prompt.md only · UNCLEAR -> ask. Bug reports -> explain root cause first (2-4 lines), then delegate fix.
 
 **Monitoring**: NEVER sleep/poll. Use Monitor for builds. Background Agent auto-notifies. ScheduleWakeup only on explicit user request.

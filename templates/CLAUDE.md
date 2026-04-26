@@ -109,11 +109,11 @@ RTK: ALWAYS prefix with `rtk` (60-90% savings) · Monitor: event-driven waiting 
 - `context/user_context.md` - User profile and preferences
 - `context/business_logic.md` - Domain knowledge and workflows
 
-### Bidirectional Feedback (v5)
-- AI analyzes EVERY prompt for quality, skill gaps, optimization opportunities
-- User feedback detected and persisted automatically
-- Telemetry tracks pipeline stages, routing decisions, and token usage
+### Telemetry & Self-Improvement (v5)
+- **Session observations**: orchestrator saves compliance notes to Engram at each pipeline step (`telemetry/obs/{project}/{session-marker}/{step}`) — survives compaction and sessions
+- **Bidirectional feedback**: AI analyzes prompts + user feedback detected and persisted automatically
 - `feedback.md` auto-generated at version close
+- `/improve` searches Engram for pending observations → proposes SKILL.md changes → marks observations as `applied` → updates `LEARNING.md`
 - `/feedback [timerange]` for reports · `/knowledge-graph` for memory visualization
 
 ### Shared Protocols (gentle-ai owns _shared/, autoSDD adds rtk.md only)

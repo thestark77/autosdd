@@ -12,11 +12,16 @@ autoSDD is an orchestration framework for Claude Code that enforces a structured
 ## [Unreleased]
 
 ### Added
+- Session Observation Protocol (Section 6): orchestrator MUST save compliance notes to Engram at each pipeline step with topic key `telemetry/obs/{project}/{session-marker}/{step}`. Observations capture what actually happened, deviations, metrics snapshot, and friction points. They survive compaction and sessions.
+- Observation Lifecycle: each observation has a `Status` field (`pending` → `applied`). `/improve` marks consumed observations as applied — never deletes them. Full audit trail of framework evolution.
+- `LEARNING.md` consolidated changelog: framework-level record of what autoSDD has learned from real-world usage. Updated by `/improve` after user approval.
+- autosdd-telemetry v2.0.0: complete rewrite with Session Observation Protocol, Engram-driven `/improve` (searches `telemetry/obs/*` for pending observations as primary input), observation lifecycle management, and `LEARNING.md` maintenance protocol.
 - Compaction Protocol (Step 8): proactive context window management. Suggests /compact at milestones when context > 50%. Mandatory at 70%+. Persists Engram summary and resumption plan before compacting.
 - Reference Solicitation: orchestrator proactively asks for references (repos, docs, designs, existing code) at triage when they would improve execution quality. Non-blocking — saved to TODO if user defers. References flow through CREA context and sub-agent launch template.
 - Self-Analysis Protocol (`/self-analysis`): in-session self-audit against v5.0 checkpoints. Solicits user feedback, generates cross-session consumable artifacts (session analysis report + Engram), and feeds into `/improve` for framework evolution. Rewrote `context/questions.md` from v4 audit to v5.0 protocol.
 
 ### Changed
+- `/improve` flow: now searches Engram for session observations as PRIMARY input (not just JSONL audit). Aggregates both qualitative (observations) and quantitative (JSONL metrics) data. After applying changes, marks observations as `applied` and appends entry to `LEARNING.md`.
 - gentle-ai relationship: changed from hard prerequisite to optional enhancement. autoSDD degrades gracefully if gentle-ai is missing or outdated (WARN + continue, never STOP). Shared protocols are optional enhancements.
 - Dependency Gate: changed from WARN+STOP to WARN+CONTINUE (degraded mode). autoSDD never hard-blocks on external dependencies.
 - Engram Memory Protocol (Section 6): rewritten as session-continuity-critical system. mem_search now MANDATORY on every prompt (not just session start). Pending tasks use structured topic keys (`pending/{project}/{task}`, `pending/general/{task}`, `pending/user-reminders/{item}`) for filtering by project/category. Session close requires explicit Pending Items list.

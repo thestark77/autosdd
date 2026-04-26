@@ -125,6 +125,7 @@ Were rules injected as TEXT or as file path references?
 - [ ] `mem_search` called on EVERY prompt (not just session start)
 - [ ] Checked `pending/{project}` and `pending/general` topic keys
 - [ ] Proactive saves (count: ___). List topic keys used.
+- [ ] **Session observations saved** at each pipeline step (topic key: `telemetry/obs/{project}/{session-marker}/{step}`). Count: ___
 - [ ] Session summary saved with: Goal · Discoveries · Accomplished · Pending Items · Next Steps
 
 ### E2. Feedback Detection (SKILL.md Section 9)
