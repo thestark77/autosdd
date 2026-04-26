@@ -278,6 +278,51 @@ if ($embeddingMode -eq "api") {
 if ($UpdateMode) {
   Write-Host "Skipping prerequisites and dependency installation (update mode)..."
   New-Item -ItemType Directory -Path $ENGRAM_STATE_DIR -Force -ErrorAction SilentlyContinue | Out-Null
+
+  # Auto-configure embeddings if not yet configured and an API key is available
+  $modeFile = Join-Path $ENGRAM_STATE_DIR "mode"
+  if (-not (Test-Path $modeFile) -or ((Get-Content $modeFile -Raw).Trim() -eq "none")) {
+    $detectedKey = ""
+    if ($env:OPENROUTER_API_KEY) {
+      $detectedKey = $env:OPENROUTER_API_KEY
+    } else {
+      foreach ($envFile in @(".env.local", ".env")) {
+        if (Test-Path $envFile) {
+          $line = Select-String -Path $envFile -Pattern "^OPENROUTER_API_KEY=" | Select-Object -First 1
+          if ($line) { $detectedKey = ($line.Line -split "=", 2)[1].Trim('"', "'", ' '); break }
+        }
+      }
+    }
+    if ($detectedKey) {
+      Write-Host "  -> OPENROUTER_API_KEY detected, configuring API embeddings..."
+      Set-Content -Path (Join-Path $ENGRAM_STATE_DIR "api-url")      -Value "https://openrouter.ai/api/v1/embeddings" -NoNewline
+      Set-Content -Path (Join-Path $ENGRAM_STATE_DIR "api-model")    -Value "openai/text-embedding-3-small"           -NoNewline
+      Set-Content -Path (Join-Path $ENGRAM_STATE_DIR "api-provider") -Value "OpenRouter"                              -NoNewline
+      $null = Save-ApiKeySecure -Key $detectedKey
+      Set-Content -Path (Join-Path $ENGRAM_STATE_DIR "mode")         -Value "api"                                     -NoNewline
+      Write-Host "  OK Embeddings configured via OpenRouter (key stored securely)" -ForegroundColor Green
+      $detectedKey = $null
+      Remove-Variable detectedKey -ErrorAction SilentlyContinue
+    }
+  }
+
+  # Rebuild engram binary if embedding source exists
+  $embeddingDir = Join-Path $env:USERPROFILE ".claude\plugins\marketplaces\engram\internal\embedding"
+  if (Test-Path $embeddingDir) {
+    $engramBinCmd = Get-Command engram -ErrorAction SilentlyContinue
+    if ($engramBinCmd) {
+      $engramSrc = Join-Path $env:USERPROFILE ".claude\plugins\marketplaces\engram"
+      Write-Host "  . Rebuilding engram binary with embedding support..."
+      Push-Location $engramSrc
+      & go build -o $engramBinCmd.Source ./cmd/engram/ 2>$null
+      if ($LASTEXITCODE -eq 0) {
+        Write-Host "  OK Engram rebuilt" -ForegroundColor Green
+      } else {
+        Write-Host "  ! Engram rebuild failed (Go may not be installed)" -ForegroundColor Yellow
+      }
+      Pop-Location
+    }
+  }
 } else {
 # --- Check prerequisites ---
 Write-Host "Checking prerequisites..."

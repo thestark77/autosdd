@@ -326,6 +326,49 @@ fi
 if [[ "$UPDATE_MODE" == true ]]; then
   echo "Skipping prerequisites and dependency installation (update mode)..."
   mkdir -p "$ENGRAM_STATE_DIR" && chmod 700 "$ENGRAM_STATE_DIR" 2>/dev/null || true
+
+  # Auto-configure embeddings if not yet configured and an API key is available
+  mode_file="$ENGRAM_STATE_DIR/mode"
+  current_mode=$(cat "$mode_file" 2>/dev/null || echo "")
+  if [[ -z "$current_mode" || "$current_mode" == "none" ]]; then
+    detected_key=""
+    if [[ -n "${OPENROUTER_API_KEY:-}" ]]; then
+      detected_key="$OPENROUTER_API_KEY"
+    else
+      for envf in ".env.local" ".env"; do
+        if [[ -f "$envf" ]]; then
+          detected_key=$(grep -E "^OPENROUTER_API_KEY=" "$envf" 2>/dev/null | head -1 | cut -d= -f2- | tr -d '"'"'"' ' || echo "")
+          [[ -n "$detected_key" ]] && break
+        fi
+      done
+    fi
+    if [[ -n "$detected_key" ]]; then
+      echo "  -> OPENROUTER_API_KEY detected, configuring API embeddings..."
+      printf '%s' "https://openrouter.ai/api/v1/embeddings" > "$ENGRAM_STATE_DIR/api-url"
+      printf '%s' "openai/text-embedding-3-small"            > "$ENGRAM_STATE_DIR/api-model"
+      printf '%s' "OpenRouter"                               > "$ENGRAM_STATE_DIR/api-provider"
+      store_api_key_secure "$detected_key" >/dev/null 2>&1
+      printf '%s' "api" > "$mode_file"
+      echo "  ✓ Embeddings configured via OpenRouter (key stored securely)"
+      detected_key=""
+    fi
+  fi
+
+  # Rebuild engram binary if embedding source exists
+  embedding_dir="$HOME/.claude/plugins/marketplaces/engram/internal/embedding"
+  if [[ -d "$embedding_dir" ]] && command -v go &>/dev/null; then
+    engram_bin=$(command -v engram 2>/dev/null || echo "")
+    if [[ -n "$engram_bin" ]]; then
+      echo "  . Rebuilding engram binary with embedding support..."
+      pushd "$HOME/.claude/plugins/marketplaces/engram" >/dev/null
+      if go build -o "$engram_bin" ./cmd/engram/ 2>/dev/null; then
+        echo "  ✓ Engram rebuilt"
+      else
+        echo "  ⚠ Engram rebuild failed (check Go installation)"
+      fi
+      popd >/dev/null
+    fi
+  fi
 else
 # --- Check prerequisites ---
 echo "Checking prerequisites..."
