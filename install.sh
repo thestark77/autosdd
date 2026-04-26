@@ -1,16 +1,11 @@
 #!/usr/bin/env bash
-# autoSDD Installer — installs gentle-ai + autoSDD skill
+# autoSDD Installer - installs gentle-ai + autoSDD skill
 # Works on macOS and Linux. For Windows, use install.ps1
 
 # Wrap in function so exit doesn't kill the user's shell when run via curl | bash
 _autosdd_install() {
 
 set -uo pipefail
-
-UPDATE_MODE=false
-if [[ "${1:-}" == "--update" ]]; then
-  UPDATE_MODE=true
-fi
 
 REPO_URL="https://raw.githubusercontent.com/thestark77/autosdd/main"
 SKILL_URL="$REPO_URL/skill/SKILL.md"
@@ -45,7 +40,16 @@ AGENT_DIRS=(
   "$HOME/.kiro"
 )
 
-# Warning collector — populated throughout the install for the final report.
+# Auto-detect: update mode if autoSDD skill already exists for any agent
+UPDATE_MODE=false
+for dir in "${AGENT_DIRS[@]}"; do
+  if [[ -f "$dir/skills/autosdd/SKILL.md" ]]; then
+    UPDATE_MODE=true
+    break
+  fi
+done
+
+# Warning collector - populated throughout the install for the final report.
 warnings=()
 
 # --- Embedding backend configuration ---
@@ -69,12 +73,12 @@ EMBED_PROVIDER_URLS=(
   "https://api.jina.ai/v1/embeddings"
 )
 EMBED_PROVIDER_MODELS=(
-  "bge-m3"                              # local Ollama — best open multilingual
-  "text-embedding-3-small"              # OpenAI — $0.02/1M, 1536 dims
-  "openai/text-embedding-3-small"       # OpenRouter — same model proxied
-  "voyage-3"                            # Voyage — $0.06/1M, strong multilingual
-  "mistral-embed"                       # Mistral — $0.10/1M, 1024 dims
-  "jina-embeddings-v3"                  # Jina — $0.02/1M, top multilingual MTEB
+  "bge-m3"                              # local Ollama - best open multilingual
+  "text-embedding-3-small"              # OpenAI - $0.02/1M, 1536 dims
+  "openai/text-embedding-3-small"       # OpenRouter - same model proxied
+  "voyage-3"                            # Voyage - $0.06/1M, strong multilingual
+  "mistral-embed"                       # Mistral - $0.10/1M, 1024 dims
+  "jina-embeddings-v3"                  # Jina - $0.02/1M, top multilingual MTEB
 )
 
 # Ollama local defaults
@@ -103,7 +107,7 @@ validate_api_key() {
 store_api_key_secure() {
   local key="$1"
   if command -v security &>/dev/null; then
-    # macOS Keychain — -U updates if exists
+    # macOS Keychain - -U updates if exists
     if security add-generic-password -U -a "$USER" -s "$KEYCHAIN_SERVICE" -w "$key" 2>/dev/null; then
       echo "macOS Keychain"; return
     fi
@@ -157,7 +161,7 @@ confirm_reinstall() {
 
 echo ""
 echo "  ╔══════════════════════════════════════════╗"
-echo "  ║     autoSDD v4 — Installer               ║"
+echo "  ║     autoSDD v4 - Installer               ║"
 echo "  ║     Self-Improving Autonomous Dev        ║"
 echo "  ╚══════════════════════════════════════════╝"
 echo ""
@@ -177,7 +181,7 @@ fi
 
 # --- Step 1: Agent Selection ---
 if [[ "$UPDATE_MODE" != true ]]; then
-echo "Step 1/3 — Select AI agents to configure"
+echo "Step 1/3 - Select AI agents to configure"
 echo "  (ENTER = all agents)"
 echo ""
 for i in "${!AGENTS[@]}"; do
@@ -212,12 +216,12 @@ fi
 echo ""
 
 # --- Step 2: Persona Selection ---
-echo "Step 2/3 — Select AI response style"
+echo "Step 2/3 - Select AI response style"
 echo "  (ENTER = neutral)"
 echo ""
-echo "  1. gentleman  — Rioplatense Spanish, passionate, opinionated"
-echo "  2. neutral     — Professional, no regional style"
-echo "  3. custom      — Define your own"
+echo "  1. gentleman  - Rioplatense Spanish, passionate, opinionated"
+echo "  2. neutral     - Professional, no regional style"
+echo "  3. custom      - Define your own"
 echo ""
 persona_input=""
 if [[ -r /dev/tty ]]; then
@@ -235,7 +239,7 @@ echo "  → Selected: $selected_persona"
 echo ""
 
 # --- Step 3: Semantic search backend ---
-echo "Step 3/3 — Semantic search backend for Engram"
+echo "Step 3/3 - Semantic search backend for Engram"
 echo "  (ENTER = local [default], 100% offline, no API key needed)"
 echo ""
 echo "  1. local        Ollama + bge-m3  (~2.3GB, free, offline)  [default]"
@@ -349,7 +353,7 @@ echo "  ✓ curl"
 
 # Check Node.js (required by Context7 MCP and npx commands)
 if ! command -v node &>/dev/null; then
-  echo "  · Node.js not found — installing via brew..."
+  echo "  · Node.js not found - installing via brew..."
   if ! brew install node; then
     echo "  ✗ Node.js installation failed."
     echo "  Install manually: https://nodejs.org/en/download"
@@ -360,7 +364,7 @@ echo "  ✓ node $(node --version 2>/dev/null)"
 
 # Check Go (required by engram, installed by gentle-ai)
 if ! command -v go &>/dev/null; then
-  echo "  · Go not found — installing via brew..."
+  echo "  · Go not found - installing via brew..."
   if ! brew install go; then
     echo "  ✗ Go installation failed."
     echo "  Install manually: https://go.dev/dl/"
@@ -391,7 +395,7 @@ fi
 
 # Check gentle-ai
 if ! command -v gentle-ai &>/dev/null; then
-  echo "  · gentle-ai not found — installing via brew..."
+  echo "  · gentle-ai not found - installing via brew..."
   brew tap Gentleman-Programming/homebrew-tap 2>/dev/null
   if ! brew install gentle-ai; then
     echo ""
@@ -445,11 +449,11 @@ PATCH_URL="$REPO_URL/patches/engram-embedding.patch"
 if [[ ! -d "$ENGRAM_SRC" ]]; then
   echo "  ⚠ Engram source not found at $ENGRAM_SRC"
   echo "  Semantic search will not be available until Engram is installed."
-  warnings+=("Engram source not found — embedding layer skipped")
+  warnings+=("Engram source not found - embedding layer skipped")
 else
   # Check if embedding layer is already applied (idempotent)
   if [[ -d "$ENGRAM_SRC/internal/embedding" ]]; then
-    echo "  ✓ Embedding layer already applied — skipping patch"
+    echo "  ✓ Embedding layer already applied - skipping patch"
   else
     # Download and apply patch
     patch_tmp=$(mktemp /tmp/engram-embedding-XXXXXX.patch)
@@ -464,7 +468,7 @@ else
         if git apply --3way "$patch_tmp" 2>/dev/null; then
           echo "  ✓ Embedding patch applied (3-way merge)"
         else
-          echo "  ⚠ Embedding patch failed — semantic search not available"
+          echo "  ⚠ Embedding patch failed - semantic search not available"
           warnings+=("Embedding patch failed to apply")
           rm -f "$patch_tmp"
           cd - >/dev/null
@@ -492,8 +496,8 @@ else
     if go build -o "$engram_bin" ./cmd/engram/ 2>/dev/null; then
       echo "  ✓ Engram rebuilt with semantic search support"
     else
-      echo "  ⚠ Engram rebuild failed — check Go installation"
-      warnings+=("Engram rebuild failed — embedding layer applied but binary not updated")
+      echo "  ⚠ Engram rebuild failed - check Go installation"
+      warnings+=("Engram rebuild failed - embedding layer applied but binary not updated")
     fi
     cd - >/dev/null
   fi
@@ -520,8 +524,8 @@ if [[ "$embedding_mode" == "local" ]]; then
     if curl -fsSL https://ollama.com/install.sh | sh; then
       echo "  ✓ Ollama installed"
     else
-      echo "  ⚠ Ollama install failed — semantic search will fall back to TF-IDF"
-      warnings+=("Ollama install failed — local embedding mode unavailable")
+      echo "  ⚠ Ollama install failed - semantic search will fall back to TF-IDF"
+      warnings+=("Ollama install failed - local embedding mode unavailable")
       embedding_mode="none"
     fi
   else
@@ -544,7 +548,7 @@ if [[ "$embedding_mode" == "local" ]]; then
       done
     fi
 
-    # Pull model (idempotent — skips if already local)
+    # Pull model (idempotent - skips if already local)
     if ollama list 2>/dev/null | grep -qE "^$OLLAMA_LOCAL_MODEL(\s|:)"; then
       echo "  ✓ Model $OLLAMA_LOCAL_MODEL already present"
     else
@@ -552,7 +556,7 @@ if [[ "$embedding_mode" == "local" ]]; then
       if ollama pull "$OLLAMA_LOCAL_MODEL"; then
         echo "  ✓ Model $OLLAMA_LOCAL_MODEL pulled"
       else
-        echo "  ⚠ Model pull failed — semantic search will fall back to TF-IDF"
+        echo "  ⚠ Model pull failed - semantic search will fall back to TF-IDF"
         warnings+=("Ollama pull $OLLAMA_LOCAL_MODEL failed")
         embedding_mode="none"
       fi
@@ -584,7 +588,7 @@ fi # end update mode guard for prerequisites + dependencies
 # Write the wrapper script that selects the backend at each MCP launch.
 cat > "$ENGRAM_STATE_DIR/engram-wrapper.sh" <<WRAPPER_EOF
 #!/usr/bin/env bash
-# Managed by autoSDD installer — do not edit directly.
+# Managed by autoSDD installer - do not edit directly.
 # Selects the embedding backend (local Ollama or remote API) based on
 # \$HOME/.engram/mode, then execs engram mcp with the right env vars.
 
@@ -650,7 +654,7 @@ esac
 
 engram_bin=\$(command -v engram 2>/dev/null)
 if [[ -z "\$engram_bin" ]]; then
-  echo "engram binary not found in PATH — cannot start MCP server" >&2
+  echo "engram binary not found in PATH - cannot start MCP server" >&2
   exit 1
 fi
 exec "\$engram_bin" mcp --tools=agent "\$@"
@@ -670,7 +674,7 @@ if [[ -d "$HOME/.claude/mcp" ]]; then
 EOF
   echo "  ✓ Claude Code MCP config rewired to wrapper"
 else
-  echo "  ⚠ $HOME/.claude/mcp not found — skipped MCP rewire"
+  echo "  ⚠ $HOME/.claude/mcp not found - skipped MCP rewire"
 fi
 
 # Report active mode
@@ -818,7 +822,7 @@ TEMPLATE_URL="$REPO_URL/templates"
 CONTEXT_DIR="./context"
 
 if [[ -d "$CONTEXT_DIR" ]]; then
-  echo "  context/ directory already exists — skipping existing files"
+  echo "  context/ directory already exists - skipping existing files"
 fi
 
 mkdir -p "$CONTEXT_DIR"
@@ -827,7 +831,7 @@ templates=("guidelines.md" "user_context.md" "business_logic.md" "autosdd.md")
 for tmpl in "${templates[@]}"; do
   target="$CONTEXT_DIR/$tmpl"
   if [[ -f "$target" ]]; then
-    echo "  · $tmpl already exists — skipped"
+    echo "  · $tmpl already exists - skipped"
   else
     if curl -fsSL -o "$target" "$TEMPLATE_URL/$tmpl"; then
       echo "  ✓ $tmpl → $target"
@@ -855,7 +859,7 @@ for p in "${installed_skill_paths[@]}"; do
 done
 
 AUTOSDD_BLOCK="<!-- autosdd:start -->
-## autoSDD v4 — Active Framework (DO NOT REMOVE)
+## autoSDD v4 - Active Framework (DO NOT REMOVE)
 
 autoSDD v4 is the ACTIVE development framework. ALL prompts go through autoSDD unless opted out with \`[raw]\`, \`[no-sdd]\`, or \`skip autosdd\`.
 
@@ -867,18 +871,18 @@ Prompt Analyst → Feedback Detector → Flow Router → CREA Refine → Execute
 #### Skills (orchestrator resolves automatically)
 | Skill | When |
 |-------|------|
-| \`autosdd\` | ALWAYS — flow router + CREA + feedback engine |
-| \`prompt-engineering-patterns\` | Every prompt creation — CREA techniques |
-| \`frontend-design\` | Public-facing UI — pages, components |
-| \`interface-design\` | Admin/internal UI — dashboards, tables |
-| \`branch-pr\` | Shipping work — PR creation |
-| \`judgment-day\` | Critical code — security, finance, 5+ files |
-| \`e2e-testing-patterns\` | E2E tests — Playwright/Cypress |
-| \`error-handling-patterns\` | Error management — API routes, validation |
+| \`autosdd\` | ALWAYS - flow router + CREA + feedback engine |
+| \`prompt-engineering-patterns\` | Every prompt creation - CREA techniques |
+| \`frontend-design\` | Public-facing UI - pages, components |
+| \`interface-design\` | Admin/internal UI - dashboards, tables |
+| \`branch-pr\` | Shipping work - PR creation |
+| \`judgment-day\` | Critical code - security, finance, 5+ files |
+| \`e2e-testing-patterns\` | E2E tests - Playwright/Cypress |
+| \`error-handling-patterns\` | Error management - API routes, validation |
 | \`playwright-cli\` | Browser automation (ALWAYS --headed) |
-| \`claude-md-improver\` | CLAUDE.md — audit, improve |
-| \`feedback-report\` | \`/feedback [timerange]\` — improvement reports |
-| \`knowledge-graph\` | \`/knowledge-graph\` — memory visualization |
+| \`claude-md-improver\` | CLAUDE.md - audit, improve |
+| \`feedback-report\` | \`/feedback [timerange]\` - improvement reports |
+| \`knowledge-graph\` | \`/knowledge-graph\` - memory visualization |
 
 #### SDD Phases (via gentle-ai)
 \`sdd-init\` · \`sdd-explore\` · \`sdd-propose\` · \`sdd-spec\` · \`sdd-design\` · \`sdd-tasks\` · \`sdd-apply\` · \`sdd-verify\` · \`sdd-archive\` · \`sdd-onboard\`
@@ -890,9 +894,9 @@ Engram (memory) · Context7 (docs) · Playwright (browser) · Prisma (DB) · Lin
 RTK: ALWAYS prefix with \`rtk\` (60-90% savings) · Monitor: event-driven waiting (NEVER poll)
 
 ### Three Critical Context Files (sacred, auto-updated)
-- \`context/guidelines.md\` — Technical rules and conventions
-- \`context/user_context.md\` — User profile and preferences
-- \`context/business_logic.md\` — Domain knowledge and workflows
+- \`context/guidelines.md\` - Technical rules and conventions
+- \`context/user_context.md\` - User profile and preferences
+- \`context/business_logic.md\` - Domain knowledge and workflows
 
 ### Bidirectional Feedback (v4)
 - AI analyzes EVERY prompt for quality, skill gaps, optimization opportunities
@@ -959,14 +963,14 @@ fi
 if command -v engram &>/dev/null; then
   echo "  [OK] engram MCP"
 else
-  echo "  [..] engram NOT in PATH — restart your terminal"
+  echo "  [..] engram NOT in PATH - restart your terminal"
 fi
 
 # Check RTK
 if command -v rtk &>/dev/null; then
   echo "  [OK] RTK"
 else
-  echo "  [..] RTK not in PATH — restart terminal or install: cargo install rtk"
+  echo "  [..] RTK not in PATH - restart terminal or install: cargo install rtk"
 fi
 
 # Check autoSDD skill for each selected agent
@@ -991,9 +995,9 @@ for i in "${!AGENTS[@]}"; do
       fi
     done
     if [[ ${#missing_skills[@]} -eq 0 ]]; then
-      echo "  [OK] SDD skills ($agent) — all 9 installed"
+      echo "  [OK] SDD skills ($agent) - all 9 installed"
     else
-      echo "  [!!] SDD skills ($agent) — MISSING: ${missing_skills[*]}"
+      echo "  [!!] SDD skills ($agent) - MISSING: ${missing_skills[*]}"
       all_good=false
     fi
 

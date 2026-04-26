@@ -1,12 +1,10 @@
-# autoSDD Installer — installs gentle-ai + autoSDD skill
+# autoSDD Installer - installs gentle-ai + autoSDD skill
 # Windows PowerShell. For macOS/Linux, use install.sh
 
 # Wrap in scriptblock so exit doesn't kill the terminal when run via irm | iex
 & {
 
 $ErrorActionPreference = "Stop"
-
-$UpdateMode = $args -contains "--update"
 
 $REPO_URL = "https://raw.githubusercontent.com/thestark77/autosdd/main"
 $SKILL_URL = "$REPO_URL/skill/SKILL.md"
@@ -41,7 +39,17 @@ $AGENT_DIRS = @(
   "$env:USERPROFILE\.kiro"
 )
 
-# Warning collector — populated throughout the install for the final report.
+# Auto-detect: update mode if autoSDD skill already exists for any agent
+$UpdateMode = $false
+for ($i = 0; $i -lt $AGENT_DIRS.Count; $i++) {
+  $skillCheck = Join-Path $AGENT_DIRS[$i] "skills\autosdd\SKILL.md"
+  if (Test-Path $skillCheck) {
+    $UpdateMode = $true
+    break
+  }
+}
+
+# Warning collector - populated throughout the install for the final report.
 $warnings = @()
 
 # --- Embedding backend configuration ---
@@ -398,13 +406,13 @@ $patchUrl = "$REPO_URL/patches/engram-embedding.patch"
 if (-not (Test-Path $engramSrc)) {
   Write-Host "  ! Engram source not found at $engramSrc" -ForegroundColor Yellow
   Write-Host "  Semantic search will not be available until Engram is installed."
-  $warnings += "Engram source not found — embedding layer skipped"
+  $warnings += "Engram source not found - embedding layer skipped"
 } else {
   $embeddingDir = Join-Path $engramSrc "internal\embedding"
 
   # Check if embedding layer is already applied (idempotent)
   if (Test-Path $embeddingDir) {
-    Write-Host "  OK Embedding layer already applied — skipping patch" -ForegroundColor Green
+    Write-Host "  OK Embedding layer already applied - skipping patch" -ForegroundColor Green
   } else {
     # Download and apply patch
     $patchTmp = Join-Path $env:TEMP "engram-embedding.patch"
@@ -417,12 +425,12 @@ if (-not (Test-Path $engramSrc)) {
         & git apply $patchTmp
         Write-Host "  OK Embedding patch applied" -ForegroundColor Green
       } else {
-        Write-Host "  ! Patch does not apply cleanly — trying 3-way merge..." -ForegroundColor Yellow
+        Write-Host "  ! Patch does not apply cleanly - trying 3-way merge..." -ForegroundColor Yellow
         & git apply --3way $patchTmp 2>&1
         if ($LASTEXITCODE -eq 0) {
-          Write-Host "  OK Embedding patch applied (3-way merge)" -ForegroundColor Green
+          Write-Host "  OK Embedding patch applied via 3-way merge" -ForegroundColor Green
         } else {
-          Write-Host "  ! Embedding patch failed — semantic search not available" -ForegroundColor Red
+          Write-Host "  ! Embedding patch failed - semantic search not available" -ForegroundColor Red
           $warnings += "Embedding patch failed to apply"
         }
       }
@@ -451,8 +459,8 @@ if (-not (Test-Path $engramSrc)) {
     if ($LASTEXITCODE -eq 0) {
       Write-Host "  OK Engram rebuilt with semantic search support" -ForegroundColor Green
     } else {
-      Write-Host "  ! Engram rebuild failed — check Go installation" -ForegroundColor Red
-      $warnings += "Engram rebuild failed — embedding layer applied but binary not updated"
+      Write-Host "  ! Engram rebuild failed - check Go installation" -ForegroundColor Red
+      $warnings += "Engram rebuild failed - embedding layer applied but binary not updated"
     }
     Pop-Location
   }
@@ -494,8 +502,8 @@ if ($embeddingMode -eq "local") {
           throw "Ollama still not in PATH after direct install"
         }
       } catch {
-        Write-Host "  ! Ollama install failed — semantic search will fall back to TF-IDF" -ForegroundColor Red
-        $warnings += "Ollama install failed — local embedding mode unavailable"
+        Write-Host "  ! Ollama install failed - semantic search will fall back to TF-IDF" -ForegroundColor Red
+        $warnings += "Ollama install failed - local embedding mode unavailable"
         $embeddingMode = "none"
       }
     }
@@ -519,7 +527,7 @@ if ($embeddingMode -eq "local") {
       }
     }
 
-    # Pull model (idempotent — skips if already present)
+    # Pull model (idempotent - skips if already present)
     $listOut = & ollama list 2>$null
     if ($listOut -match "^$OLLAMA_LOCAL_MODEL(\s|:)") {
       Write-Host "  OK Model $OLLAMA_LOCAL_MODEL already present" -ForegroundColor Green
@@ -529,7 +537,7 @@ if ($embeddingMode -eq "local") {
       if ($LASTEXITCODE -eq 0) {
         Write-Host "  OK Model $OLLAMA_LOCAL_MODEL pulled" -ForegroundColor Green
       } else {
-        Write-Host "  ! Model pull failed — semantic search will fall back to TF-IDF" -ForegroundColor Red
+        Write-Host "  ! Model pull failed - semantic search will fall back to TF-IDF" -ForegroundColor Red
         $warnings += "Ollama pull $OLLAMA_LOCAL_MODEL failed"
         $embeddingMode = "none"
       }
@@ -560,7 +568,7 @@ if ($embeddingMode -ne "keep") {
 # Write the wrapper PowerShell script that selects the backend at each MCP launch.
 $wrapperPath = Join-Path $ENGRAM_STATE_DIR "engram-wrapper.ps1"
 $wrapperContent = @'
-# Managed by autoSDD installer — do not edit directly.
+# Managed by autoSDD installer - do not edit directly.
 # Selects the embedding backend based on %USERPROFILE%\.engram\mode, then launches engram mcp.
 
 $ErrorActionPreference = "Stop"
@@ -619,7 +627,7 @@ switch ($mode) {
 
 $engramCmd = Get-Command engram -ErrorAction SilentlyContinue
 if (-not $engramCmd) {
-  Write-Error "engram binary not found in PATH — cannot start MCP server"
+  Write-Error "engram binary not found in PATH - cannot start MCP server"
   exit 1
 }
 & $engramCmd.Source mcp --tools=agent @args
@@ -689,7 +697,7 @@ for ($i = 0; $i -lt $AGENTS.Count; $i++) {
       $installedSkillPaths += $skillFile
       Write-Host "  OK autosdd ($agent)"
     } catch {
-      $msg = "Failed to install autosdd for $agent — $_"
+      $msg = "Failed to install autosdd for $agent - $_"
       Write-Host "  ! $msg" -ForegroundColor Red
       $warnings += $msg
     }
@@ -716,7 +724,7 @@ foreach ($entry in $SKILLS_SH) {
     if ($LASTEXITCODE -ne 0) { throw "npx skills exited with code $LASTEXITCODE" }
     Write-Host "  OK $($entry.skill)"
   } catch {
-    $msg = "Failed to install $($entry.skill) via skills.sh — $_"
+    $msg = "Failed to install $($entry.skill) via skills.sh - $_"
     Write-Host "  ! $msg" -ForegroundColor Yellow
     $warnings += $msg
   }
@@ -847,7 +855,7 @@ $skillPathRefs = ($installedSkillPaths | ForEach-Object { "- ``$_``" }) -join "`
 
 $AUTOSDD_BLOCK = @"
 <!-- autosdd:start -->
-## autoSDD v4 — Active Framework (DO NOT REMOVE)
+## autoSDD v4 - Active Framework (DO NOT REMOVE)
 
 autoSDD v4 is the ACTIVE development framework. ALL prompts go through autoSDD unless opted out with ``[raw]``, ``[no-sdd]``, or ``skip autosdd``.
 
@@ -859,18 +867,18 @@ Prompt Analyst -> Feedback Detector -> Flow Router -> CREA Refine -> Execute -> 
 #### Skills (orchestrator resolves automatically)
 | Skill | When |
 |-------|------|
-| ``autosdd`` | ALWAYS — flow router + CREA + feedback engine |
-| ``prompt-engineering-patterns`` | Every prompt creation — CREA techniques |
-| ``frontend-design`` | Public-facing UI — pages, components |
-| ``interface-design`` | Admin/internal UI — dashboards, tables |
-| ``branch-pr`` | Shipping work — PR creation |
-| ``judgment-day`` | Critical code — security, finance, 5+ files |
-| ``e2e-testing-patterns`` | E2E tests — Playwright/Cypress |
-| ``error-handling-patterns`` | Error management — API routes, validation |
+| ``autosdd`` | ALWAYS - flow router + CREA + feedback engine |
+| ``prompt-engineering-patterns`` | Every prompt creation - CREA techniques |
+| ``frontend-design`` | Public-facing UI - pages, components |
+| ``interface-design`` | Admin/internal UI - dashboards, tables |
+| ``branch-pr`` | Shipping work - PR creation |
+| ``judgment-day`` | Critical code - security, finance, 5+ files |
+| ``e2e-testing-patterns`` | E2E tests - Playwright/Cypress |
+| ``error-handling-patterns`` | Error management - API routes, validation |
 | ``playwright-cli`` | Browser automation (ALWAYS --headed) |
-| ``claude-md-improver`` | CLAUDE.md — audit, improve |
-| ``feedback-report`` | ``/feedback [timerange]`` — improvement reports |
-| ``knowledge-graph`` | ``/knowledge-graph`` — memory visualization |
+| ``claude-md-improver`` | CLAUDE.md - audit, improve |
+| ``feedback-report`` | ``/feedback [timerange]`` - improvement reports |
+| ``knowledge-graph`` | ``/knowledge-graph`` - memory visualization |
 
 #### SDD Phases (via gentle-ai)
 ``sdd-init`` · ``sdd-explore`` · ``sdd-propose`` · ``sdd-spec`` · ``sdd-design`` · ``sdd-tasks`` · ``sdd-apply`` · ``sdd-verify`` · ``sdd-archive`` · ``sdd-onboard``
@@ -882,9 +890,9 @@ Engram (memory) · Context7 (docs) · Playwright (browser) · Prisma (DB) · Lin
 RTK: ALWAYS prefix with ``rtk`` (60-90% savings) · Monitor: event-driven waiting (NEVER poll)
 
 ### Three Critical Context Files (sacred, auto-updated)
-- ``context/guidelines.md`` — Technical rules and conventions
-- ``context/user_context.md`` — User profile and preferences
-- ``context/business_logic.md`` — Domain knowledge and workflows
+- ``context/guidelines.md`` - Technical rules and conventions
+- ``context/user_context.md`` - User profile and preferences
+- ``context/business_logic.md`` - Domain knowledge and workflows
 
 ### Bidirectional Feedback (v4)
 - AI analyzes EVERY prompt for quality, skill gaps, optimization opportunities
@@ -957,14 +965,14 @@ $engramCmd = Get-Command engram -ErrorAction SilentlyContinue
 if ($engramCmd) {
   Write-Host "  [OK] engram MCP" -ForegroundColor Green
 } else {
-  Write-Host "  [!!] engram NOT in PATH — restart your terminal" -ForegroundColor Yellow
+  Write-Host "  [!!] engram NOT in PATH - restart your terminal" -ForegroundColor Yellow
 }
 
 # Check RTK
 if (Get-Command rtk -ErrorAction SilentlyContinue) {
   Write-Host "  [OK] RTK" -ForegroundColor Green
 } else {
-  Write-Host "  [..] RTK not in PATH — restart terminal or install: cargo install rtk" -ForegroundColor Yellow
+  Write-Host "  [..] RTK not in PATH - restart terminal or install: cargo install rtk" -ForegroundColor Yellow
 }
 
 # Check autoSDD skill for each selected agent
@@ -988,9 +996,9 @@ for ($i = 0; $i -lt $AGENTS.Count; $i++) {
       if (-not (Test-Path $spath)) { $missingSkills += $skill }
     }
     if ($missingSkills.Count -eq 0) {
-      Write-Host "  [OK] SDD skills ($agent) — all 9 installed" -ForegroundColor Green
+      Write-Host "  [OK] SDD skills ($agent) - all 9 installed" -ForegroundColor Green
     } else {
-      Write-Host "  [!!] SDD skills ($agent) — MISSING: $($missingSkills -join ', ')" -ForegroundColor Red
+      Write-Host "  [!!] SDD skills ($agent) - MISSING: $($missingSkills -join ', ')" -ForegroundColor Red
       $allGood = $false
     }
 
