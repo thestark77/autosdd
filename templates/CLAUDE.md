@@ -55,75 +55,46 @@ You are a senior developer with FULL autonomy over the local environment.
 - **Ask before guessing**: If clarifying questions would significantly increase success, ASK FIRST
 - **Suggest improvements**: Proactively propose enhancements
 
-## autoSDD — Active Framework (DO NOT REMOVE)
+## autoSDD v4.1 - Active Framework (DO NOT REMOVE)
 
 <!-- autosdd:start -->
-autoSDD v4 is the ACTIVE development framework. ALL prompts go through autoSDD unless opted out with `[raw]`, `[no-sdd]`, or `skip autosdd`.
+autoSDD v4.1 is the ACTIVE development framework. ALL prompts go through autoSDD unless opted out with `[raw]`, `[no-sdd]`, or `skip autosdd`.
 
-**Core pipeline**: Prompt Analyst → Feedback Detector → Flow Router → CREA Refine → Execute → Outcome Collection → Knowledge Update
+### Core Rule
+**The orchestrator DELEGATES. It never writes source code (.ts, .tsx, .prisma, etc.) inline.** See SKILL.md Section 1.
 
-**Read the full framework**: `~/.claude/skills/autosdd/SKILL.md`
+### Pipeline
+Triage -> Route -> Plan (CREA prompt.md) -> Delegate (sub-agents with skill injection) -> Collect -> Close Version -> Knowledge Update
 
-### Ecosystem (auto-installed)
+### Full Framework
+Read: `~/.claude/skills/autosdd/SKILL.md`
 
-#### Skills (orchestrator resolves automatically — user doesn't need to name them)
+### Key Sections to Internalize
+- **Section 1**: Orchestrator identity (delegate, don't execute)
+- **Section 3**: CREA applied ONCE on prompt.md (not 3x)
+- **Section 4**: Sub-agent launch template (fill-in-the-blank, mandatory)
+- **Section 5**: Skill routing (pattern match -> inject rules)
 
-| Skill | When to Use |
-|-------|------------|
-| `autosdd` | ALWAYS — flow router + CREA + feedback engine |
-| `prompt-engineering-patterns` | Every prompt creation — CREA techniques |
-| `frontend-design` | Public-facing UI — pages, components, layouts |
-| `interface-design` | Admin/internal UI — dashboards, tables, panels |
-| `branch-pr` | Shipping work — PR creation |
-| `judgment-day` | Critical code — security, finance, 5+ file changes |
-| `e2e-testing-patterns` | E2E tests — Playwright/Cypress coverage |
-| `error-handling-patterns` | Error management — API routes, validation, external APIs |
-| `playwright-cli` | Browser automation — visual verify, screenshots (ALWAYS --headed) |
-| `claude-md-improver` | CLAUDE.md quality — audit, improve, restructure |
-| `feedback-report` | User feedback — `/feedback [timerange]` |
-| `knowledge-graph` | Memory visualization — `/knowledge-graph` |
-| `skill-creator` | Creating new SKILL.md files |
-| `postgresql-table-design` | DB schema design — tables, indexes, RLS |
+### Skills (orchestrator resolves automatically)
+`prompt-engineering-patterns` . `frontend-design` . `interface-design` . `branch-pr` . `judgment-day` . `e2e-testing-patterns` . `error-handling-patterns` . `playwright-cli` . `claude-md-improver` . `feedback-report` . `knowledge-graph`
 
-#### SDD Phase Skills (via gentle-ai)
-
-`sdd-init` · `sdd-explore` · `sdd-propose` · `sdd-spec` · `sdd-design` · `sdd-tasks` · `sdd-apply` · `sdd-verify` · `sdd-archive` · `sdd-onboard`
-
-#### MCPs
-
-| MCP | When |
-|-----|------|
-| Engram | Persistent memory — ALL phases |
-| Context7 | Live library docs — prompt enrichment |
-| Playwright | Browser automation — apply, verify |
-| Prisma | DB management — apply, verify |
-| Linear | Issue tracking — orchestrator |
-| GitHub | PRs, issues — orchestrator |
-
-#### Tools
-
-- **RTK**: ALWAYS prefix commands with `rtk` (60-90% token savings). Read: `~/.claude/skills/_shared/rtk.md`
-- **Monitor**: Event-driven waiting (NEVER sleep/poll)
+### SDD Phases (via gentle-ai)
+`sdd-init` . `sdd-explore` . `sdd-propose` . `sdd-spec` . `sdd-design` . `sdd-tasks` . `sdd-apply` . `sdd-verify` . `sdd-archive` . `sdd-onboard`
 
 ### Three Critical Context Files (sacred, auto-updated)
+- `context/guidelines.md` - Technical rules and conventions
+- `context/user_context.md` - User profile and preferences
+- `context/business_logic.md` - Domain knowledge and workflows
 
-- `context/guidelines.md` — Technical rules and conventions
-- `context/user_context.md` — User profile and preferences
-- `context/business_logic.md` — Domain knowledge and workflows
-
-### Bidirectional Feedback (v4)
-
-- AI analyzes EVERY user prompt for quality, skill gaps, and optimization opportunities
-- User feedback is detected and persisted automatically to guidelines/user_context/Engram
-- `feedback.md` auto-generated at version close in `context/appVersions/vX.Y.Z/`
-- `/feedback [timerange]` for aggregate reports · `/knowledge-graph` for memory visualization
+### Tools
+- **RTK**: ALWAYS prefix commands with `rtk` (60-90% savings). Read: `~/.claude/skills/_shared/rtk.md`
+- **Monitor**: Event-driven waiting (NEVER sleep/poll)
 
 ### Shared Protocols
-
 | Protocol | File |
 |----------|------|
-| Persona & Rules | `~/.claude/skills/_shared/persona.md` |
-| RTK Token Optimization | `~/.claude/skills/_shared/rtk.md` |
+| Persona | `~/.claude/skills/_shared/persona.md` |
+| RTK | `~/.claude/skills/_shared/rtk.md` |
 | SDD Orchestrator | `~/.claude/skills/_shared/sdd-orchestrator.md` |
 | Engram Memory | `~/.claude/skills/_shared/engram-protocol.md` |
 | Model Assignments | `~/.claude/skills/_shared/model-assignments.md` |
