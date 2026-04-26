@@ -794,30 +794,61 @@ for p in "${installed_skill_paths[@]}"; do
 done
 
 AUTOSDD_BLOCK="<!-- autosdd:start -->
-## autoSDD — Active Framework (DO NOT REMOVE)
+## autoSDD v4 — Active Framework (DO NOT REMOVE)
 
-autoSDD v3 is the ACTIVE development framework for this project.
-ALL prompts go through autoSDD unless the user explicitly opts out.
+autoSDD v4 is the ACTIVE development framework. ALL prompts go through autoSDD unless opted out with \`[raw]\`, \`[no-sdd]\`, or \`skip autosdd\`.
 
-### Default Behavior
-- Every prompt → Flow Router → CREA Prompt Refine → Execute Flow → Outcome Collection
-- CREA framework (Context, Role, Specificity, Action) + prompt-engineering-patterns on ALL prompt creation
-- 5 flows: Development, Code Review, Debugging, Research, Self-Improvement
-- Orchestrator delegates to sub-agents, NEVER executes directly
-- Monitor tool for ALL waiting/watching (NEVER poll)
-- RTK prefix on ALL shell commands
+### Core Pipeline
+Prompt Analyst → Feedback Detector → Flow Router → CREA Refine → Execute → Outcome Collection → Knowledge Update
+
+### Ecosystem (auto-installed)
+
+#### Skills (orchestrator resolves automatically)
+| Skill | When |
+|-------|------|
+| \`autosdd\` | ALWAYS — flow router + CREA + feedback engine |
+| \`prompt-engineering-patterns\` | Every prompt creation — CREA techniques |
+| \`frontend-design\` | Public-facing UI — pages, components |
+| \`interface-design\` | Admin/internal UI — dashboards, tables |
+| \`branch-pr\` | Shipping work — PR creation |
+| \`judgment-day\` | Critical code — security, finance, 5+ files |
+| \`e2e-testing-patterns\` | E2E tests — Playwright/Cypress |
+| \`error-handling-patterns\` | Error management — API routes, validation |
+| \`playwright-cli\` | Browser automation (ALWAYS --headed) |
+| \`claude-md-improver\` | CLAUDE.md — audit, improve |
+| \`feedback-report\` | \`/feedback [timerange]\` — improvement reports |
+| \`knowledge-graph\` | \`/knowledge-graph\` — memory visualization |
+
+#### SDD Phases (via gentle-ai)
+\`sdd-init\` · \`sdd-explore\` · \`sdd-propose\` · \`sdd-spec\` · \`sdd-design\` · \`sdd-tasks\` · \`sdd-apply\` · \`sdd-verify\` · \`sdd-archive\` · \`sdd-onboard\`
+
+#### MCPs
+Engram (memory) · Context7 (docs) · Playwright (browser) · Prisma (DB) · Linear (issues) · GitHub (PRs)
+
+#### Tools
+RTK: ALWAYS prefix with \`rtk\` (60-90% savings) · Monitor: event-driven waiting (NEVER poll)
 
 ### Three Critical Context Files (sacred, auto-updated)
 - \`context/guidelines.md\` — Technical rules and conventions
 - \`context/user_context.md\` — User profile and preferences
 - \`context/business_logic.md\` — Domain knowledge and workflows
 
-### Opt-Out
-- \`[raw]\` prefix: skip framework entirely
-- \`[no-sdd]\` prefix: skip SDD but keep CREA
-- \`skip autosdd\`: natural language opt-out
+### Bidirectional Feedback (v4)
+- AI analyzes EVERY prompt for quality, skill gaps, optimization opportunities
+- User feedback detected and persisted automatically
+- \`feedback.md\` auto-generated at version close
+- \`/feedback [timerange]\` for reports · \`/knowledge-graph\` for memory visualization
 
-Read the full framework: \`context/autosdd.md\`
+### Shared Protocols
+| Protocol | File |
+|----------|------|
+| Persona & Rules | \`~/.claude/skills/_shared/persona.md\` |
+| RTK Token Optimization | \`~/.claude/skills/_shared/rtk.md\` |
+| SDD Orchestrator | \`~/.claude/skills/_shared/sdd-orchestrator.md\` |
+| Engram Memory | \`~/.claude/skills/_shared/engram-protocol.md\` |
+| Model Assignments | \`~/.claude/skills/_shared/model-assignments.md\` |
+
+Read the full framework: \`~/.claude/skills/autosdd/SKILL.md\`
 autoSDD skill installed at:${skill_refs}
 <!-- autosdd:end -->"
 
