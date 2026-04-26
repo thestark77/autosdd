@@ -696,6 +696,46 @@ for entry in "${SKILLS_SH[@]}"; do
   fi
 done
 
+# 3. Install bundled skills (from autoSDD repo itself)
+BUNDLED_SKILLS=("feedback-report" "knowledge-graph")
+for skill in "${BUNDLED_SKILLS[@]}"; do
+  for i in "${!AGENTS[@]}"; do
+    agent="${AGENTS[$i]}"
+    if echo "$selected_agents" | grep -q "$agent"; then
+      skill_dir="${AGENT_DIRS[$i]}/skills/$skill"
+      mkdir -p "$skill_dir"
+      if curl -fsSL -o "$skill_dir/SKILL.md" "$REPO_URL/skills/$skill/SKILL.md"; then
+        echo "  ✓ $skill ($agent)"
+      else
+        msg="Failed to install $skill for $agent"
+        echo "  ⚠ $msg"
+        warnings+=("$msg")
+      fi
+    fi
+  done
+done
+
+# 4. Install shared protocols (extracted from CLAUDE.md for slim index)
+SHARED_FILES=("persona.md" "rtk.md" "sdd-orchestrator.md" "engram-protocol.md" "model-assignments.md")
+echo ""
+echo "Installing shared protocols..."
+for i in "${!AGENTS[@]}"; do
+  agent="${AGENTS[$i]}"
+  if echo "$selected_agents" | grep -q "$agent"; then
+    shared_dir="${AGENT_DIRS[$i]}/skills/_shared"
+    mkdir -p "$shared_dir"
+    for sf in "${SHARED_FILES[@]}"; do
+      if curl -fsSL -o "$shared_dir/$sf" "$REPO_URL/shared/$sf" 2>/dev/null; then
+        :
+      else
+        msg="Failed to install shared/$sf for $agent"
+        warnings+=("$msg")
+      fi
+    done
+    echo "  ✓ shared protocols ($agent)"
+  fi
+done
+
 # --- Install RTK (Rust Token Killer) ---
 echo ""
 echo "Installing RTK (token optimization)..."
@@ -859,7 +899,7 @@ for i in "${!AGENTS[@]}"; do
     fi
 
     # Check core skills installed by autoSDD (via skills.sh -g)
-    core_skill_names=("autosdd" "prompt-engineering-patterns" "branch-pr" "judgment-day" "frontend-design" "interface-design" "claude-md-improver" "e2e-testing-patterns" "error-handling-patterns" "playwright-cli")
+    core_skill_names=("autosdd" "prompt-engineering-patterns" "branch-pr" "judgment-day" "frontend-design" "interface-design" "claude-md-improver" "e2e-testing-patterns" "error-handling-patterns" "playwright-cli" "feedback-report" "knowledge-graph")
     for cs in "${core_skill_names[@]}"; do
       cs_path="${AGENT_DIRS[$i]}/skills/$cs/SKILL.md"
       if [[ -f "$cs_path" ]]; then

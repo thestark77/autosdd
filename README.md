@@ -1,4 +1,4 @@
-# AutoSDD v3 — Self-Improving Autonomous Development
+# AutoSDD v4 — Self-Improving Autonomous Development
 
 <div align="center">
 
@@ -17,114 +17,92 @@
 
 ## What Is autoSDD?
 
-autoSDD is a **methodology layer** on top of [gentle-ai](https://github.com/Gentleman-Programming/gentle-ai). It adds:
+autoSDD is a **methodology layer** on top of [gentle-ai](https://github.com/Gentleman-Programming/gentle-ai). gentle-ai provides the infrastructure (skills, MCPs, agents). autoSDD provides the process.
+
+**v4 adds bidirectional feedback**: the AI educates the user to write better prompts, and the user teaches the AI their preferences and conventions. Every interaction makes both sides better.
+
+### What autoSDD Adds
 
 - **5 Flows** — auto-detect if you're developing, debugging, reviewing, researching, or improving
-- **CREA Framework** — structured prompt engineering on EVERY prompt (Context, Role, Specificity, Action)
-- **Self-Improvement** — the framework measures its own performance and A/B tests its own process
-- **TODO Lists** — persistent orchestrator + user task tracking that survives compaction
+- **CREA Framework** — structured prompt engineering on every prompt (Context, Role, Specificity, Action)
+- **Prompt Analyst** — proactive analysis of every user prompt for quality, skill gaps, and optimization opportunities
+- **Bidirectional Feedback** — AI→User prompt coaching + User→AI preference learning, persisted across sessions
+- **Self-Improvement Engine** — measures its own performance and A/B tests its own process
 - **3 Sacred Context Files** — living docs the AI auto-updates: guidelines, user profile, business logic
-- **Event-Driven** — Monitor tool for all waiting, NEVER polling or sleep loops
-
-gentle-ai provides the **infrastructure** (skills, MCPs, agents, TUI). autoSDD provides the **process**.
+- **Knowledge Graph** — Obsidian-like visualization of everything the AI knows about your project
+- **Event-Driven** — Monitor tool for all waiting, never polling or sleep loops
 
 ---
 
-## Flow Diagram
+## How It Works
 
-```
-USER PROMPT (voice/text)
-    |
-    v
-+-------------------+
-|   FLOW ROUTER     |  Detect intent: dev? debug? review? research? improve?
-+-------------------+
-    |
-    v
-+-------------------+
-|   CREA REFINE     |  Context + Role + Specificity + Action
-+-------------------+
-    |
-    v
-+------+------+------+--------+------+
-| DEV  |DEBUG |REVIEW|RESEARCH|SELF  |
-|      |      |      |        |IMPRV |
-+------+------+------+--------+------+
-    |
-    v
-+-------------------+
-| OUTCOME COLLECT   |  Tokens, duration, pass/fail, retries
-+-------------------+
-    |
-    v
-+-------------------+
-| KNOWLEDGE UPDATE  |  Context files, Engram, wiki
-+-------------------+
-```
+Every user prompt flows through this pipeline:
 
-### Development Flow (most common)
+1. **Prompt Analyst** — checks prompt quality (0-100), detects missing context, skill gaps, security concerns. Stops execution if score < 40.
+2. **Feedback Detector** — checks if user is giving feedback ("no", "don't do that", "cambiá esto"). If yes, persists the correction to memory/files immediately.
+3. **Flow Router** — detects intent: development, debugging, code review, research, or self-improvement.
+4. **CREA Refine** — structures the prompt with Context, Role, Specificity, Action + prompt-engineering-patterns techniques.
+5. **Execute Flow** — runs the selected flow (see below).
+6. **Outcome Collection** — records tokens, duration, pass/fail, prompt quality score.
+7. **Knowledge Update** — updates context files, Engram memory, wiki. Auto-generates feedback.md at version close.
 
-```
-PROMPT REFINE -> INTAKE -> PLAN -> BUILD (TDD) -> VERIFY -> CERTIFY -> SHIP -> REVIEW
-```
+### Development Flow
+
+PROMPT REFINE → INTAKE → PLAN (explore → propose → spec → design → tasks) → BUILD (TDD: RED → GREEN → REFACTOR) → VERIFY → CERTIFY (judgment-day) → SHIP → REVIEW
 
 ### Debug Flow
 
-```
-REPRODUCE -> DIAGNOSE -> FIX (TDD) -> VERIFY -> DOCUMENT
-```
+REPRODUCE → DIAGNOSE → FIX (TDD) → VERIFY → DOCUMENT
 
 ### Code Review Flow
 
-```
-INGEST -> ANALYZE (6 agents + judgment-day) -> REPORT -> [FIX optional]
-```
+INGEST → ANALYZE (6 agents + judgment-day in parallel) → REPORT → FIX (optional)
+
+### Research Flow
+
+SCOPE → GATHER → EVALUATE (scoring matrix) → SYNTHESIZE → DECIDE
+
+### Self-Improvement Flow
+
+MEASURE → HYPOTHESIZE → EXPERIMENT → EVALUATE → APPLY/DISCARD
 
 ---
 
-## Requirements
+## Bidirectional Feedback (v4)
 
-### What the installer handles automatically
+### AI → User
 
-| Dependency | Installed by | Purpose |
-|------------|-------------|---------|
-| [Node.js 18+](https://nodejs.org/) | autoSDD installer (brew/scoop) | Runtime for Context7, npx commands |
-| [Go](https://go.dev) | autoSDD installer (brew/scoop) | Required by Engram binary |
-| [gentle-ai](https://github.com/Gentleman-Programming/gentle-ai) | autoSDD installer (brew/scoop) | SDD skills, Engram, Context7, agent config |
-| [RTK](https://github.com/rtk-ai/rtk) | autoSDD installer | Token-optimized CLI output (60-90% savings) |
-| Engram MCP | gentle-ai | Persistent cross-session memory |
-| Context7 MCP | gentle-ai | Live library/framework documentation |
-| SDD skills (10) | gentle-ai | sdd-init, explore, propose, spec, design, tasks, apply, verify, archive, onboard |
-| autoSDD skill | autoSDD installer | This framework (SKILL.md) |
-| [prompt-engineering-patterns](https://skills.sh/wshobson/agents/prompt-engineering-patterns) | autoSDD installer (skills.sh) | CREA prompt techniques (CoT, Few-Shot, Structured Output) |
-| [branch-pr](https://skills.sh/gentleman-programming/sdd-agent-team/branch-pr) | autoSDD installer (skills.sh) | PR creation workflow |
-| [judgment-day](https://skills.sh/gentleman-programming/sdd-agent-team/judgment-day) | autoSDD installer (skills.sh) | Parallel adversarial code review |
-| [frontend-design](https://skills.sh/anthropics/skills/frontend-design) | autoSDD installer (skills.sh) | Production-grade frontend interfaces |
-| [interface-design](https://skills.sh/dammyjay93/interface-design/interface-design) | autoSDD installer (skills.sh) | Dashboards, admin panels, internal tools |
-| [claude-md-improver](https://skills.sh/anthropics/claude-plugins-official/claude-md-improver) | autoSDD installer (skills.sh) | CLAUDE.md audit and improvement |
-| [e2e-testing-patterns](https://skills.sh/wshobson/agents/e2e-testing-patterns) | autoSDD installer (skills.sh) | E2E testing with Playwright/Cypress |
-| [error-handling-patterns](https://skills.sh/wshobson/agents/error-handling-patterns) | autoSDD installer (skills.sh) | Error handling patterns across languages |
-| [playwright-cli](https://skills.sh/microsoft/playwright-cli/playwright-cli) | autoSDD installer (skills.sh) | Browser automation and testing |
-| Project templates | autoSDD installer | `context/` directory + CLAUDE.md injection |
-| GOBIN in PATH | autoSDD installer | Ensures engram binary is accessible |
+The AI proactively identifies weaknesses in your prompts and educates you:
 
-### What YOU must install first
+- **Missing context**: "You didn't mention which auth pattern to follow"
+- **Architecture gaps**: "This violates the repository pattern in your guidelines"
+- **Security blind spots**: "No input validation mentioned for user data"
+- **Skill gaps**: "You consistently skip database normalization — here's how to improve"
+- **Token waste**: "3 debug cycles could have been avoided with clearer error reproduction steps"
 
-| Requirement | Purpose | Install |
-|-------------|---------|---------|
-| Package manager | Installs everything else | macOS/Linux: [Homebrew](https://brew.sh) · Windows: [Scoop](https://scoop.sh) |
-| AI Agent | Your coding agent | [Claude Code](https://claude.ai/claude-code), [Cursor](https://cursor.com), [Codex](https://openai.com/codex), etc. |
+At version close, a `feedback.md` report is auto-generated with all findings.
 
-### Recommended (NOT auto-installed)
+### User → AI
 
-These enhance autoSDD but are project-specific. Install what you need:
+When you correct the AI, it persists the lesson:
 
-| Tool | Type | Purpose | Install |
-|------|------|---------|---------|
-| TypeScript LSP | Plugin | Go-to-definition for TS projects | Plugin: `typescript-lsp` |
-| code-review | Plugin | Automated PR review | Plugin: `code-review` |
-| code-simplifier | Plugin | Post-implementation cleanup | Plugin: `code-simplifier` |
-| claude-powerline | Plugin | Status line | `npx -y @owloops/claude-powerline@latest` |
+- Technical corrections → `context/guidelines.md` + Engram
+- Style preferences → `context/user_context.md` + Engram
+- Agent errors → Engram (evaluated for SKILL.md updates if systemic)
+
+The AI confirms: "Anotado. Guardé que [X]. No va a pasar de nuevo."
+
+### Commands
+
+| Command | What it does |
+|---------|-------------|
+| `/feedback` | Show feedback for last completed version |
+| `/feedback week` | Aggregate feedback for last 7 days |
+| `/feedback month` | Aggregate feedback for last 30 days |
+| `/feedback v1.0..v2.0` | Feedback for a specific version range |
+| `/knowledge-graph` | Visualize AI's memory as interactive graph |
+| `/knowledge-graph obsidian` | Export as Obsidian vault with wikilinks |
+| `/knowledge-graph stats` | Memory statistics summary |
 
 ---
 
@@ -132,22 +110,16 @@ These enhance autoSDD but are project-specific. Install what you need:
 
 ### Prerequisites
 
-You only need a **package manager**. The installer handles Node.js, Go, gentle-ai, and everything else:
+You only need a **package manager**:
 
-| OS | Package Manager | Install if missing |
-|----|----------------|--------------------|
-| macOS / Linux | [Homebrew](https://brew.sh) | `/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"` |
-| Windows | [Scoop](https://scoop.sh) | `irm get.scoop.sh \| iex` |
+| OS | Install |
+|----|---------|
+| macOS / Linux | [Homebrew](https://brew.sh): `/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"` |
+| Windows | [Scoop](https://scoop.sh): `irm get.scoop.sh \| iex` |
 
-### Quick Install (recommended)
+### Install
 
-> **IMPORTANT**: Run the install command **from inside your project directory** (the folder where your code lives). The installer bootstraps templates and injects the autoSDD block into your project's CLAUDE.md. If you run it from the wrong directory, files will land in the wrong place.
-
-The install script installs gentle-ai + autoSDD with the recommended configuration. It asks only 2 questions:
-1. **Which AI agents?** (default: all)
-2. **Response style?** (default: neutral)
-
-Everything else is pre-configured: multi-agent SDD, optimal model assignments, all components.
+> Run from inside your project directory. The installer bootstraps templates into the current folder.
 
 **macOS / Linux:**
 ```bash
@@ -159,180 +131,88 @@ curl -fsSL https://raw.githubusercontent.com/thestark77/autosdd/main/install.sh 
 irm https://raw.githubusercontent.com/thestark77/autosdd/main/install.ps1 | iex
 ```
 
-### Manual Install
+The installer asks 2 questions (which AI agents? response style?) and handles everything else:
 
-If you prefer manual control:
-
-```bash
-# 1. Install gentle-ai
-gentle-ai install --preset full-gentleman --sdd-mode multi
-
-# 2. Install autoSDD skill (Claude Code)
-mkdir -p ~/.claude/skills/autosdd
-curl -o ~/.claude/skills/autosdd/SKILL.md \
-  https://raw.githubusercontent.com/thestark77/autosdd/main/skill/SKILL.md
-
-# 3. For other agents, replace ~/.claude/ with:
-#    Cursor:    ~/.cursor/
-#    Codex:     ~/.codex/
-#    Windsurf:  ~/.codeium/windsurf/
-#    Kiro:      ~/.kiro/
-#    Gemini:    ~/.gemini/
-```
-
-The installer does **everything** in one command:
-
-1. Installs **gentle-ai** with your agent + persona preferences
-2. Installs **autoSDD skill** to each selected agent
-3. Installs **RTK** (token optimization — 60-90% savings on CLI output)
-4. Verifies **prompt-engineering-patterns** is available (CORE skill, used with CREA)
-5. Bootstraps **project templates** (`context/` + `CLAUDE.md`) in the current directory
-6. **Injects autoSDD block** into existing CLAUDE.md (or creates from template if none exists)
-
-The CLAUDE.md injection uses HTML markers (`<!-- autosdd:start -->` / `<!-- autosdd:end -->`). This means:
-- **No CLAUDE.md** → copies the full template
-- **Existing CLAUDE.md, first install** → appends the autoSDD activation block
-- **Existing CLAUDE.md, update** → replaces ONLY the block between markers (your content untouched)
-
-Running the installer multiple times is always safe (idempotent).
-
-> **Note**: Run the installer FROM your project directory so templates land in the right place.
+1. Installs **Node.js + Go** (via brew/scoop)
+2. Installs **gentle-ai** (SDD skills, Engram, Context7)
+3. Installs **14 core skills** globally (from original sources)
+4. Installs **shared protocols** (persona, RTK, orchestrator, engram, model assignments)
+5. Installs **RTK** (token optimization — 60-90% savings)
+6. Bootstraps **project templates** (context/ + CLAUDE.md)
 
 ### After Installation
-
-Open your project in your AI agent and run:
 
 ```bash
 /sdd-init          # Detects stack, creates context files, configures SDD
 /sdd-new feature   # Start building
 ```
 
-### Verify Installation
+### Manual Install
 
 ```bash
-/sdd-init          # Should detect your stack and configure
-/sdd-explore test  # Should explore your codebase
+gentle-ai install --preset full-gentleman --sdd-mode multi
+
+mkdir -p ~/.claude/skills/autosdd
+curl -o ~/.claude/skills/autosdd/SKILL.md \
+  https://raw.githubusercontent.com/thestark77/autosdd/main/skill/SKILL.md
 ```
+
+---
+
+## What Gets Installed
+
+### Auto-installed by autoSDD
+
+| Component | Purpose |
+|-----------|---------|
+| `autosdd` skill | This framework — flow router, CREA, feedback engine, prompt analyst |
+| `prompt-engineering-patterns` | CREA prompt techniques (CoT, Few-Shot, Structured Output) |
+| `branch-pr` | PR creation workflow with issue-first enforcement |
+| `judgment-day` | Parallel adversarial code review (two blind judges) |
+| `frontend-design` | Production-grade frontend interfaces |
+| `interface-design` | Dashboards, admin panels, internal tools |
+| `claude-md-improver` | CLAUDE.md audit and improvement |
+| `e2e-testing-patterns` | E2E testing with Playwright/Cypress |
+| `error-handling-patterns` | Error handling across languages |
+| `playwright-cli` | Browser automation and testing |
+| `feedback-report` | Time-based feedback reports |
+| `knowledge-graph` | Memory visualization as graph |
+| `skill-creator` | Create new skills |
+| `postgresql-table-design` | PostgreSQL schema best practices |
+| Shared protocols (5) | persona, RTK, orchestrator, engram, model assignments |
+
+### Auto-installed by gentle-ai
+
+| Component | Purpose |
+|-----------|---------|
+| SDD skills (10) | sdd-init, explore, propose, spec, design, tasks, apply, verify, archive, onboard |
+| Engram MCP | Persistent cross-session memory |
+| Context7 MCP | Live library/framework documentation |
+| RTK | Token-optimized CLI output |
+
+### Recommended (not auto-installed)
+
+| Tool | Purpose | Install |
+|------|---------|---------|
+| TypeScript LSP | Go-to-definition for TS projects | Plugin: `typescript-lsp` |
+| code-review | Automated PR review | Plugin: `code-review` |
+| claude-powerline | Status line | `npx -y @owloops/claude-powerline@latest` |
 
 ---
 
 ## Use Cases
 
-### "Build a new feature"
-```
-You: "Add user registration with email verification"
-autoSDD: DEV flow -> CREA refine -> explore -> propose -> spec -> design -> tasks -> apply (TDD) -> verify -> ship
-```
+**Build a feature**: "Add user registration with email verification" → DEV flow → explore → propose → spec → design → tasks → apply (TDD) → verify → ship
 
-### "Fix a bug"
-```
-You: "Login fails with 500 error on mobile"
-autoSDD: DEBUG flow -> reproduce -> diagnose (search Engram for prior occurrences) -> fix (TDD) -> verify -> document
-```
+**Fix a bug**: "Login fails with 500 on mobile" → DEBUG flow → reproduce → diagnose → fix (TDD) → verify → document
 
-### "Review this PR"
-```
-You: "Review PR #45"
-autoSDD: REVIEW flow -> analyze (6 agents + judgment-day in parallel) -> report (CRITICAL/WARNING/INFO) -> [fix if requested]
-```
+**Review code**: "Review PR #45" → REVIEW flow → analyze (parallel judges) → report → fix (optional)
 
-### "Should we use X?"
-```
-You: "Should we migrate from REST to tRPC?"
-autoSDD: RESEARCH flow -> scope -> gather (web + docs + Engram) -> evaluate (scoring matrix) -> synthesize -> decide
-```
+**Research**: "Should we migrate from REST to tRPC?" → RESEARCH flow → gather → evaluate → synthesize → decide
 
-### "Improve the framework"
-```
-You: "Optimize token usage in BUILD phase"
-autoSDD: SELF-IMPROVE flow -> measure current metrics -> hypothesize -> A/B test -> evaluate -> apply/discard
-```
+**Get feedback**: `/feedback week` → aggregate report of prompt quality, skill gaps, token waste, recommendations
 
-### "I'm going to sleep"
-```
-You: "Me voy a dormir, terminá todo"
-autoSDD: Asks critical questions IMMEDIATELY -> executes full plan autonomously -> commits -> pushes -> saves summary to Engram
-```
-
----
-
-## Key Concepts
-
-### CREA Framework + prompt-engineering-patterns
-
-Every prompt created by autoSDD uses **CREA structure** combined with **prompt-engineering-patterns** techniques:
-
-| Component | What to Include |
-|-----------|----------------|
-| **Context** | Project state, what exists, what changed, relevant guidelines/business logic |
-| **Role** | Professional expertise — architect for design, implementer for apply, reviewer for verify |
-| **Specificity** | Constraints, skills, tools, gotchas, anti-patterns, testing instructions |
-| **Action** | Exact deliverable — files to create/modify, tests to write, what to save |
-
-prompt-engineering-patterns provides the techniques (Chain-of-Thought, Few-Shot, Structured Output, Self-Consistency) that CREA structures. They work together — CREA defines the WHAT, prompt-engineering-patterns defines the HOW. Both are applied on **every** prompt creation and refinement.
-
-### Three Critical Context Files
-
-| File | Purpose | Auto-Updated When... |
-|------|---------|---------------------|
-| `context/guidelines.md` | Technical rules, conventions | New gotcha, convention, pattern |
-| `context/user_context.md` | User profile, preferences | User shares personal/professional info |
-| `context/business_logic.md` | Domain knowledge, entities | Business rule, workflow detail |
-
-### TODO Lists
-
-| List | Purpose | Storage |
-|------|---------|---------|
-| **Agent TODO** | Orchestrator's action plan — survives compaction | Claude memory + Engram backup |
-| **User TODO** | Things the user needs to do (outside AI scope) | Claude memory + Engram backup |
-
-### Action Clarity Protocol
-
-Before modifying files, autoSDD classifies user intent:
-- **Execute**: "hacelo", "dale", "implement" -> write code
-- **Respond**: "what do you think?", "analyze" -> analysis only
-- **Plan**: "propose", "plan" -> create plan, no execution
-- **Unclear**: ask immediately
-
-### Monitor-First (Event-Driven)
-
-| Wait For | Method |
-|----------|--------|
-| Deploy | Monitor tool -> Railway/Vercel logs |
-| Tests | Monitor tool -> test output |
-| Sub-agents | Background Agent (auto-notifies) |
-| Timed wait | ScheduleWakeup (only when user requests) |
-
-**NEVER**: sleep, polling, repeated status checks.
-
----
-
-## Updating
-
-### Update everything (re-run installer)
-```bash
-# macOS/Linux
-curl -fsSL https://raw.githubusercontent.com/thestark77/autosdd/main/install.sh | bash
-
-# Windows
-irm https://raw.githubusercontent.com/thestark77/autosdd/main/install.ps1 | iex
-```
-
-Re-running the installer is safe — it updates SKILL.md, refreshes the CLAUDE.md block between markers, and skips existing templates.
-
-### Update autoSDD skill only
-```bash
-curl -o ~/.claude/skills/autosdd/SKILL.md \
-  https://raw.githubusercontent.com/thestark77/autosdd/main/skill/SKILL.md
-```
-
-### Update gentle-ai only
-```bash
-gentle-ai upgrade
-gentle-ai sync
-```
-
-Both update independently without conflicts. gentle-ai manages its sections with markers, autoSDD manages its own SKILL.md and CLAUDE.md block (`<!-- autosdd:start/end -->`).
+**See AI's memory**: `/knowledge-graph` → interactive D3.js graph of all decisions, conventions, entities, and relationships
 
 ---
 
@@ -340,71 +220,81 @@ Both update independently without conflicts. gentle-ai manages its sections with
 
 ```
 autosdd/
-├── README.md                    # This file
-├── install.sh                   # One-command installer (macOS/Linux)
-├── install.ps1                  # One-command installer (Windows)
+├── README.md
+├── install.sh / install.ps1      # One-command installers
 ├── skill/
-│   └── SKILL.md                 # autoSDD v3.1 skill (installed to ~/.{agent}/skills/autosdd/)
-├── templates/
-│   ├── CLAUDE.md                # Template CLAUDE.md (includes autoSDD activation block)
-│   ├── autosdd.md               # autoSDD v3 framework reference (→ context/autosdd.md)
-│   ├── guidelines.md            # Template for technical rules and conventions
-│   ├── user_context.md          # Template for user profile and preferences
-│   └── business_logic.md        # Template for business domain knowledge
+│   └── SKILL.md                  # autoSDD v4 framework (installed to ~/.{agent}/skills/autosdd/)
+├── shared/                       # Extracted protocols (installed to ~/.{agent}/skills/_shared/)
+│   ├── persona.md                # Agent persona, rules, language
+│   ├── rtk.md                    # RTK token optimization instructions
+│   ├── sdd-orchestrator.md       # SDD delegation, sub-agent protocol
+│   ├── engram-protocol.md        # Engram memory protocol
+│   └── model-assignments.md      # Phase → model mapping
+├── skills/                       # Bundled skills (installed to ~/.{agent}/skills/)
+│   ├── feedback-report/SKILL.md  # Time-based feedback reports
+│   └── knowledge-graph/SKILL.md  # Memory visualization
+├── templates/                    # Project templates (copied to project on install)
+│   ├── CLAUDE.md                 # Slim index template
+│   ├── autosdd.md                # Framework reference
+│   ├── guidelines.md             # Technical rules template
+│   ├── user_context.md           # User profile template
+│   └── business_logic.md         # Domain knowledge template
 └── docs/
-    ├── testing-strategy.md      # Full testing strategy
-    ├── skill-lifecycle.md       # Skill activation/deactivation protocol
-    ├── mcp-setup.md             # MCP server configuration guide
-    ├── iron-man-roadmap.md      # Voice/mobile integration roadmap
-    └── hooks.md                 # Claude Code hooks reference
+    ├── testing-strategy.md       # TDD testing guide
+    ├── skill-lifecycle.md        # Skill activation protocol
+    ├── hooks.md                  # Claude Code hooks reference
+    └── iron-man-roadmap.md       # Voice/mobile vision
+```
+
+---
+
+## Updating
+
+```bash
+# Re-run installer (safe, idempotent)
+curl -fsSL https://raw.githubusercontent.com/thestark77/autosdd/main/install.sh | bash
+
+# Or update skill only
+curl -o ~/.claude/skills/autosdd/SKILL.md \
+  https://raw.githubusercontent.com/thestark77/autosdd/main/skill/SKILL.md
+
+# Or update gentle-ai only
+gentle-ai upgrade && gentle-ai sync
 ```
 
 ---
 
 ## Relationship with gentle-ai
 
-autoSDD is built ON TOP of [gentle-ai](https://github.com/Gentleman-Programming/gentle-ai):
-
 | Responsibility | gentle-ai | autoSDD |
 |----------------|-----------|---------|
 | Skill installation | Yes | No (uses gentle-ai) |
-| Agent configuration (12 agents) | Yes | No (uses gentle-ai) |
-| SDD phase skills (10 skills) | Yes | References them |
+| Agent configuration | Yes | No (uses gentle-ai) |
+| SDD phase skills (10) | Yes | References them |
 | Engram memory | Yes | Uses it |
-| TUI for setup | Yes | No |
-| Backup/rollback | Yes | No |
 | **5-flow routing** | No | **Yes** |
 | **CREA prompt engineering** | No | **Yes** |
+| **Prompt Analyst** | No | **Yes** |
+| **Bidirectional Feedback** | No | **Yes** |
 | **Self-improvement engine** | No | **Yes** |
-| **TODO lists** | No | **Yes** |
-| **Action Clarity Protocol** | No | **Yes** |
-| **Outcome metrics** | No | **Yes** |
+| **Knowledge Graph** | No | **Yes** |
 | **3 Critical Context Files** | No | **Yes** |
 
-gentle-ai is the **infrastructure**. autoSDD is the **methodology**.
+gentle-ai = infrastructure. autoSDD = methodology + continuous improvement.
 
 ---
 
 ## Non-Negotiable Principles
 
-1. **No code without a test** — TDD: RED -> GREEN -> REFACTOR
+1. **No code without a test** — TDD: RED → GREEN → REFACTOR
 2. **No skipped quality gates** — every phase must pass before the next
 3. **No context loss** — every decision saved to Engram immediately
 4. **No polling** — Monitor tool for all waiting, event-driven always
 5. **No silent failures** — escalate after 3 retries, never loop infinitely
 6. **Specs are truth** — implementation matches specs, not the other way around
-7. **Skills are the orchestrator's responsibility** — use them proactively, never wait to be asked
-8. **English framework** — all skills, prompts, Engram content in English
-
----
-
-## Related Projects
-
-| Project | Role |
-|---------|------|
-| [gentle-ai](https://github.com/Gentleman-Programming/gentle-ai) | **CORE** — skill management, SDD orchestration, Engram memory |
-| [RTK](https://github.com/rtk-ai/rtk) | Token optimization — 60-90% savings on CLI commands |
-| [Engram](https://github.com/nicobailon/engram) | Persistent memory MCP (installed via gentle-ai) |
+7. **Skills are the orchestrator's responsibility** — use them proactively
+8. **Feedback is mandatory** — every version gets a feedback report, every prompt gets analyzed
+9. **English framework** — all skills, prompts, Engram content in English
 
 ---
 
@@ -412,8 +302,6 @@ gentle-ai is the **infrastructure**. autoSDD is the **methodology**.
 
 [**Gentleman Programming**](https://github.com/Gentleman-Programming) — Senior SaaS Architect, Google Developer Expert & Microsoft MVP.
 
----
-
 ## License
 
-MIT — see [LICENSE](LICENSE)
+MIT

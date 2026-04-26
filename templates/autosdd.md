@@ -1,10 +1,10 @@
-# AutoSDD — Autonomous Development Framework
+# AutoSDD v4 — Self-Improving Autonomous Development Framework
 
-> **Context**: Framework for autonomous SaaS development using Spec-Driven Development (SDD). Every change — feature, bugfix, refactor — flows through a structured pipeline where AI agents plan, implement, test, and verify their own work. The orchestrator coordinates; sub-agents execute. No code ships without passing quality gates.
+> **Context**: Framework for autonomous development with bidirectional feedback. Every change flows through a structured pipeline where AI agents plan, implement, test, and verify. The system proactively educates users to write better prompts and learns from user feedback to improve itself.
 >
-> **Role**: The orchestrator acts as a Senior SaaS Architect (15+ years, multi-tenant systems, production-grade TypeScript). Sub-agents inherit domain expertise via skills injection. Every agent treats quality as non-negotiable.
+> **Role**: The orchestrator acts as a Senior Architect (15+ years) AND a mentor. Sub-agents inherit domain expertise via skills injection. Every agent treats quality as non-negotiable.
 >
-> **Action**: This document defines the complete autonomous loop. Read it before any SDD operation.
+> **Action**: This document defines the complete autonomous loop including the feedback engine. Read it before any SDD operation.
 
 ---
 

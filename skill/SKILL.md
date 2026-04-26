@@ -1,12 +1,13 @@
 ---
 name: autosdd
 description: >
-  Self-improving autonomous development framework. Routes prompts to 5 flows
-  (Development, Code Review, Debugging, Research, Self-Improvement), applies
-  CREA prompt engineering on ALL prompt creation, enforces SDD methodology,
-  tracks metrics, and auto-improves through A/B testing. ALWAYS ACTIVE unless
-  user explicitly opts out.
-version: "3.1.0"
+  Self-improving autonomous development framework with bidirectional feedback.
+  Routes prompts to 5 flows, applies CREA prompt engineering, enforces SDD,
+  tracks metrics, and auto-improves through A/B testing. Proactively analyzes
+  user prompts for skill gaps and educates the user to write better prompts.
+  Learns from user feedback and persists corrections across sessions.
+  ALWAYS ACTIVE unless user explicitly opts out.
+version: "4.0.0"
 license: MIT
 metadata:
   author: gentleman-programming
@@ -25,9 +26,11 @@ metadata:
     - Gemini CLI
 ---
 
-# autoSDD v3 — Self-Improving Autonomous Development Framework
+# autoSDD v4 — Self-Improving Autonomous Development Framework
 
 > **This skill is ALWAYS ACTIVE.** Every prompt goes through autoSDD unless the user explicitly says otherwise (e.g., "skip autosdd", "raw mode", "no framework").
+>
+> **v4 Philosophy**: autoSDD doesn't just automate development — it makes BOTH the AI and the user better over time. The AI learns from user feedback. The user learns from prompt analysis and skill gap detection. Every interaction is a feedback loop.
 
 ## Quick Start
 
@@ -47,19 +50,19 @@ The installer configures gentle-ai, autoSDD skill, RTK, prompt-engineering-patte
 
 When this skill is active, EVERY user prompt goes through the following pipeline:
 
-```
-USER PROMPT
-    ↓
-[1] FLOW ROUTER — detect intent, select flow
-    ↓
-[2] CREA PROMPT REFINE — structure with Context, Role, Specificity, Action
-    ↓
-[3] EXECUTE FLOW — one of 5 flows (Dev, Review, Debug, Research, Self-Improve)
-    ↓
-[4] OUTCOME COLLECTION — metrics, tokens, pass/fail
-    ↓
-[5] KNOWLEDGE UPDATE — update context files, Engram, wiki if relevant
-```
+**Step 1 — PROMPT ANALYST**: Analyze user prompt for quality, missing context, skill gaps, security concerns. Generate PromptInsights (score 0-100). If score < 60, ask user to clarify BEFORE proceeding.
+
+**Step 2 — FEEDBACK DETECTOR**: Check if the user is giving feedback to the AI (corrections, preferences, complaints). If yes, ingest and persist BEFORE continuing.
+
+**Step 3 — FLOW ROUTER**: Detect intent (dev, debug, review, research, self-improve). Select flow.
+
+**Step 4 — CREA PROMPT REFINE**: Structure with Context, Role, Specificity, Action. Incorporate skill gaps from prompt analysis into context.
+
+**Step 5 — EXECUTE FLOW**: One of 5 flows (Dev, Review, Debug, Research, Self-Improve).
+
+**Step 6 — OUTCOME COLLECTION**: Metrics, tokens, pass/fail, prompt quality score.
+
+**Step 7 — KNOWLEDGE UPDATE**: Update context files, Engram, wiki. If version complete → auto-generate feedback.md.
 
 ### Opt-Out
 
@@ -141,11 +144,11 @@ Key behaviors:
 Version folder per change:
 ```
 context/appVersions/vX.Y.Z/
-  original_prompt.md    # Raw user prompt
+  original_prompt.md    # Raw user prompt (preserved as-is)
   prompt.md             # CREA-refined execution plan (updated during execution)
-  feedback.md           # Sub-agent findings
+  feedback.md           # AUTO-GENERATED at version close (see §4.8)
   changelog.md          # What changed, why, impact
-  metrics.md            # Outcome Record
+  metrics.md            # Outcome Record (tokens, duration, scores)
   learnings.md          # What agent learned
   screenshots/{task}/   # Playwright CLI screenshots
   outputs/              # Reports, artifacts
@@ -185,7 +188,7 @@ SCOPE → GATHER → EVALUATE → SYNTHESIZE → DECIDE
 ### 4.5 Self-Improvement Flow
 
 ```
-MEASURE → HYPOTHESIZE → EXPERIMENT → EVALUATE → APPLY/DISCARD → DISCOVER
+MEASURE → HYPOTHESIZE ��� EXPERIMENT → EVALUATE → APPLY/DISCARD → DISCOVER
 ```
 
 Autoresearch-inspired: change parameter → run experiment → measure metric → keep/discard.
@@ -193,6 +196,129 @@ Autoresearch-inspired: change parameter → run experiment → measure metric �
 Triggered: explicitly OR auto every 5th DEV flow.
 
 Optimizes: CLAUDE.md sections, skill injection, judge rubric, timeout budgets, sub-agent prompts.
+
+### 4.6 Prompt Analyst Protocol (runs on EVERY prompt)
+
+Before routing any user prompt, the orchestrator performs a quality analysis.
+
+**Checks performed:**
+
+| Check | What it detects |
+|-------|----------------|
+| Context completeness | Missing info about current state, existing files, stack |
+| Ambiguity | Vague instructions: "hacelo bien", "que quede lindo", "mejorar" |
+| Architecture awareness | Request violates established patterns in guidelines.md |
+| Security awareness | No mention of validation, sanitization, auth for user-input flows |
+| Testing awareness | No tests requested for critical business logic changes |
+| Specificity | Instructions too generic to be executable by a sub-agent |
+| Token efficiency | Prompt could be more concise without losing information |
+
+**Output — PromptInsights:**
+
+```yaml
+quality_score: 0-100
+missing_context: []      # what info is missing
+ambiguities: []          # vague parts that need clarification
+skill_gaps_detected: []  # fundamental knowledge the user seems to lack
+security_concerns: []    # potential security issues in the request
+architecture_issues: []  # violations of established patterns
+optimization_tips: []    # how to make the prompt more efficient
+```
+
+**Delivery rules (by score):**
+
+| Score | Behavior |
+|-------|----------|
+| < 40 (CRITICAL) | STOP. Tell user what's missing. Do NOT proceed until clarified. |
+| 40-70 (WARNING) | Ask: "Puedo arrancar, pero me faltan estos datos. ¿Los tenés?" |
+| 70-90 (INFO) | Execute normally. Add tip at the end: "Tip: next time include X." |
+| > 90 (CLEAN) | Execute silently. Save insights for the version feedback report. |
+
+**Persistence:** Save all prompt analyses to Engram `feedback/prompt-analysis/{version}`. Accumulate skill gap patterns in `feedback/user-patterns/{username}`.
+
+**IMPORTANT**: The analysis must be FAST and INLINE — do NOT delegate to a sub-agent. This is a quick pass, not a deep review. If the analysis would take more than ~200 tokens of reasoning, skip the detailed analysis and just check for CRITICAL issues.
+
+### 4.7 Feedback Engine (Bidirectional)
+
+#### AI → User (automatic)
+
+Generated per-version in feedback.md (see §4.8). Includes:
+- Prompt quality analysis with specific improvement suggestions
+- Skill gaps detected with learning recommendations
+- Token efficiency analysis (waste from ambiguous prompts)
+- Self-correction cycles that could have been avoided
+
+#### User → AI (detected automatically)
+
+When the user provides feedback (signals: "no", "mal", "cambiá", "mejor si", "te dije que", "así no", "don't", "stop", "wrong", "that's not what I meant"):
+
+1. **Classify** the feedback:
+   - **Technical correction** → update `context/guidelines.md` + Engram `feedback/corrections/{topic}`
+   - **Style preference** → update `context/user_context.md` + Engram `feedback/preferences/{topic}`
+   - **Agent error** → save to Engram `feedback/agent-errors/{topic}`, evaluate if SKILL.md needs update
+2. **Persist** the correction immediately — NEVER defer
+3. **Confirm** to user: "Anotado. Guardé que [resumen]. No va a pasar de nuevo."
+4. **Include** in the version's feedback.md under "User → AI" section
+
+#### Feedback Commands
+
+| Command | Description |
+|---------|------------|
+| `/feedback` | Show feedback for the last completed version |
+| `/feedback week` | Aggregate feedback for the last 7 days |
+| `/feedback month` | Aggregate feedback for the last 30 days |
+| `/feedback v1.0..v2.0` | Feedback for a version range |
+| `/knowledge-graph` | Visualize AI's memory as a graph |
+| `/knowledge-graph obsidian` | Export as Obsidian vault |
+| `/knowledge-graph stats` | Memory statistics |
+
+These commands invoke the `feedback-report` and `knowledge-graph` skills respectively.
+
+### 4.8 Version Close Protocol
+
+When ALL objectives from a version's prompt.md are complete, the orchestrator MUST auto-generate `feedback.md` in the version folder BEFORE reporting completion to the user.
+
+**feedback.md schema:**
+
+```markdown
+# Feedback Report — {version}
+Generated: {date}
+
+## AI → User: Prompt Quality Analysis
+
+### Prompt Score: {score}/100
+
+### What Worked Well
+- {strengths in the user's prompt}
+
+### Areas for Improvement
+| Area | Issue | How to Fix |
+|------|-------|-----------|
+| {category} | {specific issue} | {actionable suggestion} |
+
+### Skill Gaps Detected
+- **{skill}**: {evidence} → {learning recommendation}
+
+### Token Efficiency
+- Tokens used: {total}
+- Estimated waste from ambiguous prompts: {amount} ({percentage}%)
+- Self-correction cycles: {count} (could have been: {ideal})
+
+## User → AI: Feedback Received
+| When | What | Action Taken |
+|------|------|-------------|
+| {phase} | {user feedback} | {what was updated in memory/files} |
+
+## AI Self-Assessment
+- What went well: {description}
+- What could improve: {description}
+```
+
+**Generation rules:**
+- Run INLINE — do NOT delegate to sub-agent (the orchestrator has all context)
+- Keep under 100 lines — be concise, not exhaustive
+- Save copy to Engram: `feedback/version-report/{version}`
+- Update user patterns: merge new skill gaps into `feedback/user-patterns/{username}`
 
 ---
 
@@ -356,6 +482,8 @@ The orchestrator MUST match skills to tasks based on context. The user should no
 | Error handling | `error-handling-patterns` | API routes, validation layers, external service integration, error boundaries |
 | CLAUDE.md updates | `claude-md-improver` | Creating, updating, or auditing CLAUDE.md files |
 | Browser / visual review | `playwright-cli` (ALWAYS `--headed`) | Visual verification, screenshots, form testing, UI review |
+| Feedback reports | `feedback-report` | `/feedback`, user asks for feedback, version close |
+| Memory visualization | `knowledge-graph` | `/knowledge-graph`, user asks "what do you know?" |
 
 #### 10.1.1 Implicit Use-Case Scenarios (when to use WITHOUT user asking)
 
@@ -468,6 +596,9 @@ All skills are installed globally (`-g`) from their canonical sources via [skill
 | `e2e-testing-patterns` | `npx skills add https://github.com/wshobson/agents --skill e2e-testing-patterns -g` | E2E testing with Playwright/Cypress |
 | `error-handling-patterns` | `npx skills add https://github.com/wshobson/agents --skill error-handling-patterns -g` | Error handling across languages |
 | `playwright-cli` | `npx skills add https://github.com/microsoft/playwright-cli --skill playwright-cli -g` | Browser automation and testing |
+| `claude-md-improver` | `npx skills add https://github.com/anthropics/claude-plugins-official --skill claude-md-improver -g` | CLAUDE.md audit and improvement |
+| `feedback-report` | (bundled with autoSDD) | Time-based feedback reports |
+| `knowledge-graph` | (bundled with autoSDD) | Memory visualization as graph |
 
 ### 10.2.1 How to Install Skills (for the orchestrator)
 
@@ -666,6 +797,6 @@ Agents without sub-agent support will run flows sequentially instead of parallel
 
 ---
 
-*autoSDD v3.1.0 — April 2026*
+*autoSDD v4.0.0 — April 2026*
 *Author: Gentleman Programming (github.com/thestark77)*
 *License: MIT*

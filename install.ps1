@@ -681,6 +681,47 @@ foreach ($entry in $SKILLS_SH) {
   }
 }
 
+# 3. Install bundled skills (from autoSDD repo itself)
+$BUNDLED_SKILLS = @("feedback-report", "knowledge-graph")
+foreach ($skill in $BUNDLED_SKILLS) {
+  for ($i = 0; $i -lt $AGENTS.Count; $i++) {
+    $agent = $AGENTS[$i]
+    if ($selectedAgents -contains $agent) {
+      $skillDir = Join-Path $AGENT_DIRS[$i] "skills/$skill"
+      New-Item -ItemType Directory -Path $skillDir -Force | Out-Null
+      try {
+        Invoke-WebRequest -Uri "$REPO_URL/skills/$skill/SKILL.md" -OutFile (Join-Path $skillDir "SKILL.md") -UseBasicParsing
+        Write-Host "  OK $skill ($agent)"
+      } catch {
+        $msg = "Failed to install $skill for $agent"
+        Write-Host "  ! $msg" -ForegroundColor Yellow
+        $warnings += $msg
+      }
+    }
+  }
+}
+
+# 4. Install shared protocols (extracted from CLAUDE.md for slim index)
+$SHARED_FILES = @("persona.md", "rtk.md", "sdd-orchestrator.md", "engram-protocol.md", "model-assignments.md")
+Write-Host ""
+Write-Host "Installing shared protocols..."
+for ($i = 0; $i -lt $AGENTS.Count; $i++) {
+  $agent = $AGENTS[$i]
+  if ($selectedAgents -contains $agent) {
+    $sharedDir = Join-Path $AGENT_DIRS[$i] "skills/_shared"
+    New-Item -ItemType Directory -Path $sharedDir -Force | Out-Null
+    foreach ($sf in $SHARED_FILES) {
+      try {
+        Invoke-WebRequest -Uri "$REPO_URL/shared/$sf" -OutFile (Join-Path $sharedDir $sf) -UseBasicParsing
+      } catch {
+        $msg = "Failed to install shared/$sf for $agent"
+        $warnings += $msg
+      }
+    }
+    Write-Host "  OK shared protocols ($agent)"
+  }
+}
+
 # --- Install RTK (Rust Token Killer) ---
 Write-Host ""
 Write-Host "Installing RTK (token optimization)..."
@@ -866,7 +907,7 @@ for ($i = 0; $i -lt $AGENTS.Count; $i++) {
     }
 
     # Check core skills installed by autoSDD
-    $coreSkillNames = @("autosdd") + ($SKILLS_SH | ForEach-Object { $_.skill })
+    $coreSkillNames = @("autosdd") + ($SKILLS_SH | ForEach-Object { $_.skill }) + $BUNDLED_SKILLS
     foreach ($cs in $coreSkillNames) {
       $csPath = Join-Path $AGENT_DIRS[$i] "skills\$cs\SKILL.md"
       if (Test-Path $csPath) {

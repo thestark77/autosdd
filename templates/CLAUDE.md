@@ -27,19 +27,6 @@ Next.js 16 (App Router) · Tailwind CSS 4 · Zustand · Zod · Prisma 7 + Postgr
 - TypeScript strict, `interface` over `type`, no `any`
 - Exact versions in package.json (no `^`)
 - Zod validation on EVERY endpoint with error codes (not text)
-- Single `response()` for ALL backend responses
-- Single `postRequest()` for ALL frontend requests (injects device metadata)
-- Audit trail on all data modifications
-
-## Workflow
-
-1. Every change uses **SDD** — explore → propose → spec → design → tasks → apply → verify
-2. Orchestrator delegates, sub-agents execute. Never implement inline.
-3. **TDD mandatory**: RED → GREEN → REFACTOR. No code without a failing test first.
-4. Auto-update Three Critical Context Files (guidelines.md, user_context.md, business_logic.md) when relevant info discovered
-5. Save decisions to Engram immediately after making them
-6. If blocked, mark `// TODO` + save to Engram as `user-pending`. Continue with everything else.
-7. Commit after completing key modules. Push to main.
 
 ## Testing
 
@@ -50,121 +37,94 @@ rtk tsc                           # Type check
 rtk lint                          # Lint check
 ```
 
-See autoSDD v3 skill for full testing strategy.
+## Validation
 
-## Quality Gates (every change must pass)
+```bash
+pnpm validate                     # lint + typecheck + unit/integration
+pnpm validate:full                # lint + typecheck + all tests + e2e
+```
 
-1. All tests pass (`vitest` + `playwright`)
-2. TypeScript clean (`tsc`)
-3. Lint clean
-4. Spec compliance verified by independent sub-agent
-5. Dual review via `/judgment-day` for critical changes
-
-## Skill Management (CRITICAL)
-
-**ALL skills are OFF by default.** Activate ONLY what you need, deactivate when done.
-
-- Library: `.agents/skills/` (project) + `~/.claude/skills/` (user)
-- Activate: create symlink in `.claude/skills/` → `.agents/skills/<name>`
-- Deactivate: remove symlink from `.claude/skills/`
-- **NEVER leave skills active after completing a task**
-- Unused skills waste context, increase cost, degrade response quality
-
-| Context | Activate these skills ONLY |
-|---------|--------------------------|
-| React/Next.js | `next-best-practices`, `vercel-react-best-practices` |
-| Tests | `test-driven-development`, `javascript-testing-patterns` |
-| E2E | `e2e-testing-patterns` |
-| Prisma/DB | `prisma-client-api`, `prisma-cli`, `postgresql-table-design` |
-| Public UI | `frontend-design` |
-| Admin UI | `interface-design` |
-| API errors | `error-handling-patterns` |
-| Review | `judgment-day` |
+Run `pnpm validate` before every push.
 
 ## Agent Operational Freedom
 
 You are a senior developer with FULL autonomy over the local environment.
 
-- **LOCAL database is yours**: create, read, update, delete data freely. Truncate tables, run seeds, reset migrations — no permission needed.
-- **Start dev server** (`pnpm dev`) and test features via Playwright MCP or curl whenever needed
-- **Use ALL MCPs proactively**: Playwright (browser), Prisma (DB), Railway (deploy), Sentry (errors), GitHub (issues/PRs)
-- **Ask before guessing**: If clarifying questions would significantly increase success probability, ASK THEM first
-- **Suggest improvements**: Proactively propose enhancements within technical capability
-- **Testing = cost/benefit**: Use whatever is most efficient — e2e, unit, curl, MCP tools, direct DB queries
-
-## MCPs Available
-
-| MCP | Use |
-|-----|-----|
-| Playwright | E2E testing, visual verification, form testing |
-| Prisma | DB queries, schema management, migrations — `pnpm dlx -y mcp-remote https://mcp.prisma.io/mcp` |
-| Sentry | Production error tracking |
-| Railway | Deployment, logs, variables |
-| Engram | Persistent memory across sessions |
-| Linear | Issue/project tracking |
-
-## Hooks (`.claude/settings.json`)
-
-- **PreToolUse** `git push*`: Runs `pnpm validate` before ANY push. Blocks push if lint, typecheck, or tests fail.
-- Never skip hooks (`--no-verify`). Fix the issue instead.
-
-## RTK (Token Optimization)
-
-**ALWAYS prefix commands with `rtk`**. Even in chains: `rtk git add . && rtk git commit -m "msg" && rtk git push`.
-RTK filters noise, saves 60-90% tokens. If RTK has no filter, it passes through — always safe.
-
-```bash
-rtk vitest run          # Tests — 99% savings
-rtk tsc                 # TypeCheck — 83% savings
-rtk lint                # Lint — 84% savings
-rtk git status          # Git — 59-80% savings
-rtk prisma migrate dev  # Prisma — 88% savings
-```
-
-## Validation
-
-```bash
-pnpm validate           # lint + typecheck + unit/integration tests
-pnpm validate:full      # lint + typecheck + all tests + e2e
-```
-
-Run `pnpm validate` before every push. The pre-push hook enforces this automatically.
-
-## Project Commands
-
-```bash
-pnpm dev                          # Dev server (localhost:3000)
-rtk prisma migrate dev            # Run migrations
-rtk prisma db seed                # Seed database
-rtk prisma generate               # Regenerate client
-```
-
-## Path Aliases
-
-`@/*` · `@components/*` · `@lib/*` · `@stores/*` · `@config/*`
+- **LOCAL database is yours**: create, read, update, delete data freely
+- **Start dev server** (`pnpm dev`) and test features via Playwright or curl
+- **Ask before guessing**: If clarifying questions would significantly increase success, ASK FIRST
+- **Suggest improvements**: Proactively propose enhancements
 
 ## autoSDD — Active Framework (DO NOT REMOVE)
 
-autoSDD v3 is the ACTIVE development framework for this project.
-ALL prompts go through autoSDD unless the user explicitly opts out.
+<!-- autosdd:start -->
+autoSDD v4 is the ACTIVE development framework. ALL prompts go through autoSDD unless opted out with `[raw]`, `[no-sdd]`, or `skip autosdd`.
 
-### Default Behavior
-- Every prompt → Flow Router → CREA Prompt Refine → Execute Flow → Outcome Collection
-- CREA framework (Context, Role, Specificity, Action) on ALL prompt creation
-- prompt-engineering-patterns skill on ALL prompt refinement
-- 5 flows: Development, Code Review, Debugging, Research, Self-Improvement
-- Orchestrator delegates to sub-agents, NEVER executes directly
-- Monitor tool for ALL waiting/watching (NEVER poll)
-- RTK prefix on ALL shell commands
+**Core pipeline**: Prompt Analyst → Feedback Detector → Flow Router → CREA Refine → Execute → Outcome Collection → Knowledge Update
+
+**Read the full framework**: `~/.claude/skills/autosdd/SKILL.md`
+
+### Ecosystem (auto-installed)
+
+#### Skills (orchestrator resolves automatically — user doesn't need to name them)
+
+| Skill | When to Use |
+|-------|------------|
+| `autosdd` | ALWAYS — flow router + CREA + feedback engine |
+| `prompt-engineering-patterns` | Every prompt creation — CREA techniques |
+| `frontend-design` | Public-facing UI — pages, components, layouts |
+| `interface-design` | Admin/internal UI — dashboards, tables, panels |
+| `branch-pr` | Shipping work — PR creation |
+| `judgment-day` | Critical code — security, finance, 5+ file changes |
+| `e2e-testing-patterns` | E2E tests — Playwright/Cypress coverage |
+| `error-handling-patterns` | Error management — API routes, validation, external APIs |
+| `playwright-cli` | Browser automation — visual verify, screenshots (ALWAYS --headed) |
+| `claude-md-improver` | CLAUDE.md quality — audit, improve, restructure |
+| `feedback-report` | User feedback — `/feedback [timerange]` |
+| `knowledge-graph` | Memory visualization — `/knowledge-graph` |
+| `skill-creator` | Creating new SKILL.md files |
+| `postgresql-table-design` | DB schema design — tables, indexes, RLS |
+
+#### SDD Phase Skills (via gentle-ai)
+
+`sdd-init` · `sdd-explore` · `sdd-propose` · `sdd-spec` · `sdd-design` · `sdd-tasks` · `sdd-apply` · `sdd-verify` · `sdd-archive` · `sdd-onboard`
+
+#### MCPs
+
+| MCP | When |
+|-----|------|
+| Engram | Persistent memory — ALL phases |
+| Context7 | Live library docs — prompt enrichment |
+| Playwright | Browser automation — apply, verify |
+| Prisma | DB management — apply, verify |
+| Linear | Issue tracking — orchestrator |
+| GitHub | PRs, issues — orchestrator |
+
+#### Tools
+
+- **RTK**: ALWAYS prefix commands with `rtk` (60-90% token savings). Read: `~/.claude/skills/_shared/rtk.md`
+- **Monitor**: Event-driven waiting (NEVER sleep/poll)
 
 ### Three Critical Context Files (sacred, auto-updated)
+
 - `context/guidelines.md` — Technical rules and conventions
 - `context/user_context.md` — User profile and preferences
 - `context/business_logic.md` — Domain knowledge and workflows
 
-### Opt-Out
-- `[raw]` prefix: skip framework entirely
-- `[no-sdd]` prefix: skip SDD but keep CREA
-- `skip autosdd`: natural language opt-out
+### Bidirectional Feedback (v4)
 
-Read the autoSDD skill: `~/.claude/skills/autosdd/SKILL.md`
+- AI analyzes EVERY user prompt for quality, skill gaps, and optimization opportunities
+- User feedback is detected and persisted automatically to guidelines/user_context/Engram
+- `feedback.md` auto-generated at version close in `context/appVersions/vX.Y.Z/`
+- `/feedback [timerange]` for aggregate reports · `/knowledge-graph` for memory visualization
+
+### Shared Protocols
+
+| Protocol | File |
+|----------|------|
+| Persona & Rules | `~/.claude/skills/_shared/persona.md` |
+| RTK Token Optimization | `~/.claude/skills/_shared/rtk.md` |
+| SDD Orchestrator | `~/.claude/skills/_shared/sdd-orchestrator.md` |
+| Engram Memory | `~/.claude/skills/_shared/engram-protocol.md` |
+| Model Assignments | `~/.claude/skills/_shared/model-assignments.md` |
+<!-- autosdd:end -->
