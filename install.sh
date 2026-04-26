@@ -941,8 +941,18 @@ autoSDD v5.0 is the ACTIVE development framework. ALL prompts go through autoSDD
 
 Foundation layer (SDD phases, MCPs, shared protocols) provided by **gentle-ai**. autoSDD extends it with the meta-framework, telemetry, and additional skills.
 
-### Core Pipeline
-Prompt Analyst -> Feedback Detector -> Flow Router -> CREA Refine -> Execute -> Telemetry -> Outcome Collection -> Knowledge Update
+### Core Rule
+**The orchestrator DELEGATES. It never writes source code (.ts, .tsx, .prisma, etc.) inline.** See SKILL.md Section 1.
+
+### Pipeline
+Triage -> Route -> Plan (CREA prompt.md) -> Delegate (sub-agents with skill injection) -> Collect -> Close Version -> Knowledge Update -> Compaction Check
+
+### Key Sections to Internalize
+- **Section 1**: Orchestrator identity (delegate, don't execute)
+- **Section 3**: CREA applied ONCE on prompt.md (not 3x)
+- **Section 4**: Sub-agent launch template (fill-in-the-blank, mandatory)
+- **Section 5**: Skill routing (pattern match -> inject rules)
+- **Step 8**: Compaction protocol (suggest /compact at >50% context)
 
 ### Ecosystem
 
