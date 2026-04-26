@@ -633,12 +633,34 @@ If ANY of these is missing, WARN and STOP:
 
 ### 10.5 Recommended (NOT auto-installed, WARNING only)
 
+#### Tools & Plugins
+
 | Tool | Purpose | Install |
 |------|---------|---------|
 | TypeScript LSP | Go-to-definition for TS projects | Plugin: `typescript-lsp` |
 | code-review | Automated PR review | Plugin: `code-review` |
 | code-simplifier | Post-implementation cleanup | Plugin: `code-simplifier` |
 | claude-powerline | Status line | `npx -y @owloops/claude-powerline@latest` |
+
+#### Stack-Specific Skills (install per-project, NOT globally)
+
+autoSDD is technology-agnostic by design. However, when a project uses a specific stack, the orchestrator SHOULD recommend relevant third-party skills from [skills.sh](https://skills.sh/) during `sdd-init` or when the stack is detected.
+
+**The orchestrator MUST be able to answer: "What skills should I install for THIS project?"** based on the detected stack (package.json, go.mod, Cargo.toml, etc.).
+
+| Stack Detected | Recommended Skill | Source | Install |
+|----------------|------------------|--------|---------|
+| React / Next.js | `vercel-react-best-practices` | vercel-labs/agent-skills | `npx skills add vercel-labs/agent-skills --skill react-best-practices -g -y` |
+| shadcn/ui (`components.json`) | `shadcn` | shadcn-ui/ui | `npx skills add shadcn-ui/ui --skill shadcn -g -y` |
+| Supabase / Postgres | `supabase-postgres-best-practices` | supabase/agent-skills | `npx skills add supabase/agent-skills --skill supabase-postgres-best-practices -g -y` |
+| Supabase (full) | `supabase` | supabase/agent-skills | `npx skills add supabase/agent-skills --skill supabase -g -y` |
+| MCP development | `mcp-builder` | anthropics/skills | `npx skills add anthropics/skills --skill mcp-builder -g -y` |
+
+**Recommendation rules:**
+1. During `sdd-init`, after detecting the stack, list applicable skills and ask the user if they want to install them
+2. NEVER auto-install stack-specific skills — always ask first
+3. If the user asks "what skills should I install?", analyze the project's dependencies and recommend from this table + search skills.sh for others
+4. Stack-specific skills are installed GLOBALLY (`-g`) so they're available across sessions, but they are CONDITIONAL — only activated when the project context matches
 
 ### 10.6 Inventory Protocol (SESSION START)
 

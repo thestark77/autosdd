@@ -567,6 +567,22 @@ KEYCHAIN_SERVICE="$KEYCHAIN_SERVICE"
 OLLAMA_URL="$OLLAMA_LOCAL_URL"
 OLLAMA_MODEL="$OLLAMA_LOCAL_MODEL"
 
+resolve_openrouter_key() {
+  local k=""
+  if [[ -n "\$OPENROUTER_API_KEY" ]]; then
+    k="\$OPENROUTER_API_KEY"
+  else
+    local envf
+    for envf in ".env.local" ".env"; do
+      if [[ -f "\$envf" ]]; then
+        k=\$(grep -E "^OPENROUTER_API_KEY=" "\$envf" 2>/dev/null | head -1 | cut -d= -f2- | tr -d '"'"'"' ' || echo "")
+        [[ -n "\$k" ]] && break
+      fi
+    done
+  fi
+  printf '%s' "\$k"
+}
+
 case "\$MODE" in
   local)
     export ENGRAM_EMBEDDING_PROVIDER=api
@@ -588,10 +604,21 @@ case "\$MODE" in
     if [[ -z "\$key" ]] && [[ -f "\$HOME/.engram/api-key" ]]; then
       key=\$(cat "\$HOME/.engram/api-key" 2>/dev/null || echo "")
     fi
+    if [[ -z "\$key" ]]; then
+      key=\$(resolve_openrouter_key)
+    fi
     export ENGRAM_EMBEDDING_API_KEY="\$key"
     ;;
   *)
-    export ENGRAM_EMBEDDING_PROVIDER=local
+    key=\$(resolve_openrouter_key)
+    if [[ -n "\$key" ]]; then
+      export ENGRAM_EMBEDDING_PROVIDER=api
+      export ENGRAM_EMBEDDING_API_URL="https://openrouter.ai/api/v1/embeddings"
+      export ENGRAM_EMBEDDING_API_MODEL="openai/text-embedding-3-small"
+      export ENGRAM_EMBEDDING_API_KEY="\$key"
+    else
+      export ENGRAM_EMBEDDING_PROVIDER=local
+    fi
     ;;
 esac
 
@@ -871,10 +898,17 @@ fi
 # Inject or update autoSDD block (even in freshly downloaded template)
 if [[ -f "./CLAUDE.md" ]]; then
   if grep -q "autosdd:start" "./CLAUDE.md"; then
+    # v4+ with markers → replace marked block
     sed -i '/<!-- autosdd:start -->/,/<!-- autosdd:end -->/d' "./CLAUDE.md"
     printf '%s\n' "$AUTOSDD_BLOCK" >> "./CLAUDE.md"
     echo "  ✓ CLAUDE.md → autoSDD block updated (markers replaced)"
+  elif grep -q "^## autoSDD" "./CLAUDE.md"; then
+    # v2/v3 without markers → replace from section header to end of file
+    sed -i '/^## autoSDD/,$d' "./CLAUDE.md"
+    printf '%s\n' "$AUTOSDD_BLOCK" >> "./CLAUDE.md"
+    echo "  ✓ CLAUDE.md → autoSDD v2/v3 section migrated to v4 (markers added)"
   else
+    # No autoSDD section → append
     printf '\n%s\n' "$AUTOSDD_BLOCK" >> "./CLAUDE.md"
     echo "  ✓ CLAUDE.md → autoSDD block injected (appended)"
   fi

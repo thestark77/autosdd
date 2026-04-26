@@ -547,6 +547,17 @@ $stateDir = Join-Path $env:USERPROFILE ".engram"
 $modeFile = Join-Path $stateDir "mode"
 $mode = if (Test-Path $modeFile) { (Get-Content $modeFile -Raw).Trim() } else { "local" }
 
+function Resolve-OpenRouterKey {
+  if ($env:OPENROUTER_API_KEY) { return $env:OPENROUTER_API_KEY }
+  foreach ($envFile in @(".env.local", ".env")) {
+    if (Test-Path $envFile) {
+      $line = Select-String -Path $envFile -Pattern "^OPENROUTER_API_KEY=" | Select-Object -First 1
+      if ($line) { return ($line.Line -split "=", 2)[1].Trim('"', "'", ' ') }
+    }
+  }
+  return ""
+}
+
 switch ($mode) {
   "local" {
     $env:ENGRAM_EMBEDDING_PROVIDER  = "api"
@@ -569,10 +580,19 @@ switch ($mode) {
         [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($bstr)
       } catch { }
     }
+    if (-not $key) { $key = Resolve-OpenRouterKey }
     $env:ENGRAM_EMBEDDING_API_KEY = $key
   }
   default {
-    $env:ENGRAM_EMBEDDING_PROVIDER = "local"
+    $key = Resolve-OpenRouterKey
+    if ($key) {
+      $env:ENGRAM_EMBEDDING_PROVIDER  = "api"
+      $env:ENGRAM_EMBEDDING_API_URL   = "https://openrouter.ai/api/v1/embeddings"
+      $env:ENGRAM_EMBEDDING_API_MODEL = "openai/text-embedding-3-small"
+      $env:ENGRAM_EMBEDDING_API_KEY   = $key
+    } else {
+      $env:ENGRAM_EMBEDDING_PROVIDER = "local"
+    }
   }
 }
 
@@ -880,10 +900,17 @@ if (-not (Test-Path $claudeMd)) {
 if (Test-Path $claudeMd) {
   $content = Get-Content $claudeMd -Raw
   if ($content -match "autosdd:start") {
+    # v4+ with markers -> replace marked block
     $content = $content -replace "(?s)<!-- autosdd:start -->.*?<!-- autosdd:end -->", $AUTOSDD_BLOCK
     Set-Content -Path $claudeMd -Value $content -NoNewline
     Write-Host "  OK CLAUDE.md -> autoSDD block updated (markers replaced)"
+  } elseif ($content -match "(?m)^## autoSDD") {
+    # v2/v3 without markers -> replace from section header to end of file
+    $content = $content -replace "(?s)(?m)^## autoSDD.*$", $AUTOSDD_BLOCK
+    Set-Content -Path $claudeMd -Value $content -NoNewline
+    Write-Host "  OK CLAUDE.md -> autoSDD v2/v3 section migrated to v4 (markers added)"
   } else {
+    # No autoSDD section -> append
     Add-Content -Path $claudeMd -Value "`n$AUTOSDD_BLOCK"
     Write-Host "  OK CLAUDE.md -> autoSDD block injected (appended)"
   }
