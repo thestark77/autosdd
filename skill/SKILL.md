@@ -39,6 +39,7 @@ metadata:
 **Step 1 - TRIAGE** (15s, inline): Is the prompt clear? HIGH=proceed · MEDIUM=ask 1-3 things · LOW=stop+clarify.
 Check agent TODO list and user TODO list for pending items — surface any relevant to this prompt.
 Detect feedback? -> persist to Engram + context files FIRST.
+**Reference check**: Would a reference (repo, doc, page, existing code, design system) significantly improve execution? If yes, ask: "Tenes alguna referencia (repo, doc, diseño) que pueda usar como base?" Non-blocking — save to TODO if user defers.
 
 **Step 2 - ROUTE**: feature/add/create/refactor -> DEV · fix/bug/broken -> DEBUG · review/PR -> REVIEW · research/compare -> RESEARCH
 
@@ -78,6 +79,7 @@ CREA applied to **prompt.md** only — NOT to the user's raw prompt, NOT per sub
 - Constraints from guidelines.md: {extracted relevant rules}
 - Prior decisions from Engram: {searched and found}
 - Business rules from business_logic.md: {if applicable}
+- References: {user-provided repos, docs, designs, or code to use as base — if any}
 
 ## Role
 Sub-agents act as {senior implementers / reviewers / architects} with expertise in {domain}.
@@ -117,6 +119,7 @@ Sub-agents act as {senior implementers / reviewers / architects} with expertise 
 Project: {name} - {one-line description}
 State: {what exists relevant to this task}
 Pattern to follow: {reference file path}
+External references: {user-provided repos/docs/designs — if any}
 
 ## Role
 You are a senior {implementer/reviewer/tester} specializing in {domain}.
@@ -232,11 +235,13 @@ Metrics tracked per session — reported in feedback.md at version close.
 
 | After... | Example question |
 |----------|-----------------|
+| Complex/new task (triage) | "Tenes alguna referencia (repo, doc, diseño) que pueda usar como base?" |
 | UI implementation | "El layout mobile se ve como esperabas?" |
 | Feature completion | "La funcionalidad hace lo que necesitabas?" |
 | Refactor | "El comportamiento sigue igual?" |
 | Design decision | "Preferis A (mas simple) o B (mas flexible)?" |
 | Architecture choice | "Esta arquitectura escala para lo que tenes en mente?" |
+| Framework/library adoption | "Hay algun repo o doc que uses como referencia para esto?" |
 
 ---
 

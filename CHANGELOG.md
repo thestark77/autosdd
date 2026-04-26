@@ -13,6 +13,7 @@ autoSDD is an orchestration framework for Claude Code that enforces a structured
 
 ### Added
 - Compaction Protocol (Step 8): proactive context window management. Suggests /compact at milestones when context > 50%. Mandatory at 70%+. Persists Engram summary and resumption plan before compacting.
+- Reference Solicitation: orchestrator proactively asks for references (repos, docs, designs, existing code) at triage when they would improve execution quality. Non-blocking — saved to TODO if user defers. References flow through CREA context and sub-agent launch template.
 
 ---
 
