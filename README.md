@@ -37,13 +37,16 @@ autoSDD is a **methodology layer** on top of [gentle-ai](https://github.com/Gent
 
 Every user prompt flows through this pipeline:
 
-1. **TRIAGE** — Is the prompt clear? Assign HIGH/MEDIUM/LOW priority. Check TODO lists for pending work.
+1. **TRIAGE** — Is the prompt clear? Assign HIGH/MEDIUM/LOW. Check Engram for pending tasks and learnings.
 2. **ROUTE** — Detect intent: feature→DEV, fix→DEBUG, review→REVIEW, research→RESEARCH.
 3. **PLAN (CREA)** — Build `prompt.md` with full CREA structure (Context, Role, Specificity, Action).
-4. **DELEGATE** — Launch sub-agents with skill injection using the mandatory launch template.
-5. **COLLECT** — Gather results, validate output, fix failures by re-delegating (never inline).
+4. **DELEGATE** — Launch sub-agents with skill injection using the mandatory launch template. Pre-launch gate verifies all 6 template sections.
+5. **COLLECT** — Gather results, validate output, fix failures by re-delegating (never inline). Save observation + ask user feedback.
 6. **CLOSE VERSION** — Generate `feedback.md` with telemetry metrics, update `PROGRESS.md`.
 7. **KNOWLEDGE UPDATE** — Update context files, save to Engram memory.
+8. **COMPACTION CHECK** — At >50% context window, suggest `/compact` after persisting state to Engram.
+
+**Mid-Pipeline Interrupt**: If the user sends a new message during execution, the orchestrator: (1) answers any question FIRST, (2) re-prioritizes the full task queue, (3) checks if completed work needs rework, (4) resumes from the updated queue.
 
 ### Development Flow
 
@@ -91,6 +94,33 @@ The AI confirms: "Anotado. Guardé que [X]. No va a pasar de nuevo."
 
 - **Active feedback**: the orchestrator asks non-blocking questions after every UI change, new feature, refactor, or design decision — feedback is collected without blocking execution
 - **TODO list review**: TODO lists are checked at triage, collect, and close phases to ensure nothing is missed
+- **Session observations**: compliance notes saved to Engram at each pipeline step — feeds `/improve` across sessions
+- **Tiered knowledge**: observations → consolidated learnings → promoted rules (SKILL.md permanent changes)
+
+---
+
+## Pipeline Gates & Hooks (v5)
+
+### Pipeline Gates (MANDATORY — verified before each phase transition)
+
+| Gate | Before... | Verifies |
+|------|-----------|----------|
+| G1 | Planning | Engram searched for pending tasks + learnings |
+| G2 | Delegating | prompt.md has CREA, launch template filled (all 6 sections), `model` set, skills as TEXT |
+| G3 | Collecting | Observation saved for each delegation, ≥1 feedback question asked |
+| G4 | Closing | feedback.md generated, user feedback persisted, Engram summary saved |
+
+### Structural Enforcement (Claude Code Hooks)
+
+The installer deploys `.claude/settings.json` with hooks that trigger at key pipeline moments:
+
+| Hook | Trigger | Action |
+|------|---------|--------|
+| **SubagentStop** | After every sub-agent completes | Run Step 5 checkpoint (save observation, check feedback debt) |
+| **PreCompact** | Before context compaction | Run Step 8 (save Engram summary, persist plan state) |
+| **Stop** | Before session ends | Run pre-close checkpoint (non-blocking) |
+
+Core behaviors are enforced structurally (hooks, gates, scripts) — not just text suggestions.
 
 ### Commands
 
@@ -102,6 +132,7 @@ The AI confirms: "Anotado. Guardé que [X]. No va a pasar de nuevo."
 | `/feedback v1.0..v2.0` | Feedback for a specific version range |
 | `/audit [session-id\|last\|last-N]` | Analyze session for autoSDD compliance |
 | `/improve [target]` | Run audit + generate improvement plan |
+| `/self-analysis` | In-session self-audit vs v5.0 checkpoints |
 | `/knowledge-graph` | Visualize AI's memory as interactive graph |
 | `/knowledge-graph obsidian` | Export as Obsidian vault with wikilinks |
 | `/knowledge-graph stats` | Memory statistics summary |
@@ -169,19 +200,18 @@ curl -o ~/.claude/skills/autosdd/SKILL.md \
 | Component | Purpose |
 |-----------|---------|
 | `autosdd` skill | This framework — flow router, CREA, feedback engine, telemetry |
-| `autosdd-telemetry` skill | Session auditing, compliance scoring, /audit, /improve, and /self-analysis |
+| `autosdd-telemetry` skill | Session auditing, compliance scoring, /audit, /improve, /self-analysis |
 | `prompt-engineering-patterns` | CREA prompt techniques (CoT, Few-Shot, Structured Output) |
 | `frontend-design` | Production-grade frontend interfaces |
 | `interface-design` | Dashboards, admin panels, internal tools |
 | `claude-md-improver` | CLAUDE.md audit and improvement |
 | `e2e-testing-patterns` | E2E testing with Playwright/Cypress |
 | `error-handling-patterns` | Error handling across languages |
-| `playwright-cli` | Browser automation and testing |
+| `playwright-cli` | Browser automation and testing (ALWAYS `--headed`) |
 | `feedback-report` | Time-based feedback reports |
 | `knowledge-graph` | Memory visualization as graph |
-| `skill-creator` | Create new skills |
-| `postgresql-table-design` | PostgreSQL schema best practices |
-| Shared protocols (1) | RTK token optimization |
+| Shared protocols (5) | RTK (autoSDD-owned) + persona, orchestrator, engram, model-assignments (gentle-ai copies) |
+| `.claude/settings.json` | Pipeline enforcement hooks (SubagentStop, PreCompact, Stop) |
 
 ### Auto-installed by gentle-ai
 
@@ -190,6 +220,9 @@ curl -o ~/.claude/skills/autosdd/SKILL.md \
 | SDD skills (10) | sdd-init, explore, propose, spec, design, tasks, apply, verify, archive, onboard |
 | `branch-pr` | PR creation workflow with issue-first enforcement |
 | `judgment-day` | Parallel adversarial code review (two blind judges) |
+| `skill-creator` | Create new skills |
+| `issue-creation` | Issue creation workflow |
+| `skill-registry` | Skill registry management |
 | Engram MCP | Persistent cross-session memory |
 | Context7 MCP | Live library/framework documentation |
 | RTK | Token-optimized CLI output |
@@ -227,34 +260,45 @@ curl -o ~/.claude/skills/autosdd/SKILL.md \
 
 ```
 autosdd/
-├── README.md
-├── install.sh / install.ps1      # One-command installers
-├── scripts/
-│   ├── auto-resume.sh            # Bash wrapper: rate-limit recovery (macOS/Linux)
-│   └── auto-resume.ps1           # PowerShell wrapper: rate-limit recovery (Windows)
+├── CLAUDE.md                      # Project config + autoSDD active block
+├── AGENTS.md                      # Architecture reference — ALL modifications follow this
+├── README.md                      # Public documentation
+├── LEARNING.md                    # Promoted rules from /improve cycles
+├── CHANGELOG.md                   # Release history
+├── install.sh / install.ps1      # One-command installers (distribution mechanism)
 ├── skill/
-│   └── SKILL.md                  # autoSDD v5 framework (installed to ~/.{agent}/skills/autosdd/)
-├── shared/                       # Extracted protocols (installed to ~/.{agent}/skills/_shared/)
-│   ├── persona.md                # Agent persona, rules, language
-│   ├── rtk.md                    # RTK token optimization instructions
-│   ├── sdd-orchestrator.md       # SDD delegation, sub-agent protocol
-│   ├── engram-protocol.md        # Engram memory protocol
-│   └── model-assignments.md      # Phase → model mapping
+│   └── SKILL.md                  # Core framework (≤300 lines, installed to ~/.{agent}/skills/autosdd/)
 ├── skills/                       # Bundled skills (installed to ~/.{agent}/skills/)
-│   ├── autosdd-telemetry/SKILL.md  # Session auditing, /audit, /improve, /self-analysis
-│   ├── feedback-report/SKILL.md  # Time-based feedback reports
-│   └── knowledge-graph/SKILL.md  # Memory visualization
+│   ├── autosdd-telemetry/SKILL.md  # /audit, /improve, /self-analysis
+│   ├── feedback-report/SKILL.md  # /feedback [timerange]
+│   └── knowledge-graph/SKILL.md  # /knowledge-graph — memory visualization
+├── shared/                       # Shared protocols (installed to ~/.{agent}/skills/_shared/)
+│   ├── rtk.md                    # RTK token optimization (autoSDD owns this)
+│   ├── persona.md                # Agent persona, rules (gentle-ai origin)
+│   ├── sdd-orchestrator.md       # SDD delegation protocol (gentle-ai origin)
+│   ├── engram-protocol.md        # Engram memory protocol (gentle-ai origin)
+│   └── model-assignments.md      # Phase → model mapping (gentle-ai origin)
 ├── templates/                    # Project templates (copied to project on install)
-│   ├── CLAUDE.md                 # Slim index template
-│   ├── autosdd.md                # Framework reference
+│   ├── CLAUDE.md                 # Slim index — SOURCE OF TRUTH for installed CLAUDE.md
+│   ├── autosdd.md                # Framework reference card
 │   ├── guidelines.md             # Technical rules template
 │   ├── user_context.md           # User profile template
-│   └── business_logic.md         # Domain knowledge template
-└── docs/
-    ├── testing-strategy.md       # TDD testing guide
-    ├── skill-lifecycle.md        # Skill activation protocol
-    ├── hooks.md                  # Claude Code hooks reference
-    └── iron-man-roadmap.md       # Voice/mobile vision
+│   ├── business_logic.md         # Domain knowledge template
+│   └── knowledge-graph.html      # Standalone graph viewer
+├── scripts/
+│   ├── auto-resume.sh            # Rate-limit recovery wrapper (macOS/Linux)
+│   └── auto-resume.ps1           # Rate-limit recovery wrapper (Windows)
+├── patches/
+│   └── engram-embedding.patch    # Patch for Engram MCP embedding layer
+├── docs/
+│   ├── testing-strategy.md       # TDD testing guide
+│   ├── skill-lifecycle.md        # Skill activation protocol
+│   ├── hooks.md                  # Claude Code hooks reference
+│   ├── mcp-setup.md              # MCP configuration guide
+│   └── iron-man-roadmap.md       # Voice/mobile vision
+└── .claude/
+    ├── settings.json             # Hook definitions (deployed to projects by installer)
+    └── hooks/                    # Hook scripts
 ```
 
 ---
@@ -300,15 +344,17 @@ gentle-ai = infrastructure. autoSDD = methodology + continuous improvement.
 ## Non-Negotiable Principles
 
 1. **No code without a test** — TDD: RED → GREEN → REFACTOR
-2. **No skipped quality gates** — every phase must pass before the next
-3. **No context loss** — every decision saved to Engram immediately
+2. **No skipped quality gates** — pipeline gates G1-G4 verified before each phase transition
+3. **No context loss** — every decision saved to Engram immediately, session observations at every step
 4. **No polling** — Monitor tool for all waiting, event-driven always
 5. **No silent failures** — escalate after 3 retries, never loop infinitely
 6. **Specs are truth** — implementation matches specs, not the other way around
-7. **Skills are the orchestrator's responsibility** — use them proactively
+7. **Skills are the orchestrator's responsibility** — use them proactively, inject as TEXT
 8. **Telemetry is mandatory** — every session can be audited, every version gets telemetry metrics
 9. **The orchestrator DELEGATES** — never writes source code inline
-10. **English framework** — all skills, prompts, Engram content in English
+10. **User messages get immediate attention** — mid-pipeline interrupts: answer first, re-prioritize, resume
+11. **Core behaviors enforced structurally** — hooks, gates, and scripts, not just text suggestions
+12. **English framework** — all skills, prompts, Engram content in English
 
 ---
 

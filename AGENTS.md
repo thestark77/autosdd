@@ -155,6 +155,18 @@ shared/rtk.md
   → install.ps1 (shared/ copy commands)
 ```
 
+### README.md (MANDATORY — update on ANY user-visible change)
+```
+README.md must be updated when ANY of these change:
+  - skill/SKILL.md (pipeline steps, features, non-negotiable principles)
+  - skills/ (add/remove bundled skill — also in "Adding a skill" path above)
+  - .claude/settings.json (hooks — Pipeline Gates & Hooks section)
+  - templates/ (file structure, installation output)
+  - install.sh / install.ps1 (installation steps, prerequisites)
+  - docs/ (file structure)
+README.md sections to check: How It Works · Pipeline Gates & Hooks · Commands · File Structure · What Gets Installed · Non-Negotiable Principles
+```
+
 ---
 
 ## Enforcement Mechanisms
@@ -245,6 +257,9 @@ pwsh install.ps1 -DryRun
 ### After hook changes
 - Verify `.claude/settings.json` hook prompts reference correct SKILL.md step numbers
 - Verify installer deploys the updated settings.json
+
+### After ANY user-visible change (pipeline, features, hooks, skills, file structure)
+- Update `README.md` — see README sync path for which sections to check
 
 ---
 
