@@ -189,13 +189,14 @@ On version release: move [Unreleased] to [X.Y.Z] - {date}, create new empty [Unr
 |------|-----|-------|
 | Step 5 checkpoint (observation + feedback) | SubagentStop hook → prompt injected after every sub-agent | `.claude/settings.json` |
 | Step 8 pre-compaction save | PreCompact hook → prompt injected before context compaction | `.claude/settings.json` |
-| Pre-close checkpoint (feedback.md + doc sync) | Stop hook → non-blocking prompt checking feedback.md, README/CHANGELOG sync, unsaved observations | `.claude/settings.json` |
+| Pre-close checkpoint (feedback.md + doc sync) | Stop hook (command + debounce) → fires once per user interaction, marker reset by UserPromptSubmit | `.claude/settings.json` |
+| Stop hook debounce reset | UserPromptSubmit hook → removes `.claude/.stop-hook-fired` marker | `.claude/settings.json` |
 | Pre-launch gate (G2) | Inline checkpoint in SKILL.md Step 4 — verify all 6 template sections | `skill/SKILL.md` Section 4 |
 | Pipeline gates G1-G4 | Documented with MANDATORY tag in CLAUDE.md + templates/CLAUDE.md | `templates/CLAUDE.md` |
 | Feedback collection | MANDATORY tag + NON-COMPLIANT consequence in SKILL.md Step 6 | `skill/SKILL.md` Section 9 |
 | SKILL.md line limit (300) | Manual verification after edits; documented in CLAUDE.md Testing section | `CLAUDE.md` |
 | Version string sync | Manual verification after SKILL.md version bump | `CLAUDE.md` Testing section |
-| README + CHANGELOG sync | G4 gate (before closing) + Stop hook + SKILL.md Step 7 doc sync check | `templates/CLAUDE.md`, `.claude/settings.json`, `skill/SKILL.md` |
+| README + CHANGELOG sync | G4 gate (before closing) + Stop hook (debounced) + SKILL.md Step 7 doc sync check | `templates/CLAUDE.md`, `.claude/settings.json`, `skill/SKILL.md` |
 | Installer dry-run | `bash install.sh --dry-run` and `pwsh install.ps1 -DryRun` | CI / manual |
 
 ---

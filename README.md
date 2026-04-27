@@ -118,7 +118,8 @@ The installer deploys `.claude/settings.json` with hooks that trigger at key pip
 |------|---------|--------|
 | **SubagentStop** | After every sub-agent completes | Run Step 5 checkpoint (save observation, check feedback debt) |
 | **PreCompact** | Before context compaction | Run Step 8 (save Engram summary, persist plan state) |
-| **Stop** | Before session ends | Pre-close checkpoint: feedback.md + README/CHANGELOG sync (non-blocking) |
+| **Stop** | After agent responds | Pre-close checkpoint with debounce (fires once per user interaction) |
+| **UserPromptSubmit** | Before processing user input | Resets Stop hook debounce marker |
 
 Core behaviors are enforced structurally (hooks, gates, scripts) — not just text suggestions.
 

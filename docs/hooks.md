@@ -84,7 +84,7 @@ Hooks automate quality enforcement. They run at defined points in Claude Code's 
 
 ## Recommended AutoSDD Hooks
 
-Five strategic hooks that cover the most important automation points:
+Six strategic hooks that cover the most important automation points:
 
 ### 1. PreToolUse — Pre-push quality gate
 
@@ -163,31 +163,11 @@ Restore state when a new session starts (especially after compaction):
 }
 ```
 
-### 5. Stop — Verify all tasks completed
-
-After Claude finishes responding, check if any tasks remain open:
-
-```json
-{
-  "Stop": [
-    {
-      "matcher": "*",
-      "hooks": [
-        {
-          "type": "prompt",
-          "prompt": "Before completing: check if there are any open TODO items, incomplete tasks, or unresolved blockers from this session. If yes, list them. If no, respond with COMPLETE."
-        }
-      ]
-    }
-  ]
-}
-```
-
 ---
 
 ## Complete `.claude/settings.json` Configuration
 
-Full recommended setup combining all five strategic hooks:
+Full recommended setup combining all four strategic hooks:
 
 ```json
 {
@@ -259,17 +239,6 @@ Full recommended setup combining all five strategic hooks:
         ]
       }
     ],
-    "Stop": [
-      {
-        "matcher": "*",
-        "hooks": [
-          {
-            "type": "prompt",
-            "prompt": "Before completing: check if there are any open TODO items, incomplete tasks, or unresolved blockers from this session. If yes, list them. If no, respond with COMPLETE."
-          }
-        ]
-      }
-    ],
     "UserPromptSubmit": [
       {
         "matcher": "*",
@@ -277,6 +246,17 @@ Full recommended setup combining all five strategic hooks:
           {
             "type": "prompt",
             "prompt": "Review this user input for clarity. If ambiguous, suggest clarifying questions. If clear, respond with APPROVE."
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -c '[ -f .claude/.stop-hook-fired ] && exit 0; touch .claude/.stop-hook-fired; echo \"Pre-close checkpoint: feedback.md generated? README.md + CHANGELOG.md reflect framework changes? Unsaved observations? (Non-blocking — skip if already checked or awaiting user input.)\"'"
           }
         ]
       }
@@ -467,3 +447,44 @@ Split into faster checks for commit hooks and full validation only for push:
   }
 }
 ```
+
+---
+
+## Known Anti-Patterns
+
+### prompt-type Stop hooks cause infinite loops
+
+Never use a `prompt`-type hook on the `Stop` event. The Stop event fires on every `end_turn`. A `prompt` hook injects a message the agent must respond to — that response is itself an `end_turn`, which fires Stop again, creating an infinite loop.
+
+**Solution: command-type hook with debounce**
+
+Use a `command`-type Stop hook that checks a marker file. On first fire: create the marker and output the reminder. On subsequent fires: detect the marker and exit silently (no output = no conversation injection = no loop). Reset the marker via a `UserPromptSubmit` hook so the Stop checkpoint fires again on the next user interaction.
+
+```json
+{
+  "Stop": [
+    {
+      "matcher": "*",
+      "hooks": [
+        {
+          "type": "command",
+          "command": "bash -c '[ -f .claude/.stop-hook-fired ] && exit 0; touch .claude/.stop-hook-fired; echo \"Your checkpoint message here\"'"
+        }
+      ]
+    }
+  ],
+  "UserPromptSubmit": [
+    {
+      "matcher": "*",
+      "hooks": [
+        {
+          "type": "command",
+          "command": "rm -f .claude/.stop-hook-fired"
+        }
+      ]
+    }
+  ]
+}
+```
+
+This pattern ensures the checkpoint fires exactly once per user interaction — never in a loop.

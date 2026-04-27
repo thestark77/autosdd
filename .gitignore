@@ -76,6 +76,7 @@ context/knowledge-vault/
 # Claude Code local (never commit these)
 .claude/skills/
 .claude/settings.local.json
+.claude/.stop-hook-fired
 
 # Playwright CLI runtime artifacts
 .playwright-cli/

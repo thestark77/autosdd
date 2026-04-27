@@ -1014,7 +1014,8 @@ RTK: ALWAYS prefix with \`rtk\` (60-90% savings) · Monitor: event-driven waitin
 ### Hooks (1-line reminders — logic lives in SKILL.md Section 2 checkpoints)
 - **SubagentStop**: triggers Step 5 checkpoint (observation + feedback debt)
 - **PreCompact**: triggers Step 8 pre-compaction checkpoint (Engram save + plan state)
-- **Stop**: triggers pre-close checkpoint (feedback.md + README/CHANGELOG sync, non-blocking)
+- **Stop**: pre-close checkpoint with debounce (fires once per user interaction, resets on next user message)
+- **UserPromptSubmit**: resets Stop hook debounce marker
 
 ### Shared Protocols (gentle-ai owns _shared/, autoSDD adds rtk.md only)
 | Protocol | File |
@@ -1088,8 +1089,19 @@ if [[ ! -f "$HOOKS_FILE" ]]; then
         "matcher": "",
         "hooks": [
           {
-            "type": "prompt",
-            "prompt": "Pre-close checkpoint: feedback.md generated? README.md + CHANGELOG.md reflect framework changes? Unsaved observations? (Non-blocking, skip if already checked or awaiting user input.)"
+            "type": "command",
+            "command": "bash -c '[ -f .claude/.stop-hook-fired ] && exit 0; touch .claude/.stop-hook-fired; echo \"Pre-close checkpoint: feedback.md generated? README.md + CHANGELOG.md reflect framework changes? Unsaved observations? (Non-blocking — skip if already checked or awaiting user input.)\"'"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "rm -f .claude/.stop-hook-fired"
           }
         ]
       }

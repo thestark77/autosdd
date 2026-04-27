@@ -127,7 +127,8 @@ RTK: ALWAYS prefix with `rtk` (60-90% savings) · Monitor: event-driven waiting 
 ### Hooks (1-line reminders — logic lives in SKILL.md Section 2 checkpoints)
 - **SubagentStop**: triggers Step 5 checkpoint (observation + feedback debt)
 - **PreCompact**: triggers Step 8 pre-compaction checkpoint (Engram save + plan state)
-- **Stop**: triggers pre-close checkpoint (feedback.md + README/CHANGELOG sync, non-blocking)
+- **Stop**: pre-close checkpoint with debounce (fires once per user interaction, resets on next user message)
+- **UserPromptSubmit**: resets Stop hook debounce marker
 
 ### Shared Protocols (gentle-ai owns _shared/, autoSDD adds rtk.md only)
 | Protocol | File |

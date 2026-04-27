@@ -13,6 +13,7 @@ autoSDD is an orchestration framework for Claude Code that enforces a structured
 
 ### Changed
 - Tighten orchestrator delegation rules (SKILL.md Section 1): multi-file edits MUST be delegated regardless of file type; single-file atomic is the only inline exception; sync paths explicitly flagged as always-delegate
+- Fix Stop hook infinite loop: change from `prompt` to `command` type with debounce marker (`.claude/.stop-hook-fired`); add `UserPromptSubmit` hook to reset marker per user interaction
 
 ---
 

@@ -27,8 +27,19 @@
         "matcher": "*",
         "hooks": [
           {
-            "type": "prompt",
-            "prompt": "Pre-close checkpoint: feedback.md generated? README.md + CHANGELOG.md reflect framework changes? Unsaved observations? (Non-blocking, skip if already checked or awaiting user input.)"
+            "type": "command",
+            "command": "bash -c '[ -f .claude/.stop-hook-fired ] && exit 0; touch .claude/.stop-hook-fired; echo \"Pre-close checkpoint: feedback.md generated? README.md + CHANGELOG.md reflect framework changes? Unsaved observations? (Non-blocking — skip if already checked or awaiting user input.)\"'"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "rm -f .claude/.stop-hook-fired"
           }
         ]
       }
