@@ -942,13 +942,6 @@ fi
 
 # --- Inject autoSDD block into CLAUDE.md ---
 
-# Build skill path references for all selected agents
-skill_refs=""
-for p in "${installed_skill_paths[@]}"; do
-  skill_refs="${skill_refs}
-- \`$p\`"
-done
-
 AUTOSDD_BLOCK="<!-- autosdd:start -->
 ## autoSDD v5.1 - Active Framework (DO NOT REMOVE)
 
@@ -1032,7 +1025,6 @@ RTK: ALWAYS prefix with \`rtk\` (60-90% savings) · Monitor: event-driven waitin
 | Engram Memory | \`~/.claude/skills/_shared/engram-protocol.md\` (gentle-ai) |
 
 Read the full framework: \`~/.claude/skills/autosdd/SKILL.md\`
-autoSDD skill installed at:${skill_refs}
 <!-- autosdd:end -->"
 
 if [[ ! -f "./CLAUDE.md" ]]; then
