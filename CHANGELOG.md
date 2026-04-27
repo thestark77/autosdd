@@ -11,7 +11,21 @@ autoSDD is an orchestration framework for Claude Code that enforces a structured
 
 ## [Unreleased]
 
+### Changed
+- Tighten orchestrator delegation rules (SKILL.md Section 1): multi-file edits MUST be delegated regardless of file type; single-file atomic is the only inline exception; sync paths explicitly flagged as always-delegate
+
+---
+
+## [5.1.0] - 2026-04-26
+
 ### Added
+- Mid-Pipeline Interrupt Protocol: 3-step process (ANSWER FIRST → RE-PRIORITIZE → RESUME) in SKILL.md Step 2. User questions during pipeline execution get immediate priority, full task queue re-evaluation, and rework detection for completed work.
+- `AGENTS.md` — Architecture & Structure Guide: central reference document defining canonical file structure, architecture principles, sync paths, enforcement mechanisms, skill registry, shared protocols, and testing/validation procedures.
+- Pre-launch gate (G2): inline checkpoint in SKILL.md Step 4 verifying all 6 sub-agent template sections, `model` parameter, and skills injected as TEXT before any Agent call.
+- Auto-resume wrapper scripts (`scripts/auto-resume.sh`, `scripts/auto-resume.ps1`) for rate-limit recovery — wraps `claude` CLI, auto-waits and resumes on rate limits.
+- Delegation boundary enforcement: explicit file-extension rules in SKILL.md Section 1 defining what the orchestrator may write inline vs what MUST be delegated.
+- README.md mandatory sync path in AGENTS.md — README must be updated on ANY user-visible change (pipeline, features, hooks, skills, file structure).
+- CHANGELOG.md mandatory sync path in AGENTS.md — CHANGELOG must be updated alongside README for any version-relevant change.
 - Session Observation Protocol (Section 6): orchestrator MUST save compliance notes to Engram at each pipeline step with topic key `telemetry/obs/{project}/{session-marker}/{step}`. Observations capture what actually happened, deviations, metrics snapshot, and friction points. They survive compaction and sessions.
 - Observation Lifecycle: each observation has a `Status` field (`pending` → `applied`). `/improve` marks consumed observations as applied — never deletes them. Full audit trail of framework evolution.
 - `LEARNING.md` consolidated changelog: framework-level record of what autoSDD has learned from real-world usage. Updated by `/improve` after user approval. INDEX format — content lives in Engram, LEARNING.md is a pointer table.
@@ -24,9 +38,10 @@ autoSDD is an orchestration framework for Claude Code that enforces a structured
 - Feedback Compliance Audit in autosdd-telemetry: automated checks for feedback.md existence per version, feedback.md quality (telemetry section + discoveries table), and proactive questions count. Common failure causes documented (segmented versions, compaction, pipeline skip).
 - Compaction Protocol (Step 8): proactive context window management. Suggests /compact at milestones when context > 50%. Mandatory at 70%+. Persists Engram summary and resumption plan before compacting.
 - Reference Solicitation: orchestrator proactively asks for references at triage. Non-blocking — saved to TODO if deferred. References flow through CREA context and sub-agent launch template.
-- Self-Analysis Protocol (`/self-analysis`): in-session self-audit against v5.0 checkpoints with feedback gap detection (NON-COMPLIANT markers for missing feedback.md or zero questions asked), learning retrieval compliance (E3 section), and per-version feedback.md table.
+- Self-Analysis Protocol (`/self-analysis`): in-session self-audit against v5.1 checkpoints with feedback gap detection (NON-COMPLIANT markers for missing feedback.md or zero questions asked), learning retrieval compliance (E3 section), and per-version feedback.md table.
 
 ### Changed
+- Mid-pipeline interrupt: orchestrator now handles new user messages during execution with structured 3-step protocol instead of ad-hoc interruption.
 - `/improve` flow: now includes Consolidation Step — groups pending observations by THEME, creates/updates consolidated learnings (not just audit reports). Searches Engram observations as PRIMARY input, aggregates qualitative + quantitative data. Marks consumed observations as `applied` and appends index entry to `LEARNING.md`.
 - Feedback enforcement: Steps 5 (COLLECT) and 6 (CLOSE) now use MANDATORY language. "Ask user feedback (MANDATORY)" in Step 5, "If feedback.md not generated, session is NON-COMPLIANT" in Step 6. Section 9 Active feedback changed from "Active" to "Active (MANDATORY)" with explicit rules.
 - New telemetry metrics: `feedback_questions_asked`, `feedback_md_generated`, `learning_retrievals` added to /audit metric extraction.
@@ -35,6 +50,7 @@ autoSDD is an orchestration framework for Claude Code that enforces a structured
 - Dependency Gate: changed from WARN+STOP to WARN+CONTINUE (degraded mode).
 - Engram Memory Protocol (Section 6): added Consolidated Learnings paragraph with category taxonomy and retrieval-by-category rule. Session observations and learnings are two complementary layers.
 - `templates/CLAUDE.md`: added Pipeline Gates table, Hooks section, tiered knowledge description, and MANDATORY feedback language.
+- Installers now deploy `AGENTS.md`, `.claude/settings.json` hooks, and auto-resume scripts to target projects.
 
 ---
 
@@ -107,7 +123,8 @@ autoSDD is an orchestration framework for Claude Code that enforces a structured
 
 ---
 
-[Unreleased]: https://github.com/user/autosdd/compare/v5.0.0...HEAD
-[5.0.0]: https://github.com/user/autosdd/compare/v4.1.0...v5.0.0
-[4.1.0]: https://github.com/user/autosdd/compare/v4.0.0...v4.1.0
-[4.0.0]: https://github.com/user/autosdd/releases/tag/v4.0.0
+[Unreleased]: https://github.com/thestark77/autosdd/compare/v5.1.0...HEAD
+[5.1.0]: https://github.com/thestark77/autosdd/compare/v5.0.0...v5.1.0
+[5.0.0]: https://github.com/thestark77/autosdd/compare/v4.1.0...v5.0.0
+[4.1.0]: https://github.com/thestark77/autosdd/compare/v4.0.0...v4.1.0
+[4.0.0]: https://github.com/thestark77/autosdd/releases/tag/v4.0.0

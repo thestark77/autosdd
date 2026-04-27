@@ -167,6 +167,20 @@ README.md must be updated when ANY of these change:
 README.md sections to check: How It Works · Pipeline Gates & Hooks · Commands · File Structure · What Gets Installed · Non-Negotiable Principles
 ```
 
+### CHANGELOG.md (MANDATORY — update alongside README on ANY version-relevant change)
+```
+CHANGELOG.md must be updated when ANY of these change:
+  - skill/SKILL.md (pipeline, features, behavior changes)
+  - skills/ (add/remove/modify bundled skill)
+  - shared/ (protocol changes)
+  - .claude/settings.json (hooks)
+  - templates/ (template changes)
+  - install.sh / install.ps1 (installer behavior changes)
+  - AGENTS.md (sync paths, architecture changes)
+CHANGELOG.md: add entry under [Unreleased] with ### Added / ### Changed / ### Removed as appropriate.
+On version release: move [Unreleased] to [X.Y.Z] - {date}, create new empty [Unreleased].
+```
+
 ---
 
 ## Enforcement Mechanisms
@@ -175,12 +189,13 @@ README.md sections to check: How It Works · Pipeline Gates & Hooks · Commands 
 |------|-----|-------|
 | Step 5 checkpoint (observation + feedback) | SubagentStop hook → prompt injected after every sub-agent | `.claude/settings.json` |
 | Step 8 pre-compaction save | PreCompact hook → prompt injected before context compaction | `.claude/settings.json` |
-| Pre-close checkpoint | Stop hook → non-blocking prompt before session end | `.claude/settings.json` |
+| Pre-close checkpoint (feedback.md + doc sync) | Stop hook → non-blocking prompt checking feedback.md, README/CHANGELOG sync, unsaved observations | `.claude/settings.json` |
 | Pre-launch gate (G2) | Inline checkpoint in SKILL.md Step 4 — verify all 6 template sections | `skill/SKILL.md` Section 4 |
 | Pipeline gates G1-G4 | Documented with MANDATORY tag in CLAUDE.md + templates/CLAUDE.md | `templates/CLAUDE.md` |
 | Feedback collection | MANDATORY tag + NON-COMPLIANT consequence in SKILL.md Step 6 | `skill/SKILL.md` Section 9 |
 | SKILL.md line limit (300) | Manual verification after edits; documented in CLAUDE.md Testing section | `CLAUDE.md` |
 | Version string sync | Manual verification after SKILL.md version bump | `CLAUDE.md` Testing section |
+| README + CHANGELOG sync | G4 gate (before closing) + Stop hook + SKILL.md Step 7 doc sync check | `templates/CLAUDE.md`, `.claude/settings.json`, `skill/SKILL.md` |
 | Installer dry-run | `bash install.sh --dry-run` and `pwsh install.ps1 -DryRun` | CI / manual |
 
 ---
@@ -260,6 +275,7 @@ pwsh install.ps1 -DryRun
 
 ### After ANY user-visible change (pipeline, features, hooks, skills, file structure)
 - Update `README.md` — see README sync path for which sections to check
+- Update `CHANGELOG.md` — add entry under `[Unreleased]` with appropriate section (Added/Changed/Removed)
 
 ---
 

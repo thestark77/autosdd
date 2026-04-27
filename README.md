@@ -118,7 +118,7 @@ The installer deploys `.claude/settings.json` with hooks that trigger at key pip
 |------|---------|--------|
 | **SubagentStop** | After every sub-agent completes | Run Step 5 checkpoint (save observation, check feedback debt) |
 | **PreCompact** | Before context compaction | Run Step 8 (save Engram summary, persist plan state) |
-| **Stop** | Before session ends | Run pre-close checkpoint (non-blocking) |
+| **Stop** | Before session ends | Pre-close checkpoint: feedback.md + README/CHANGELOG sync (non-blocking) |
 
 Core behaviors are enforced structurally (hooks, gates, scripts) — not just text suggestions.
 
@@ -132,7 +132,7 @@ Core behaviors are enforced structurally (hooks, gates, scripts) — not just te
 | `/feedback v1.0..v2.0` | Feedback for a specific version range |
 | `/audit [session-id\|last\|last-N]` | Analyze session for autoSDD compliance |
 | `/improve [target]` | Run audit + generate improvement plan |
-| `/self-analysis` | In-session self-audit vs v5.0 checkpoints |
+| `/self-analysis` | In-session self-audit vs v5.1 checkpoints |
 | `/knowledge-graph` | Visualize AI's memory as interactive graph |
 | `/knowledge-graph obsidian` | Export as Obsidian vault with wikilinks |
 | `/knowledge-graph stats` | Memory statistics summary |

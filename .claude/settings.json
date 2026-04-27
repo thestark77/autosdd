@@ -28,7 +28,7 @@
         "hooks": [
           {
             "type": "prompt",
-            "prompt": "Run SKILL.md pre-close checkpoint (non-blocking, skip if already checked or awaiting user input)."
+            "prompt": "Pre-close checkpoint: feedback.md generated? README.md + CHANGELOG.md reflect framework changes? Unsaved observations? (Non-blocking, skip if already checked or awaiting user input.)"
           }
         ]
       }

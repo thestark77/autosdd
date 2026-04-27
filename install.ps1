@@ -136,7 +136,7 @@ function Confirm-Reinstall {
 
 Write-Host ""
 Write-Host "  +==========================================+" -ForegroundColor Cyan
-Write-Host "  |     autoSDD v5.0 - Installer             |" -ForegroundColor Cyan
+Write-Host "  |     autoSDD v5.1 - Installer             |" -ForegroundColor Cyan
 Write-Host "  |     Extension for gentle-ai              |" -ForegroundColor Cyan
 Write-Host "  +==========================================+" -ForegroundColor Cyan
 Write-Host ""
@@ -952,9 +952,9 @@ $skillPathRefs = ($installedSkillPaths | ForEach-Object { "- ``$_``" }) -join "`
 
 $AUTOSDD_BLOCK = @"
 <!-- autosdd:start -->
-## autoSDD v5.0 - Active Framework (DO NOT REMOVE)
+## autoSDD v5.1 - Active Framework (DO NOT REMOVE)
 
-autoSDD v5.0 is the ACTIVE development framework. ALL prompts go through autoSDD unless opted out with ``[raw]``, ``[no-sdd]``, or ``skip autosdd``.
+autoSDD v5.1 is the ACTIVE development framework. ALL prompts go through autoSDD unless opted out with ``[raw]``, ``[no-sdd]``, or ``skip autosdd``.
 
 Foundation layer (SDD phases, MCPs, shared protocols) provided by **gentle-ai**. autoSDD extends it with the meta-framework, telemetry, and additional skills.
 
@@ -1011,7 +1011,7 @@ RTK: ALWAYS prefix with ``rtk`` (60-90% savings) · Monitor: event-driven waitin
 | G1 | Planning | ``mem_search("learnings/{project}")`` done · ``mem_search("pending")`` done |
 | G2 | Delegating | prompt.md with CREA · pre-launch gate: template filled (all 6 sections) · ``model`` set · skills as TEXT |
 | G3 | Collecting | Observation saved for each delegation · ≥1 feedback question asked |
-| G4 | Closing | feedback.md generated · user feedback persisted · Engram summary saved |
+| G4 | Closing | feedback.md generated · user feedback persisted · Engram summary saved · README.md + CHANGELOG.md reflect changes |
 
 ### Telemetry & Self-Improvement (v5)
 - **Session observations**: orchestrator saves compliance notes to Engram at each pipeline step (``telemetry/obs/{project}/{session-marker}/{step}``) — survives compaction and sessions
@@ -1023,7 +1023,7 @@ RTK: ALWAYS prefix with ``rtk`` (60-90% savings) · Monitor: event-driven waitin
 ### Hooks (1-line reminders — logic lives in SKILL.md Section 2 checkpoints)
 - **SubagentStop**: triggers Step 5 checkpoint (observation + feedback debt)
 - **PreCompact**: triggers Step 8 pre-compaction checkpoint (Engram save + plan state)
-- **Stop**: triggers pre-close checkpoint (non-blocking, skips if awaiting user input)
+- **Stop**: triggers pre-close checkpoint (feedback.md + README/CHANGELOG sync, non-blocking)
 
 ### Shared Protocols (gentle-ai owns _shared/, autoSDD adds rtk.md only)
 | Protocol | File |
@@ -1105,7 +1105,7 @@ if (-not (Test-Path $hooksFile)) {
         "hooks": [
           {
             "type": "prompt",
-            "prompt": "Run SKILL.md pre-close checkpoint (non-blocking, skip if already checked or awaiting user input)."
+            "prompt": "Pre-close checkpoint: feedback.md generated? README.md + CHANGELOG.md reflect framework changes? Unsaved observations? (Non-blocking, skip if already checked or awaiting user input.)"
           }
         ]
       }
@@ -1257,11 +1257,11 @@ if ((Test-Path $claudeMd) -and ((Get-Content $claudeMd -Raw) -match "autosdd:sta
 Write-Host ""
 if ($allGood) {
   Write-Host "  +==========================================+" -ForegroundColor Green
-  Write-Host "  |     autoSDD v5.0 installed!               |" -ForegroundColor Green
+  Write-Host "  |     autoSDD v5.1 installed!               |" -ForegroundColor Green
   Write-Host "  +==========================================+" -ForegroundColor Green
 } else {
   Write-Host "  +==========================================+" -ForegroundColor Yellow
-  Write-Host "  |  autoSDD v5.0 installed (with warnings)   |" -ForegroundColor Yellow
+  Write-Host "  |  autoSDD v5.1 installed (with warnings)   |" -ForegroundColor Yellow
   Write-Host "  +==========================================+" -ForegroundColor Yellow
 }
 

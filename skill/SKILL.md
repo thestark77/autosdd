@@ -5,7 +5,7 @@ description: >
   a structured pipeline, enforces CREA prompt structure, delegates ALL
   implementation to sub-agents, and learns from bidirectional feedback.
   ALWAYS ACTIVE unless user explicitly opts out.
-version: "5.0.0"
+version: "5.1.0"
 license: MIT
 metadata:
   author: gentleman-programming
@@ -14,7 +14,7 @@ metadata:
   compatible_agents: [Claude Code, OpenAI Codex, Cursor, VS Code Copilot, Windsurf, Kiro, Gemini CLI]
 ---
 
-# autoSDD v5.0 - Self-Improving Autonomous Development Framework
+# autoSDD v5.1 - Self-Improving Autonomous Development Framework
 
 > **ALWAYS ACTIVE.** Every prompt goes through autoSDD unless `[raw]`, `[no-sdd]`, or `skip autosdd`.
 
@@ -24,13 +24,13 @@ metadata:
 
 **You DO NOT write code. You DELEGATE.**
 
-> "Am I orchestrating or executing? If executing, I must delegate."
+> Core test: "Does this inflate my context without need?" If yes → delegate. If unsure → delegate.
 
 **DO inline**: Read 1-3 files · Write prompt.md/feedback.md/PROGRESS.md · git commands · Analyze results · Update Engram
-**DELEGATE via Agent**: Read 4+ files · Write any source file (.ts .tsx .prisma .css .py .go .sh .ps1) · Tests/builds/lints · Read-then-edit tasks
+**DELEGATE via Agent**: Write 2+ files (ANY type — source, config, docs, installers) · Read 4+ files · Tests/builds/lints · Read-then-edit tasks · Sync paths (version bumps, skill additions — always multi-file)
+**Single-file atomic** (one file, one edit, no analysis needed): OK inline. Multi-file = ALWAYS delegate, even if each edit is mechanical.
 
 **When Sub-Agents Fail**: DIAGNOSE -> IMPROVE prompt -> RE-DELEGATE. Never code yourself. After 2 failures -> ask user.
-**Exception**: Single-line mechanical edits (version bump, import typo) = OK inline.
 
 ---
 
@@ -62,7 +62,7 @@ Review TODO list — resolve pending items. **Ask user feedback (MANDATORY, Sect
 **Step 6 - CLOSE VERSION**: Generate feedback.md (MANDATORY — with telemetry from Section 8). Update PROGRESS.md. Save Engram summary.
 Review both TODO lists. Remind user of pending questions/tasks. **If feedback.md not generated, session is NON-COMPLIANT.**
 
-**Step 7 - KNOWLEDGE UPDATE**: Update context files if anything changed. Save discoveries to Engram. **Pre-close**: feedback.md exists? unsaved observations? pending items surfaced? Awaiting user input = valid pause.
+**Step 7 - KNOWLEDGE UPDATE**: Update context files if anything changed. Save discoveries to Engram. **Doc sync**: if framework/features changed, verify README.md + CHANGELOG.md updated (AGENTS.md sync paths). **Pre-close**: feedback.md exists? unsaved observations? pending items surfaced? Awaiting user input = valid pause.
 
 **Step 8 - COMPACTION CHECK**: Evaluate context window usage. If > 50% consumed AND a milestone was reached (version closed, major phase complete), tell user: "Contexto al {X}%. Recomiendo compactar — ejecutá /compact y luego decime 'sigue'." Before suggesting: ensure Engram summary saved, all pending state persisted, and a clear resumption plan exists.
 
@@ -294,4 +294,4 @@ autoSDD adds: meta-pipeline (triage/route/plan/delegate/collect/close), CREA str
 For installation, skill combinations, A/B testing, self-improvement engine -> see `autoSDD-reference.md` in the repo.
 
 ---
-*autoSDD v5.0.0 - April 2026 · Author: Gentleman Programming (github.com/thestark77)*
+*autoSDD v5.1.0 - April 2026 · Author: Gentleman Programming (github.com/thestark77)*
