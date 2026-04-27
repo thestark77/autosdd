@@ -800,7 +800,7 @@ $SKILLS_SH = @(
 foreach ($entry in $SKILLS_SH) {
   Write-Host "  . Installing $($entry.skill)..."
   try {
-    & npx -y skills add $entry.repo --skill $entry.skill -g -y 2>$null
+    & npx.cmd -y skills add $entry.repo --skill $entry.skill -g -y 2>$null
     if ($LASTEXITCODE -ne 0) { throw "npx skills exited with code $LASTEXITCODE" }
     Write-Host "  OK $($entry.skill)"
   } catch {
