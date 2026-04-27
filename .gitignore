@@ -75,3 +75,11 @@ context/knowledge-vault/
 
 # Claude Code local (never commit these)
 .claude/skills/
+.claude/settings.local.json
+
+# Playwright CLI runtime artifacts
+.playwright-cli/
+
+# Loose screenshots (not documentation assets — use docs/ for intentional images)
+ai-*.png
+dashboard.png
