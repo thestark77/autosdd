@@ -1058,8 +1058,11 @@ fi
 # ── Hooks (structural enforcement) ──────────────────────────────────────────
 HOOKS_FILE="./.claude/settings.json"
 mkdir -p "./.claude"
-if [[ ! -f "$HOOKS_FILE" ]]; then
-  cat > "$HOOKS_FILE" << 'HOOKEOF'
+if [[ -f "$HOOKS_FILE" ]]; then
+  cp "$HOOKS_FILE" "${HOOKS_FILE}.bak"
+  echo "  → .claude/settings.json backed up to settings.json.bak"
+fi
+cat > "$HOOKS_FILE" << 'HOOKEOF'
 {
   "hooks": {
     "SubagentStop": [
@@ -1109,10 +1112,7 @@ if [[ ! -f "$HOOKS_FILE" ]]; then
   }
 }
 HOOKEOF
-  echo "  ✓ .claude/settings.json → hooks installed"
-else
-  echo "  → .claude/settings.json exists, skipping (won't overwrite custom hooks)"
-fi
+echo "  ✓ .claude/settings.json → hooks installed"
 
 # --- Final Verification ---
 echo ""

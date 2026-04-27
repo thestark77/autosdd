@@ -1069,8 +1069,11 @@ if (Test-Path $claudeMd) {
 $hooksDir = Join-Path (Get-Location) ".claude"
 $hooksFile = Join-Path $hooksDir "settings.json"
 if (-not (Test-Path $hooksDir)) { New-Item -ItemType Directory -Path $hooksDir -Force | Out-Null }
-if (-not (Test-Path $hooksFile)) {
-  @'
+if (Test-Path $hooksFile) {
+  Copy-Item -Path $hooksFile -Destination "$hooksFile.bak" -Force
+  Write-Host "  -> .claude/settings.json backed up to settings.json.bak"
+}
+@'
 {
   "hooks": {
     "SubagentStop": [
@@ -1120,10 +1123,7 @@ if (-not (Test-Path $hooksFile)) {
   }
 }
 '@ | Set-Content -Path $hooksFile -Encoding UTF8
-  Write-Host "  OK .claude/settings.json -> hooks installed"
-} else {
-  Write-Host "  -> .claude/settings.json exists, skipping (won't overwrite custom hooks)"
-}
+Write-Host "  OK .claude/settings.json -> hooks installed"
 
 # --- Final Verification ---
 Write-Host ""
