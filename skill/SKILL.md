@@ -36,7 +36,10 @@ metadata:
 
 ## 2. Core Pipeline (7 Steps)
 
-**Mid-Pipeline Interrupt**: When user sends a NEW message during execution: **PAUSE** — acknowledge IMMEDIATELY (never ignore/defer). **CLASSIFY**: feedback on current work → integrate and continue · higher priority or blocking → save state to Engram, pivot · same/lower priority → acknowledge, add to TODO list, continue current task. Then resume pipeline from where you paused.
+**Mid-Pipeline Interrupt**: When user sends a NEW message during execution:
+1. **ANSWER FIRST**: If the message contains a question, answer it IMMEDIATELY (delegate to sub-agent if research-heavy, respond inline if quick). Never defer a user question.
+2. **RE-PRIORITIZE**: Evaluate the FULL task queue against the new instruction. Reorder by priority. Check if the new task invalidates or requires updating completed work — if so, add a rework task at the right priority.
+3. **RESUME**: Continue from the updated queue. Briefly state the new order to the user.
 
 **Step 1 - TRIAGE** (15s, inline): `mem_search` for pending tasks related to this prompt FIRST.
 Is the prompt clear? HIGH=proceed · MEDIUM=ask 1-3 things · LOW=stop+clarify.
