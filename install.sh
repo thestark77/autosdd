@@ -942,7 +942,8 @@ fi
 
 # --- Inject autoSDD block into CLAUDE.md ---
 
-AUTOSDD_BLOCK="<!-- autosdd:start -->
+AUTOSDD_BLOCK=$(cat <<'BLOCKEOF'
+<!-- autosdd:start -->
 ## autoSDD v5.2 — Active Pipeline (DO NOT REMOVE)
 
 ALL prompts go through autoSDD unless `[raw]`, `[no-sdd]`, or `skip autosdd`.
@@ -991,7 +992,9 @@ Provides: Engram MCP · SDD phases · persona · model-assignments · branch-pr 
 autoSDD works without it (degraded mode).
 
 Read full framework: `~/.claude/skills/autosdd/SKILL.md`
-<!-- autosdd:end -->"
+<!-- autosdd:end -->
+BLOCKEOF
+)
 
 if [[ ! -f "./CLAUDE.md" ]]; then
   if curl -fsSL -o "./CLAUDE.md" "$TEMPLATE_URL/CLAUDE.md"; then
