@@ -146,6 +146,8 @@ Always set `model` parameter. Always set `description`.
 | Security, finance, 5+ files | `judgment-day` |
 | Browser automation | `playwright-cli` (ALWAYS `--headed`) |
 
+**Screenshots**: ALL visual captures → `context/appVersions/vX.Y.Z/screenshots/` (current version). Never root, never sub-repos.
+
 Read matched SKILL.md, extract rules, paste into `## Standards`. Max 5 blocks/agent.
 
 ---
@@ -237,6 +239,7 @@ Version folder `context/appVersions/vX.Y.Z/` must contain at close:
 | `prompt.md` | CREA-structured plan (saved at Step 3) |
 | `feedback.md` | Execution metrics + discoveries (saved at Step 6) |
 | `changelog.md` | Short summary: features/fixes/refactors (saved at Step 6) |
+| `screenshots/` | Visual test captures from Playwright (created on demand) |
 
 ### feedback.md template
 ```markdown

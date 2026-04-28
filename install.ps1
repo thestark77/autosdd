@@ -974,6 +974,8 @@ ALL prompts go through autoSDD unless ``[raw]``, ``[no-sdd]``, or ``skip autosdd
 | PR creation | ``branch-pr`` |
 | Security, 5+ files | ``judgment-day`` |
 
+**Screenshots**: ALL Playwright captures → ``context/appVersions/vX.Y.Z/screenshots/`` (current version). Never elsewhere.
+
 ### Knowledge Caching (saves tokens)
 Before reading 4+ files → check Engram ``knowledge/{project}/{topic}`` for cached maps.
 After understanding a flow → save a 20-line map to Engram.
@@ -1079,6 +1081,10 @@ if (Test-Path $hooksFile) {
           {
             "type": "command",
             "command": "rm -f .claude/.stop-hook-fired"
+          },
+          {
+            "type": "prompt",
+            "prompt": "autoSDD GATE: If user message contains [raw], [no-sdd], or 'skip autosdd' → skip this. Otherwise: check if a version folder exists for THIS session in context/appVersions/. If NOT → execute Step 0 (VERSION INIT) NOW before any other work. Screenshots go to context/appVersions/vX.Y.Z/screenshots/."
           }
         ]
       }
@@ -1087,6 +1093,35 @@ if (Test-Path $hooksFile) {
 }
 '@ | Set-Content -Path $hooksFile -Encoding UTF8
 Write-Host "  OK .claude/settings.json -> hooks installed"
+
+# ── .gitignore entries (ensure autoSDD artifacts are excluded) ─────────────────
+$gitignoreEntries = @(
+  "# autoSDD / Claude Code artifacts"
+  ".claude/skills/"
+  ".claude/settings.local.json"
+  ".claude/.stop-hook-fired"
+  ".playwright-cli/"
+)
+
+$gitignorePath = Join-Path (Get-Location) ".gitignore"
+if (Test-Path $gitignorePath) {
+  $content = Get-Content $gitignorePath -Raw
+  $added = 0
+  foreach ($entry in $gitignoreEntries) {
+    if ($content -notmatch [regex]::Escape($entry)) {
+      Add-Content -Path $gitignorePath -Value $entry
+      $added++
+    }
+  }
+  if ($added -gt 0) {
+    Write-Host "  OK .gitignore -> $added entries added"
+  } else {
+    Write-Host "  OK .gitignore -> already up to date"
+  }
+} else {
+  $gitignoreEntries | Set-Content -Path $gitignorePath -Encoding UTF8
+  Write-Host "  OK .gitignore -> created with autoSDD entries"
+}
 
 # --- Final Verification ---
 Write-Host ""

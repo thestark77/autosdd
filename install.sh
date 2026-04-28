@@ -968,6 +968,8 @@ ALL prompts go through autoSDD unless `[raw]`, `[no-sdd]`, or `skip autosdd`.
 | PR creation | `branch-pr` |
 | Security, 5+ files | `judgment-day` |
 
+**Screenshots**: ALL Playwright captures → `context/appVersions/vX.Y.Z/screenshots/` (current version). Never elsewhere.
+
 ### Knowledge Caching (saves tokens)
 Before reading 4+ files → check Engram `knowledge/{project}/{topic}` for cached maps.
 After understanding a flow → save a 20-line map to Engram.
@@ -1068,6 +1070,10 @@ cat > "$HOOKS_FILE" << 'HOOKEOF'
           {
             "type": "command",
             "command": "rm -f .claude/.stop-hook-fired"
+          },
+          {
+            "type": "prompt",
+            "prompt": "autoSDD GATE: If user message contains [raw], [no-sdd], or 'skip autosdd' → skip this. Otherwise: check if a version folder exists for THIS session in context/appVersions/. If NOT → execute Step 0 (VERSION INIT) NOW before any other work. Screenshots go to context/appVersions/vX.Y.Z/screenshots/."
           }
         ]
       }
@@ -1076,6 +1082,33 @@ cat > "$HOOKS_FILE" << 'HOOKEOF'
 }
 HOOKEOF
 echo "  ✓ .claude/settings.json → hooks installed"
+
+# ── .gitignore entries (ensure autoSDD artifacts are excluded) ─────────────────
+GITIGNORE_ENTRIES=(
+  "# autoSDD / Claude Code artifacts"
+  ".claude/skills/"
+  ".claude/settings.local.json"
+  ".claude/.stop-hook-fired"
+  ".playwright-cli/"
+)
+
+if [[ -f "./.gitignore" ]]; then
+  added=0
+  for entry in "${GITIGNORE_ENTRIES[@]}"; do
+    if ! grep -qF "$entry" "./.gitignore"; then
+      echo "$entry" >> "./.gitignore"
+      ((added++))
+    fi
+  done
+  if [[ $added -gt 0 ]]; then
+    echo "  ✓ .gitignore → $added entries added"
+  else
+    echo "  ✓ .gitignore → already up to date"
+  fi
+else
+  printf '%s\n' "${GITIGNORE_ENTRIES[@]}" > "./.gitignore"
+  echo "  ✓ .gitignore → created with autoSDD entries"
+fi
 
 # --- Final Verification ---
 echo ""

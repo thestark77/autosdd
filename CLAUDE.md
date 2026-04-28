@@ -78,6 +78,8 @@ ALL prompts go through autoSDD unless `[raw]`, `[no-sdd]`, or `skip autosdd`.
 | PR creation | `branch-pr` |
 | Security, 5+ files | `judgment-day` |
 
+**Screenshots**: ALL Playwright captures → `context/appVersions/vX.Y.Z/screenshots/` (current version). Never elsewhere.
+
 ### Knowledge Caching (saves tokens)
 Before reading 4+ files → check Engram `knowledge/{project}/{topic}` for cached maps.
 After understanding a flow → save a 20-line map to Engram.
