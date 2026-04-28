@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "prompt",
-            "prompt": "Sub-agent done. Run SKILL.md Step 5 checkpoint (observation saved? feedback debt?)."
+            "prompt": "Sub-agent returned. Do these NOW: (1) Update PROGRESS.md with task result (DONE/FAILED/PARTIAL + 1-line note). (2) If you haven't asked the user a feedback question this version yet — ask one NOW."
           }
         ]
       }
@@ -17,7 +17,7 @@
         "hooks": [
           {
             "type": "prompt",
-            "prompt": "Compaction imminent. Run SKILL.md Step 8 pre-compaction checkpoint — mem_session_summary + observations + plan state BEFORE proceeding."
+            "prompt": "COMPACTION IMMINENT — you WILL lose conversation context. Execute NOW: (1) Update PROGRESS.md with ALL in-flight task states and decisions. (2) mem_save topic 'session/{project}/{date}' with: current task, decisions made, next steps. (3) If feedback.md not generated yet, note 'PENDING' in PROGRESS.md. After compaction: read PROGRESS.md + current prompt.md + mem_context()."
           }
         ]
       }
@@ -28,7 +28,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash -c '[ -f .claude/.stop-hook-fired ] && exit 0; touch .claude/.stop-hook-fired; echo \"Pre-close checkpoint: feedback.md generated? README.md + CHANGELOG.md reflect framework changes? Unsaved observations? (Non-blocking — skip if already checked or awaiting user input.)\"'"
+            "command": "bash -c '[ -f .claude/.stop-hook-fired ] && exit 0; touch .claude/.stop-hook-fired; echo \"Pre-close: Is PROGRESS.md current? feedback.md generated for this version? Pending observations?\"'"
           }
         ]
       }

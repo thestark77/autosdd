@@ -107,6 +107,8 @@ autosdd/
 
 7. **gentle-ai decoupling** — autoSDD operates independently of gentle-ai. If gentle-ai is missing or outdated, autoSDD degrades gracefully (WARN + continue). Never import gentle-ai internals or rely on its internal file structure. Shared protocols (`persona.md`, `engram-protocol.md`, etc.) are optional enhancements.
 
+8. **Less is more** — Minimize token consumption per prompt. Prefer shorter docs (target SKILL.md < 270 lines), IF/THEN rule style over prose, and knowledge caching (Engram `knowledge/{project}/{topic}`) to avoid re-reading files across steps. Every line added to a distributable file costs tokens on every prompt.
+
 ---
 
 ## Sync Paths (MANDATORY — follow when changing any source)
@@ -187,16 +189,19 @@ On version release: move [Unreleased] to [X.Y.Z] - {date}, create new empty [Unr
 
 | What | How | Where |
 |------|-----|-------|
-| Step 5 checkpoint (observation + feedback) | SubagentStop hook → prompt injected after every sub-agent | `.claude/settings.json` |
-| Step 8 pre-compaction save | PreCompact hook → prompt injected before context compaction | `.claude/settings.json` |
+| Step 0 VERSION INIT (version folder + original_prompt.md) | SKILL.md Step 0 — FIRST action before any pipeline work | `skill/SKILL.md` Section 2 |
+| PROGRESS.md as compaction survival anchor | Updated at every pipeline step (not just at close); SubagentStop hook explicitly requires update | `skill/SKILL.md`, `.claude/settings.json` |
+| Step 5 checkpoint (observation + feedback + PROGRESS.md update) | SubagentStop hook → prompt injected after every sub-agent; explicitly requires PROGRESS.md update | `.claude/settings.json` |
+| Step 8 pre-compaction save (3-action checklist) | PreCompact hook → specific 3-action checklist: save flow maps, update PROGRESS.md, save Engram summary | `.claude/settings.json` |
 | Pre-close checkpoint (feedback.md + doc sync) | Stop hook (command + debounce) → fires once per user interaction, marker reset by UserPromptSubmit | `.claude/settings.json` |
 | Stop hook debounce reset | UserPromptSubmit hook → removes `.claude/.stop-hook-fired` marker | `.claude/settings.json` |
 | Pre-launch gate (G2) | Inline checkpoint in SKILL.md Step 4 — verify all 6 template sections | `skill/SKILL.md` Section 4 |
 | Pipeline gates G1-G4 | Documented with MANDATORY tag in CLAUDE.md + templates/CLAUDE.md | `templates/CLAUDE.md` |
-| Feedback collection | MANDATORY tag + NON-COMPLIANT consequence in SKILL.md Step 6 | `skill/SKILL.md` Section 9 |
-| SKILL.md line limit (300) | Manual verification after edits; documented in CLAUDE.md Testing section | `CLAUDE.md` |
+| Feedback collection | MANDATORY tag + NON-COMPLIANT consequence in SKILL.md Step 7 | `skill/SKILL.md` Section 7 |
+| Knowledge caching | SKILL.md Section 6 — save flow maps to Engram (`knowledge/{project}/{topic}`) before delegating | `skill/SKILL.md` Section 6 |
+| SKILL.md line limit (300 hard / 270 target) | Manual verification after edits; documented in CLAUDE.md Testing section | `CLAUDE.md` |
 | Version string sync | Manual verification after SKILL.md version bump | `CLAUDE.md` Testing section |
-| README + CHANGELOG sync | G4 gate (before closing) + Stop hook (debounced) + SKILL.md Step 7 doc sync check | `templates/CLAUDE.md`, `.claude/settings.json`, `skill/SKILL.md` |
+| README + CHANGELOG sync | G4 gate (before closing) + Stop hook (debounced) + SKILL.md Step 9 doc sync check | `templates/CLAUDE.md`, `.claude/settings.json`, `skill/SKILL.md` |
 | Installer dry-run | `bash install.sh --dry-run` and `pwsh install.ps1 -DryRun` | CI / manual |
 
 ---
@@ -253,8 +258,8 @@ autoSDD owns ONLY `rtk.md`. The other four protocols originate in gentle-ai; aut
 ## Testing & Validation
 
 ### After any `skill/SKILL.md` change
-- Verify section count: must have exactly 11 sections
-- Verify line count: must be under 300 lines
+- Verify section count: must have exactly 11 sections (numbered 1–11)
+- Verify line count: hard limit is under 300 lines; target is under 270 lines
 - Verify `templates/CLAUDE.md` version string matches the SKILL.md frontmatter `version` field
 
 ### After installer changes

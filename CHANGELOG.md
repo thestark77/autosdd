@@ -5,16 +5,45 @@ All notable changes to **autoSDD** will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-autoSDD is an orchestration framework for Claude Code that enforces a structured delegation pipeline (Triage → Route → Plan → Delegate → Collect → Close → Knowledge Update) on top of the gentle-ai foundation.
+autoSDD is an orchestration framework for Claude Code that enforces a structured delegation pipeline (Version Init → Triage → Route → Plan → Delegate → Collect → Close → Knowledge Update) on top of the gentle-ai foundation.
+
+> **Note**: Starting with v5.2.0, each version also has a per-version `changelog.md` in `context/appVersions/vX.Y.Z/`. This project-level file is the consolidated history; per-version files are the concise summaries generated at close time.
 
 ---
 
 ## [Unreleased]
 
+---
+
+## [5.2.0] - 2026-04-27
+
+### Added
+- Step 0 (VERSION INIT): non-negotiable first action — create version folder + `original_prompt.md` + update `PROGRESS.md` before any thinking. Skipping = NON-COMPLIANT from start.
+- Knowledge Caching Protocol (Section 6): save flow/architecture maps to Engram (`knowledge/{project}/{topic}`) to avoid re-reading files after compaction. Check before reading 4+ files.
+- Post-compaction recovery protocol: explicit file-based recovery sequence (`PROGRESS.md` → `prompt.md` → `mem_context`). Instructions live in CLAUDE.md block (always visible even after compaction).
+- `PROGRESS.md` elevated to "compaction survival anchor" — updated at EVERY pipeline step, not just at close. Contains task status, decisions, and next steps.
+- Sub-agent prompt summaries logged to `PROGRESS.md` (1-line per delegation) to survive compaction.
+
 ### Changed
-- Tighten orchestrator delegation rules (SKILL.md Section 1): multi-file edits MUST be delegated regardless of file type; single-file atomic is the only inline exception; sync paths explicitly flagged as always-delegate
-- Fix Stop hook infinite loop: change from `prompt` to `command` type with debounce marker (`.claude/.stop-hook-fired`); add `UserPromptSubmit` hook to reset marker per user interaction
-- Installer hooks deployment: always overwrite `.claude/settings.json` on install/update (with `.bak` backup) instead of skipping when file exists; ensures hook fixes propagate to existing projects
+- Tighten orchestrator delegation rules (SKILL.md Section 1): multi-file edits MUST be delegated regardless of file type; single-file atomic is the only inline exception; sync paths explicitly flagged as always-delegate.
+- Fix Stop hook infinite loop: change from `prompt` to `command` type with debounce marker (`.claude/.stop-hook-fired`); add `UserPromptSubmit` hook to reset marker per user interaction.
+- Installer hooks deployment: always overwrite `.claude/settings.json` on install/update (with `.bak` backup) instead of skipping when file exists; ensures hook fixes propagate to existing projects.
+- `SKILL.md` reduced from 297 to 261 lines — removed verbose prose, converted to IF/THEN action rules.
+- `CLAUDE.md` template reduced from 142 to 70 lines — drastically compressed autoSDD block (~50 lines, was ~85).
+- PreCompact hook: changed from vague "save stuff" to specific 3-action checklist with named files and explicit post-compaction instructions.
+- SubagentStop hook: now explicitly requires `PROGRESS.md` update (file-based, survives compaction) in addition to Engram observation.
+- Telemetry metrics moved entirely into `feedback.md` template (Section 10) and `autosdd-telemetry` skill — no longer a separate SKILL.md section.
+- Pipeline steps renumbered: added Step 0, total now 0–7 (8 steps); previous Step 8 "Compaction Check" merged into Section 8 "Compaction Survival".
+- Version folder creation elevated from buried mention in Section 10 to mandatory Step 0.
+- `original_prompt.md` elevated from optional to mandatory first-action artifact.
+- "Less is more" philosophy applied throughout: shorter docs = fewer tokens consumed per prompt = more budget for actual work.
+- Ecosystem section compressed: removed detailed decoupling rules (moved to AGENTS.md), kept just the lists.
+
+### Removed
+- Standalone Telemetry section (Section 8 in v5.1) — content split between `feedback.md` template and `autosdd-telemetry` skill.
+- Verbose "Flows, Context Files, Action Clarity" section (Section 10 in v5.1) — content compressed into Pipeline and Compaction sections.
+- Redundant gentle-ai decoupling rules from SKILL.md (kept in AGENTS.md only).
+- Context Window percentage rules table (20%/50%/70%) — replaced by single rule: "PreCompact hook handles it".
 
 ---
 
@@ -125,7 +154,8 @@ autoSDD is an orchestration framework for Claude Code that enforces a structured
 
 ---
 
-[Unreleased]: https://github.com/thestark77/autosdd/compare/v5.1.0...HEAD
+[Unreleased]: https://github.com/thestark77/autosdd/compare/v5.2.0...HEAD
+[5.2.0]: https://github.com/thestark77/autosdd/compare/v5.1.0...v5.2.0
 [5.1.0]: https://github.com/thestark77/autosdd/compare/v5.0.0...v5.1.0
 [5.0.0]: https://github.com/thestark77/autosdd/compare/v4.1.0...v5.0.0
 [4.1.0]: https://github.com/thestark77/autosdd/compare/v4.0.0...v4.1.0

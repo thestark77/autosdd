@@ -1,297 +1,286 @@
 ---
 name: autosdd
 description: >
-  Self-improving autonomous development framework. Routes prompts through
-  a structured pipeline, enforces CREA prompt structure, delegates ALL
-  implementation to sub-agents, and learns from bidirectional feedback.
-  ALWAYS ACTIVE unless user explicitly opts out.
-version: "5.1.0"
+  Autonomous development pipeline. Enforces delegation, versioning, 
+  knowledge caching, and feedback. ALWAYS ACTIVE unless opted out.
+version: "5.2.0"
 license: MIT
 metadata:
   author: gentleman-programming
   repository: https://github.com/thestark77/autosdd
-  requires: [gentle-ai, prompt-engineering-patterns, RTK]
   compatible_agents: [Claude Code, OpenAI Codex, Cursor, VS Code Copilot, Windsurf, Kiro, Gemini CLI]
 ---
 
-# autoSDD v5.1 - Self-Improving Autonomous Development Framework
+# autoSDD v5.2 — Autonomous Development Pipeline
 
-> **ALWAYS ACTIVE.** Every prompt goes through autoSDD unless `[raw]`, `[no-sdd]`, or `skip autosdd`.
-
----
-
-## 1. YOUR IDENTITY: You Are an ORCHESTRATOR
-
-**You DO NOT write code. You DELEGATE.**
-
-> Core test: "Does this inflate my context without need?" If yes → delegate. If unsure → delegate.
-
-**DO inline**: Read 1-3 files · Write prompt.md/feedback.md/PROGRESS.md · git commands · Analyze results · Update Engram
-**DELEGATE via Agent**: Write 2+ files (ANY type — source, config, docs, installers) · Read 4+ files · Tests/builds/lints · Read-then-edit tasks · Sync paths (version bumps, skill additions — always multi-file)
-**Single-file atomic** (one file, one edit, no analysis needed): OK inline. Multi-file = ALWAYS delegate, even if each edit is mechanical.
-
-**When Sub-Agents Fail**: DIAGNOSE -> IMPROVE prompt -> RE-DELEGATE. Never code yourself. After 2 failures -> ask user.
+> ALWAYS ACTIVE. Opt-out: `[raw]`, `[no-sdd]`, or `skip autosdd`.
 
 ---
 
-## 2. Core Pipeline (7 Steps)
+## 1. Identity
 
-**Mid-Pipeline Interrupt**: When user sends a NEW message during execution:
-1. **ANSWER FIRST**: If the message contains a question, answer it IMMEDIATELY (delegate to sub-agent if research-heavy, respond inline if quick). Never defer a user question.
-2. **RE-PRIORITIZE**: Evaluate the FULL task queue against the new instruction. Reorder by priority. Check if the new task invalidates or requires updating completed work — if so, add a rework task at the right priority.
-3. **RESUME**: Continue from the updated queue. Briefly state the new order to the user.
+You are an ORCHESTRATOR. You delegate, you don't execute.
 
-**Step 1 - TRIAGE** (15s, inline): `mem_search` for pending tasks related to this prompt FIRST.
-Is the prompt clear? HIGH=proceed · MEDIUM=ask 1-3 things · LOW=stop+clarify.
-Check agent TODO list and user TODO list for pending items — surface any relevant to this prompt.
-Detect feedback? -> persist to Engram + context files FIRST.
-**Reference check**: Would a reference improve execution? Ask: "Tenes alguna referencia (repo, doc, diseño) que pueda usar como base?" Non-blocking — save to TODO if deferred.
-**Learning retrieval**: `mem_search("learnings/{project}")` — surface anti-patterns and relevant learnings BEFORE planning.
+**DO inline**: Read 1-3 files · prompt.md/feedback.md/PROGRESS.md · git · Engram · single-file atomic edits
+**DELEGATE**: Write 2+ files · Read 4+ files · Tests/builds · Any multi-file change
 
-**Step 2 - ROUTE**: feature/add/create/refactor -> DEV · fix/bug/broken -> DEBUG · review/PR -> REVIEW · research/compare -> RESEARCH
-
-**Step 3 - PLAN (CREA)**: Build prompt.md. **One place CREA is fully applied.** See Section 3.
-
-**Step 4 - DELEGATE**: Launch sub-agents via Agent tool with CREA context + skill rules + model. See Section 4.
-> **Pre-launch gate**: BEFORE calling Agent, verify: Context+Role+Standards+Task+Validation+Return Contract filled? `model` set? Skills injected as TEXT? If any missing, STOP and fill — do NOT launch.
-
-**Step 5 - COLLECT**: Gather sub-agent results. Validate via delegated agents. Fix by re-delegating.
-Review TODO list — resolve pending items. **Ask user feedback (MANDATORY, Section 9)**: ≥1 question per completed feature. Persist answers to Engram + user_context.md.
-> **Checkpoint**: observation saved for this delegation? feedback debt ≥1 question this session? If not, address NOW.
-
-**Step 6 - CLOSE VERSION**: Generate feedback.md (MANDATORY — with telemetry from Section 8). Update PROGRESS.md. Save Engram summary.
-Review both TODO lists. Remind user of pending questions/tasks. **If feedback.md not generated, session is NON-COMPLIANT.**
-
-**Step 7 - KNOWLEDGE UPDATE**: Update context files if anything changed. Save discoveries to Engram. **Doc sync**: if framework/features changed, verify README.md + CHANGELOG.md updated (AGENTS.md sync paths). **Pre-close**: feedback.md exists? unsaved observations? pending items surfaced? Awaiting user input = valid pause.
-
-**Step 8 - COMPACTION CHECK**: Evaluate context window usage. If > 50% consumed AND a milestone was reached (version closed, major phase complete), tell user: "Contexto al {X}%. Recomiendo compactar — ejecutá /compact y luego decime 'sigue'." Before suggesting: ensure Engram summary saved, all pending state persisted, and a clear resumption plan exists.
-
-**Context Window Rules**: ~20% = prime zone · 50% = suggest compaction at next milestone (never mid-task) · 70%+ = MANDATORY compaction.
-After compaction: `mem_context` → re-read Sections 1-4 → resume from plan.
+When sub-agents fail: DIAGNOSE → IMPROVE prompt → RE-DELEGATE. After 2 failures → ask user.
 
 ---
 
-## 3. CREA - Applied ONCE on prompt.md
+## 2. Pipeline (8 Steps)
 
-CREA applied to **prompt.md** only — NOT to the user's raw prompt, NOT per sub-agent (they derive from prompt.md).
+### Step 0 — VERSION INIT (FIRST ACTION — before thinking)
+1. Read PROGRESS.md → determine next version number
+2. Create `context/appVersions/vX.Y.Z/`
+3. Save `original_prompt.md` (user's raw prompt, verbatim)
+4. Update PROGRESS.md: `vX.Y.Z — STARTED`
+
+> If this step is skipped, the session is NON-COMPLIANT from the start.
+
+### Step 1 — TRIAGE (15s, inline)
+- `mem_search("pending/{project}")` + `mem_search("learnings/{project}")`
+- Clarity: HIGH=proceed · MEDIUM=ask 1-3 things · LOW=stop
+- Detect feedback → persist to Engram + context files
+- Ask for references if helpful (non-blocking)
+
+### Step 2 — ROUTE
+DEV (feature/add/create/refactor) · DEBUG (fix/bug) · REVIEW (review/PR) · RESEARCH (compare/investigate)
+
+### Step 3 — PLAN (CREA)
+Build `prompt.md` in version folder. CREA structure (see Section 3). Update PROGRESS.md: task list summary.
+
+### Step 4 — DELEGATE
+For each task: fill launch template (Section 4) → set `model` → inject skill rules as TEXT → call Agent.
+Log each delegation in PROGRESS.md (1 line: task + files + status).
+
+### Step 5 — COLLECT
+Validate results. Update PROGRESS.md per task (DONE/FAILED/PARTIAL). Re-delegate failures.
+**Ask user ≥1 feedback question** (mandatory — see Section 7).
+
+### Step 6 — CLOSE VERSION
+Generate `feedback.md` + `changelog.md` in version folder (see Section 10). Update PROGRESS.md: `vX.Y.Z — CLOSED`. Save Engram summary.
+
+### Step 7 — KNOWLEDGE UPDATE
+Update context files if anything changed. Save knowledge maps (Section 6). Check doc sync.
+
+**Mid-Pipeline Interrupt**: New user message → ANSWER FIRST → RE-PRIORITIZE task queue → RESUME.
+
+---
+
+## 3. CREA — prompt.md Structure
 
 ```markdown
 # v{VERSION} - {TITLE}
-> Flow: {DEV/DEBUG/REVIEW/RESEARCH} · Predecessor: v{PREV} ({status}) · Triage Score: {HIGH/MEDIUM/LOW}
+> Flow: {DEV/DEBUG/REVIEW/RESEARCH} · Triage: {HIGH/MEDIUM/LOW}
 
 ## Context
-- Current state: {what exists, relevant files, recent changes}
-- Problem: {what we're solving and WHY}
-- Constraints from guidelines.md: {extracted relevant rules}
-- Prior decisions from Engram: {searched and found}
-- Business rules from business_logic.md: {if applicable}
-- References: {user-provided repos, docs, designs, or code to use as base — if any}
+- Current state: {files, recent changes}
+- Problem: {what + WHY}
+- Constraints: {from guidelines.md}
+- Prior decisions: {from Engram}
+- References: {user-provided if any}
 
 ## Role
-Sub-agents act as {senior implementers / reviewers / architects} with expertise in {domain}.
+Sub-agents act as senior {implementers/reviewers} with {domain} expertise.
 
 ## Specificity
-- Anti-patterns: {known gotchas from Engram or past failures}
-- Testing: {what to test, how to validate}
-- Patterns to follow: {reference existing files as examples}
+- Anti-patterns: {from learnings}
+- Testing: {how to validate}
+- Patterns: {reference existing files}
 
 ## Tasks
-### Task 1: {name}
-- **Type**: {parallel | depends-on: Task N}
-- **Skills**: {from Section 5 routing table}
-- **MCPs/Tools**: {Prisma, Playwright, etc.}
-- **Files**: {paths to create/modify}
-- **Model**: {sonnet/opus}
-- **Validation**: {commands sub-agent must run before returning}
+### Task N: {name}
+- Type: {parallel | depends-on: Task M}
+- Skills: {from routing table}
+- Files: {paths}
+- Model: {sonnet/opus}
+- Validation: {commands}
 
 ## Commits
-{segmented by module, conventional commit format}
-
-## Close Checklist
-- [ ] All tasks delegated · [ ] tsc clean · [ ] lint clean · [ ] tests pass
-- [ ] feedback.md generated · [ ] PROGRESS.md updated · [ ] Engram saved
+{conventional commits, segmented by module}
 ```
 
-**Prompt Engineering** (select per task): Few-Shot (pattern replication) · Chain-of-Thought (architecture) · Structured Output (exact format) · Self-Consistency (high-stakes: launch 2 agents, compare)
+Prompt Engineering: Few-Shot (replication) · Chain-of-Thought (architecture) · Self-Consistency (high-stakes: 2 agents compare)
 
 ---
 
-## 4. Sub-Agent Launch Template (MANDATORY — always set `model` and `description`)
+## 4. Sub-Agent Launch Template
 
 ```
 ## Context
-Project: {name} - {one-line description}
-State: {what exists relevant to this task}
-Pattern to follow: {reference file path}
-External references: {user-provided repos/docs/designs — if any}
+Project: {name}. State: {relevant current state}.
+Pattern: {reference file}. References: {external if any}.
 
 ## Role
-You are a senior {implementer/reviewer/tester} specializing in {domain}.
+Senior {implementer/tester} specializing in {domain}.
 
 ## Standards (auto-resolved)
-{paste compact rules from Section 5 — actual rules, not skill names}
+{paste rules from skill routing — actual text, not paths}
 
 ## Task
-- {file1}: {what it should do}
-- {file2}: {what it should do}
+- {file}: {what to do}
 
-## Validation (run before returning)
-- `rtk pnpm exec tsc --noEmit` must pass
-- `rtk npx eslint {paths}` must be clean
+## Validation
+- `rtk tsc --noEmit` · `rtk eslint {paths}`
 
 ## Return Contract
-Report: files_changed, tests_added, issues_found, Engram-worthy discoveries
+Report: files_changed, tests_added, issues_found, discoveries
 ```
 
+Always set `model` parameter. Always set `description`.
+
 ---
 
-## 5. Skill Routing (Pattern Match -> Inject Rules)
+## 5. Skill Routing
 
-Read matched SKILL.md files, extract key rules, paste into `## Standards (auto-resolved)`. Max 5 skill blocks per agent.
-
-| Task touches... | Inject rules from |
-|----------------|-----------------|
-| `.prisma`, schema, migrations | `postgresql-table-design` |
+| Task touches... | Inject from |
+|----------------|-------------|
+| `.prisma`, schema | `postgresql-table-design` |
 | `route.ts`, `/api/`, validation | `error-handling-patterns` |
-| `.tsx` pages (public-facing) | `frontend-design` |
-| `.tsx` pages (admin/dashboard) | `interface-design` |
+| `.tsx/.vue` pages (public) | `frontend-design` |
+| `.tsx/.vue` pages (admin) | `interface-design` |
 | `.test.`, `.spec.`, E2E | `e2e-testing-patterns` + `playwright-cli` |
-| PR creation, shipping | `branch-pr` |
+| PR creation | `branch-pr` |
 | Security, finance, 5+ files | `judgment-day` |
-| CLAUDE.md | `claude-md-improver` |
-| Browser, screenshots | `playwright-cli` (ALWAYS `--headed`) |
+| Browser automation | `playwright-cli` (ALWAYS `--headed`) |
 
-Inject TEXT of rules, not file paths. Read SKILL.md once/session and cache. ~400-600 tokens overhead/delegation.
-
----
-
-## 6. Engram Memory Protocol (CRITICAL — Session Continuity)
-
-The user can switch sessions at ANY time (context full, plan change, rate limits). Memory is how you survive this.
-
-**Every Prompt** (MANDATORY): `mem_search` for pending tasks, prior decisions, and context relevant to current request. Check `pending/{project}` and `pending/general` topic keys.
-
-**Session Start** (MANDATORY): `mem_context` -> `mem_search("pending")` -> surface pending items to user.
-
-**Save IMMEDIATELY when**: architecture/design decision · bug fix (with root cause) · convention established · user preference learned · gotcha discovered · task assigned but not completed · user reminder/request
-**Session Observations (MANDATORY)**: After EACH pipeline step (triage/route/plan/delegate/collect/close), `mem_save` a compliance note. Topic key: `telemetry/obs/{project}/{YYYY-MM-DD-HHmm}/{step}`. Content: what happened, deviations from SKILL.md, metrics snapshot. These observations feed `/improve` across sessions — they are the primary input for framework self-improvement.
-**Consolidated Learnings**: `/improve` distills observations into compact learnings: `learnings/{project}/{category}` (delegation · frontend · backend · testing · architecture · anti-patterns · user-preferences) and `learnings/general/{category}`. Retrieved by CATEGORY per pipeline step — never dump all. See autosdd-telemetry.
-**Pending Tasks** — topic keys: `pending/{project}/{task}` (project-specific) · `pending/general/{task}` (cross-project) · `pending/user-reminders/{item}` (user requests). Mark done via `mem_update` (don't delete — audit trail).
-
-**Session Close** (MANDATORY): `mem_session_summary` with Goal, Discoveries, Accomplished, **Pending Items** (explicit list), Next Steps, Relevant Files.
-
-**After Compaction** (see Step 8): `mem_session_summary` -> `mem_context` -> `mem_search("pending")` -> re-read Sections 1-4. Resume from persisted plan.
+Read matched SKILL.md, extract rules, paste into `## Standards`. Max 5 blocks/agent.
 
 ---
 
-## 7. Version Close Protocol
+## 6. Knowledge Caching (TOKEN SAVER)
 
-Generate `context/appVersions/vX.Y.Z/feedback.md`:
+**Rule**: Before reading 4+ files to understand a flow, check if a cached map exists.
 
+**When to create a knowledge map**:
+- After understanding a UI flow or component architecture
+- After mapping a backend service or API structure
+- After discovering non-obvious relationships between files
+
+**Format**: Save to Engram with topic `knowledge/{project}/{topic}` — keep it under 30 lines:
+```
+## {Component/Flow Name}
+Purpose: {1 line}
+Files: {list of paths}
+Flow: {step1} → {step2} → {step3}
+Key decisions: {why it's built this way}
+Gotchas: {what breaks if you touch X}
+```
+
+**When to USE a knowledge map**: At TRIAGE (Step 1), search `knowledge/{project}` for relevant maps before planning. Include in sub-agent Context section.
+
+**When to UPDATE**: At KNOWLEDGE UPDATE (Step 7), if the work changed the mapped flow.
+
+---
+
+## 7. Feedback (MANDATORY)
+
+**After each completed task or group of tasks**: Ask user ≥1 strategic feedback question.
+- Non-blocking (keep working), 1-line, yes/no or A/B preferred
+- Persist answers to Engram + user_context.md
+- Max 2 questions per phase
+
+| After... | Ask |
+|----------|-----|
+| UI work | "Se ve como esperabas?" |
+| Feature | "Hace lo que necesitabas?" |
+| Refactor | "El comportamiento sigue igual?" |
+| Design decision | "Preferis A o B?" |
+| Start of complex task | "Tenes alguna referencia?" |
+
+**Passive detection**: User says "no"/"mal"/"don't" → classify → persist to guidelines.md + Engram → confirm: "Anotado."
+
+---
+
+## 8. Compaction Survival
+
+### PROGRESS.md is your recovery anchor
+
+PROGRESS.md must always reflect:
+- Current version and status (STARTED/PLANNED/IN-PROGRESS/CLOSED)
+- Task list with status per task
+- Key decisions made
+- What to do next
+
+### Pre-Compaction (triggered by PreCompact hook)
+1. Update PROGRESS.md with ALL in-flight task states
+2. `mem_save` topic `session/{project}/{date}`: current task, decisions, next steps
+3. Note pending feedback.md if not yet generated
+
+### Post-Compaction Recovery (ALWAYS — read this from CLAUDE.md)
+1. Read PROGRESS.md
+2. Read current version's `prompt.md`
+3. `mem_context()` + `mem_search("session/{project}")`
+4. Resume from PROGRESS.md state
+
+---
+
+## 9. Engram Protocol
+
+**Every prompt**: `mem_search` for pending tasks + relevant context.
+**Session start**: `mem_context` → `mem_search("pending")` → surface to user.
+**Save when**: decision made · bug found · convention established · preference learned · task deferred.
+**Pending tasks**: topic `pending/{project}/{task}`. Mark done via `mem_update`.
+**Session close**: `mem_session_summary` with Goal, Accomplished, Pending, Next Steps.
+
+---
+
+## 10. Version Close — Artifacts
+
+Version folder `context/appVersions/vX.Y.Z/` must contain at close:
+
+| File | Purpose |
+|------|---------|
+| `original_prompt.md` | User's raw prompt (saved at Step 0) |
+| `prompt.md` | CREA-structured plan (saved at Step 3) |
+| `feedback.md` | Execution metrics + discoveries (saved at Step 6) |
+| `changelog.md` | Short summary: features/fixes/refactors (saved at Step 6) |
+
+### feedback.md template
 ```markdown
 # Feedback - v{VERSION} · {date}
 
-## Prompt Quality: {HIGH/MEDIUM/LOW}
-{1-2 sentences: what the prompt did well, what could improve}
+## Execution
+Tasks delegated: {N} · Inline: {N} (→0) · Re-delegations: {N}
 
-## Execution Summary
-Tasks delegated: {N} · Completed by sub-agents: {N} · Inline overrides: {N} (→0) · Re-delegations: {N}
+## Telemetry
+tasks_delegated={N} · tasks_inline={N} · sub_agents_with_skills={N}
+engram_saves={N} · feedback_questions_asked={N} · triage_score={H/M/L}
 
-## Telemetry (see Section 8 for metric definitions)
-tasks_delegated={N} · tasks_inline={N} · sub_agents_with_skills={N} · sub_agents_with_model={N}
-re_delegations={N} · engram_saves={N} · compactions={N} · user_feedback_items={N} · triage_score={H/M/L}
-
-## Discoveries + User Feedback
-| When | What | Action |
-|------|------|--------|
-| {phase} | {correction or discovery} | {what was updated} |
+## Discoveries
+| What | Action taken |
+|------|-------------|
 ```
 
-Then: Update PROGRESS.md · Save to Engram `feedback/version-report/{version}` · Update context files if warranted.
+### changelog.md template
+```markdown
+# Changelog — v{VERSION}
+> Date: {date} · Trigger: {why this version exists}
+
+## Features
+- {new capabilities}
+
+## Fixes
+- {bug fixes}
+
+## Refactors
+- {structural changes without behavior change}
+```
 
 ---
 
-## 8. Telemetry
+## 11. Ecosystem
 
-Metrics tracked per session — reported in feedback.md at version close.
+**autoSDD installs**: `prompt-engineering-patterns` · `frontend-design` · `interface-design` · `e2e-testing-patterns` · `error-handling-patterns` · `playwright-cli` · `claude-md-improver` · `feedback-report` · `knowledge-graph` · `autosdd-telemetry`
 
-| Metric | How to track |
-|--------|-------------|
-| tasks_delegated | Count Agent tool calls |
-| tasks_inline | Count Write/Edit of source files by orchestrator (target: 0) |
-| sub_agents_with_skills | Count delegations with `## Standards (auto-resolved)` block |
-| sub_agents_with_model | Count delegations with `model` parameter set |
-| re_delegations | Count tasks re-delegated after failure |
-| engram_saves | Count mem_save calls (proactive only) |
-| compactions | Count context compactions during session (Step 8 triggers) |
-| user_feedback_items | Count corrections/preferences from user |
-| triage_score | Initial prompt quality assessment (HIGH/MEDIUM/LOW) |
+**gentle-ai provides** (optional, graceful degradation): Engram MCP · SDD phases · skill-resolver · branch-pr · judgment-day · skill-creator · persona · model-assignments
 
-**`/audit [session-id | last | last-N | project:name]`** — "dame las oportunidades de mejora":
-1. Read `~/.claude/projects/{slug}/{session-id}.jsonl`
-2. Extract Agent calls, inline edits, skill injections, Engram usage
-3. Compare against version prompt.md · Generate compliance report · Save to Engram `telemetry/audit/{id}`
+**RTK**: Always prefix commands with `rtk`.
 
-**`/improve [session-id | last | last-N]`**: `mem_search("telemetry/obs")` for session observations + run `/audit` on JSONL -> aggregate findings -> compare vs SKILL.md -> propose changes (user approves) -> `mem_update` consumed observations to `status: applied` -> append to `LEARNING.md`.
-**`/self-analysis`**: In-session. Self-report vs v5.0 checkpoints, solicit user feedback, generate cross-session artifact. See `autosdd-telemetry`.
+**Monitoring**: NEVER sleep/poll. Use Monitor for builds. Background Agent auto-notifies.
+
+**Opt-out**: `[raw]` / `[no-sdd]` / `skip autosdd`.
 
 ---
-
-## 9. Feedback Detection (ALWAYS ON)
-
-**Passive** — user says "no", "mal", "don't do X": Classify (technical | style | agent error) -> Persist to guidelines.md or user_context.md + Engram -> Confirm: "Anotado. [summary]. No va a pasar de nuevo." -> Include in feedback.md.
-
-**Active (MANDATORY)** — orchestrator MUST ask user at feature completion and key decisions. Rules: NOT blocking (keep working) · 1-line questions (yes/no or A/B) · max 2/phase · no answer after prompt = assume OK · persist to user_context.md + Engram.
-
-| After... | Example question |
-|----------|-----------------|
-| Complex/new task (triage) | "Tenes alguna referencia (repo, doc, diseño) que pueda usar como base?" |
-| UI implementation | "El layout mobile se ve como esperabas?" |
-| Feature completion | "La funcionalidad hace lo que necesitabas?" |
-| Refactor | "El comportamiento sigue igual?" |
-| Design decision | "Preferis A (mas simple) o B (mas flexible)?" |
-| Architecture choice | "Esta arquitectura escala para lo que tenes en mente?" |
-| Framework/library adoption | "Hay algun repo o doc que uses como referencia para esto?" |
-
----
-
-## 10. Flows, Context Files, Action Clarity
-
-**Version folder**: `context/appVersions/vX.Y.Z/` — `original_prompt.md` · `prompt.md` · `feedback.md`
-
-**Other flows**: Debug: Engram search -> diagnose -> explain -> delegate fix -> verify · Review: judgment-day parallel -> CRITICAL/WARNING/INFO · Research: WebSearch+Context7+Engram -> matrix -> save
-
-**Context files** (orchestrator reads; sub-agents don't): `context/guidelines.md` (tech conventions) · `context/user_context.md` (user profile) · `context/business_logic.md` (domain)
-**Action clarity**: EXECUTE ("do it") -> delegate · RESPOND ("analyze") -> no file changes · PLAN ("propose") -> prompt.md only · UNCLEAR -> ask. Bug reports -> explain root cause first (2-4 lines), then delegate fix.
-
-**Monitoring**: NEVER sleep/poll. Use Monitor for builds. Background Agent auto-notifies. ScheduleWakeup only on explicit user request. Use `autosdd-resume` for rate-limit auto-recovery.
-
-**Compaction**: See Step 8. Proactively suggest /compact at milestones when context > 50%. Save Engram summary + persist plan BEFORE suggesting. After compaction: `mem_context` → re-read Sections 1-4.
-
-**Opt-out**: `[raw]` / `[no-sdd]` / `skip autosdd`. Artifacts: English. Conversation: user's language. Code: English. UI: project-specific.
-
----
-
-## 11. Auto-Installed Ecosystem
-
-### Relationship with gentle-ai
-autoSDD is designed to work WITH gentle-ai but does NOT depend on it. gentle-ai provides: Engram MCP, SDD orchestrator, 10 SDD phase skills, skill-resolver, Context7 MCP, persona.
-
-autoSDD adds: meta-pipeline (triage/route/plan/delegate/collect/close), CREA structure, additional skills, telemetry, bidirectional feedback, RTK optimization, active feedback collection.
-
-**Decoupling rules**: autoSDD operates independently. If gentle-ai is missing or outdated, autoSDD degrades gracefully (WARN, continue without missing features). Never import gentle-ai internals or rely on its file structure. Shared protocols used by autoSDD (engram, persona, model-assignments) are optional enhancements — autoSDD works without them.
-
-### Skills (autoSDD installs globally)
-`prompt-engineering-patterns` · `branch-pr` · `judgment-day` · `frontend-design` · `interface-design` · `e2e-testing-patterns` · `error-handling-patterns` · `playwright-cli` · `claude-md-improver` · `feedback-report` · `knowledge-graph`
-
-### SDD Phase Skills (via gentle-ai)
-`sdd-init` · `sdd-explore` · `sdd-propose` · `sdd-spec` · `sdd-design` · `sdd-tasks` · `sdd-apply` · `sdd-verify` · `sdd-archive` · `sdd-onboard`
-
-### RTK: Always prefix commands with `rtk`. 60-90% token savings.
-
-### Dependency Gate: Missing Engram, Context7, prompt-engineering-patterns, or RTK -> WARN and CONTINUE (degraded mode). autoSDD never hard-blocks on external dependencies.
-
-For installation, skill combinations, A/B testing, self-improvement engine -> see `autoSDD-reference.md` in the repo.
-
----
-*autoSDD v5.1.0 - April 2026 · Author: Gentleman Programming (github.com/thestark77)*
+*autoSDD v5.2.0 — April 2026 · Gentleman Programming*

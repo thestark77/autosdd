@@ -52,87 +52,50 @@ This project uses autoSDD to develop autoSDD. The audit report at `context/audit
 ---
 
 <!-- autosdd:start -->
-## autoSDD v5.1 - Active Framework (DO NOT REMOVE)
+## autoSDD v5.2 — Active Pipeline (DO NOT REMOVE)
 
-autoSDD v5.1 is the ACTIVE development framework. ALL prompts go through autoSDD unless opted out with `[raw]`, `[no-sdd]`, or `skip autosdd`.
+ALL prompts go through autoSDD unless `[raw]`, `[no-sdd]`, or `skip autosdd`.
 
-Foundation layer (SDD phases, MCPs, shared protocols) provided by **gentle-ai**. autoSDD extends it with the meta-framework, telemetry, and additional skills.
-
-### Core Rule
-**The orchestrator DELEGATES. It never writes source code (.ts, .tsx, .prisma, etc.) inline.** See SKILL.md Section 1.
+### Core Rules
+1. **DELEGATE** — never write 2+ files inline. Read SKILL.md Section 1.
+2. **VERSION FIRST** — before planning, create `context/appVersions/vX.Y.Z/` + save `original_prompt.md`
+3. **PROGRESS.md is sacred** — update at every step. It's your compaction survival anchor.
+4. **Feedback after every task** — ask user ≥1 strategic question. Persist answers.
 
 ### Pipeline
-Triage -> Route -> Plan (CREA prompt.md) -> Delegate (sub-agents with skill injection) -> Collect -> Close Version -> Knowledge Update -> Compaction Check
+`VERSION INIT → TRIAGE → ROUTE → PLAN (CREA) → DELEGATE → COLLECT → CLOSE → KNOWLEDGE UPDATE`
 
-### Key Sections to Internalize
-- **Section 1**: Orchestrator identity (delegate, don't execute)
-- **Section 3**: CREA applied ONCE on prompt.md (not 3x)
-- **Section 4**: Sub-agent launch template (fill-in-the-blank, mandatory)
-- **Section 5**: Skill routing (pattern match -> inject rules)
-- **Step 8**: Compaction protocol (suggest /compact at >50% context)
+### Routing (if X → use Y skill)
+| Context | Skill |
+|---------|-------|
+| Public UI (.tsx/.vue pages) | `frontend-design` |
+| Admin/dashboard UI | `interface-design` |
+| API routes, validation | `error-handling-patterns` |
+| DB schema, .prisma | `postgresql-table-design` |
+| Tests (.test., .spec.) | `e2e-testing-patterns` |
+| Browser automation | `playwright-cli` (ALWAYS --headed) |
+| PR creation | `branch-pr` |
+| Security, 5+ files | `judgment-day` |
 
-### Ecosystem
+### Knowledge Caching (saves tokens)
+Before reading 4+ files → check Engram `knowledge/{project}/{topic}` for cached maps.
+After understanding a flow → save a 20-line map to Engram.
 
-#### Skills installed by autoSDD
-| Skill | When |
-|-------|------|
-| `autosdd` | ALWAYS - flow router + CREA + feedback engine |
-| `autosdd-telemetry` | `/audit`, `/improve`, `/self-analysis` - session analysis + self-improvement |
-| `prompt-engineering-patterns` | Every prompt creation - CREA techniques |
-| `frontend-design` | Public-facing UI - pages, components |
-| `interface-design` | Admin/internal UI - dashboards, tables |
-| `e2e-testing-patterns` | E2E tests - Playwright/Cypress |
-| `error-handling-patterns` | Error management - API routes, validation |
-| `playwright-cli` | Browser automation (ALWAYS --headed) |
-| `claude-md-improver` | CLAUDE.md - audit, improve |
-| `feedback-report` | `/feedback [timerange]` - improvement reports |
-| `knowledge-graph` | `/knowledge-graph` - memory visualization |
+### Compaction Recovery (read this AFTER any compaction)
+1. Read `PROGRESS.md` (your state anchor)
+2. Read current version's `prompt.md`
+3. `mem_context()` + `mem_search("session/{project}")`
+4. Resume from where PROGRESS.md says
 
-#### Skills provided by gentle-ai (DO NOT reinstall)
-`branch-pr` · `judgment-day` · `skill-creator` · `issue-creation` · `skill-registry` · `go-testing`
+### Hooks
+- **SubagentStop**: Update PROGRESS.md + save observation + check feedback debt
+- **PreCompact**: Save ALL state to PROGRESS.md + Engram NOW (compaction imminent)
+- **Stop**: Check feedback.md generated + PROGRESS.md current
+- **UserPromptSubmit**: Reset stop-hook debounce
 
-#### SDD Phases (via gentle-ai)
-`sdd-init` · `sdd-explore` · `sdd-propose` · `sdd-spec` · `sdd-design` · `sdd-tasks` · `sdd-apply` · `sdd-verify` · `sdd-archive` · `sdd-onboard`
+### gentle-ai (optional foundation)
+Provides: Engram MCP · SDD phases · persona · model-assignments · branch-pr · judgment-day
+autoSDD works without it (degraded mode).
 
-#### MCPs (via gentle-ai + autoSDD embedding layer)
-Engram (memory + semantic search) · Context7 (docs) · Playwright (browser) · Prisma (DB) · Linear (issues) · GitHub (PRs)
-
-#### Tools
-RTK: ALWAYS prefix with `rtk` (60-90% savings) · Monitor: event-driven waiting (NEVER poll) · Auto-Resume: use `autosdd-resume` instead of `claude` for rate-limit recovery (default ON, opt-out: `--no-resume`)
-
-### Three Critical Context Files (sacred, auto-updated)
-- `context/guidelines.md` - Technical rules and conventions
-- `context/user_context.md` - User profile and preferences
-- `context/business_logic.md` - Domain knowledge and workflows
-
-### Pipeline Gates (MANDATORY — verify BEFORE moving to next step)
-| Gate | Before... | VERIFY |
-|------|-----------|--------|
-| G1 | Planning | `mem_search("learnings/{project}")` done · `mem_search("pending")` done |
-| G2 | Delegating | prompt.md with CREA · pre-launch gate: template filled (all 6 sections) · `model` set · skills as TEXT |
-| G3 | Collecting | Observation saved for each delegation · ≥1 feedback question asked |
-| G4 | Closing | feedback.md generated · user feedback persisted · Engram summary saved · README.md + CHANGELOG.md reflect changes |
-
-### Telemetry & Self-Improvement (v5)
-- **Session observations**: orchestrator saves compliance notes to Engram at each pipeline step (`telemetry/obs/{project}/{session-marker}/{step}`) — survives compaction and sessions
-- **Tiered knowledge**: observations (Engram, per-step) → consolidated learnings by category (Engram, per-pipeline-step retrieval) → promoted rules (SKILL.md, permanent)
-- **Bidirectional feedback (MANDATORY)**: ≥1 question per completed feature · feedback.md per version close · missing = NON-COMPLIANT
-- `/improve` consolidates observations → learnings → proposes SKILL.md changes → updates `LEARNING.md`
-- `/feedback [timerange]` for reports · `/knowledge-graph` for memory visualization
-
-### Hooks (1-line reminders — logic lives in SKILL.md Section 2 checkpoints)
-- **SubagentStop**: triggers Step 5 checkpoint (observation + feedback debt)
-- **PreCompact**: triggers Step 8 pre-compaction checkpoint (Engram save + plan state)
-- **Stop**: pre-close checkpoint with debounce (fires once per user interaction, resets on next user message)
-- **UserPromptSubmit**: resets Stop hook debounce marker
-
-### Shared Protocols (gentle-ai owns _shared/, autoSDD adds rtk.md only)
-| Protocol | File |
-|----------|------|
-| RTK Token Optimization | `~/.claude/skills/_shared/rtk.md` |
-| Persona & Rules | `~/.claude/skills/_shared/persona.md` (gentle-ai) |
-| SDD Orchestrator | `~/.claude/skills/_shared/sdd-orchestrator.md` (gentle-ai) |
-| Engram Memory | `~/.claude/skills/_shared/engram-protocol.md` (gentle-ai) |
-
-Read the full framework: `~/.claude/skills/autosdd/SKILL.md`
+Read full framework: `~/.claude/skills/autosdd/SKILL.md`
 <!-- autosdd:end -->
