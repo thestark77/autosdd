@@ -21,7 +21,6 @@ autosdd/
 ├── AGENTS.md                          # This file — architecture reference for all agents
 ├── README.md                          # Public documentation
 ├── LEARNING.md                        # Promoted rules from /improve cycles
-├── CHANGELOG.md                       # Release history
 ├── install.sh                         # One-command installer (macOS/Linux)
 ├── install.ps1                        # One-command installer (Windows PowerShell)
 │
@@ -169,18 +168,10 @@ README.md must be updated when ANY of these change:
 README.md sections to check: How It Works · Pipeline Gates & Hooks · Commands · File Structure · What Gets Installed · Non-Negotiable Principles
 ```
 
-### CHANGELOG.md (MANDATORY — update alongside README on ANY version-relevant change)
+### Per-version changelog (at CLOSE — Step 6)
 ```
-CHANGELOG.md must be updated when ANY of these change:
-  - skill/SKILL.md (pipeline, features, behavior changes)
-  - skills/ (add/remove/modify bundled skill)
-  - shared/ (protocol changes)
-  - .claude/settings.json (hooks)
-  - templates/ (template changes)
-  - install.sh / install.ps1 (installer behavior changes)
-  - AGENTS.md (sync paths, architecture changes)
-CHANGELOG.md: add entry under [Unreleased] with ### Added / ### Changed / ### Removed as appropriate.
-On version release: move [Unreleased] to [X.Y.Z] - {date}, create new empty [Unreleased].
+Each version gets its own changelog at: context/appVersions/vX.Y.Z/changelog.md
+Generated at Step 6 (CLOSE VERSION). No global CHANGELOG.md — history lives per-version.
 ```
 
 ---
@@ -201,7 +192,7 @@ On version release: move [Unreleased] to [X.Y.Z] - {date}, create new empty [Unr
 | Knowledge caching | SKILL.md Section 6 — save flow maps to Engram (`knowledge/{project}/{topic}`) before delegating | `skill/SKILL.md` Section 6 |
 | SKILL.md line limit (300 hard / 270 target) | Manual verification after edits; documented in CLAUDE.md Testing section | `CLAUDE.md` |
 | Version string sync | Manual verification after SKILL.md version bump | `CLAUDE.md` Testing section |
-| README + CHANGELOG sync | G4 gate (before closing) + Stop hook (debounced) + SKILL.md Step 9 doc sync check | `templates/CLAUDE.md`, `.claude/settings.json`, `skill/SKILL.md` |
+| README sync | G4 gate (before closing) + Stop hook (debounced) + SKILL.md Step 7 doc sync check | `templates/CLAUDE.md`, `.claude/settings.json`, `skill/SKILL.md` |
 | Installer dry-run | `bash install.sh --dry-run` and `pwsh install.ps1 -DryRun` | CI / manual |
 
 ---

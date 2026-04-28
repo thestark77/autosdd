@@ -23,6 +23,7 @@ Markdown · Bash · PowerShell · Go (gentle-ai dependency)
 - Changes to `skill/SKILL.md` must be reflected in **both installers** (`install.sh` + `install.ps1`)
 - `templates/CLAUDE.md` must match the **current SKILL.md version** at all times
 - **Never duplicate** what gentle-ai already provides (Engram, SDD phases, persona, model-assignments)
+- No global CHANGELOG.md — changelogs live per-version in `context/appVersions/vX.Y.Z/changelog.md`
 - Adding/removing a skill requires updating ALL of:
   - `skill/SKILL.md` Section 5 (routing table) + Section 11 (ecosystem list)
   - `install.sh` + `install.ps1`
@@ -82,10 +83,10 @@ Before reading 4+ files → check Engram `knowledge/{project}/{topic}` for cache
 After understanding a flow → save a 20-line map to Engram.
 
 ### Compaction Recovery (read this AFTER any compaction)
-1. Read `PROGRESS.md` (your state anchor)
-2. Read current version's `prompt.md`
+1. Read `PROGRESS.md` (ONLY this — your state anchor)
+2. Read current version's `prompt.md` (your plan)
 3. `mem_context()` + `mem_search("session/{project}")`
-4. Resume from where PROGRESS.md says
+4. Resume from PROGRESS.md state — do NOT read other files unless PROGRESS.md says you need them
 
 ### Hooks
 - **SubagentStop**: Update PROGRESS.md + save observation + check feedback debt

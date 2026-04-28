@@ -35,6 +35,7 @@ When sub-agents fail: DIAGNOSE → IMPROVE prompt → RE-DELEGATE. After 2 failu
 2. Create `context/appVersions/vX.Y.Z/`
 3. Save `original_prompt.md` (user's raw prompt, verbatim)
 4. Update PROGRESS.md: `vX.Y.Z — STARTED`
+5. `mem_save` topic `sessions/{project}/{version}`: conversation ID + date + trigger
 
 > If this step is skipped, the session is NON-COMPLIANT from the start.
 
@@ -59,7 +60,7 @@ Validate results. Update PROGRESS.md per task (DONE/FAILED/PARTIAL). Re-delegate
 **Ask user ≥1 feedback question** (mandatory — see Section 7).
 
 ### Step 6 — CLOSE VERSION
-Generate `feedback.md` + `changelog.md` in version folder (see Section 10). Update PROGRESS.md: `vX.Y.Z — CLOSED`. Save Engram summary.
+Read `original_prompt.md` (needed for feedback generation). Generate `feedback.md` + `changelog.md` in version folder (see Section 10). Update PROGRESS.md: `vX.Y.Z — CLOSED`. Save Engram summary.
 
 ### Step 7 — KNOWLEDGE UPDATE
 Update context files if anything changed. Save knowledge maps (Section 6). Check doc sync.
@@ -209,10 +210,10 @@ PROGRESS.md must always reflect:
 3. Note pending feedback.md if not yet generated
 
 ### Post-Compaction Recovery (ALWAYS — read this from CLAUDE.md)
-1. Read PROGRESS.md
-2. Read current version's `prompt.md`
+1. Read PROGRESS.md (ONLY this — your state anchor)
+2. Read current version's `prompt.md` (your plan)
 3. `mem_context()` + `mem_search("session/{project}")`
-4. Resume from PROGRESS.md state
+4. Resume from PROGRESS.md state — do NOT read other files unless PROGRESS.md says you need them
 
 ---
 
