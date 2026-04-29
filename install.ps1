@@ -1081,10 +1081,6 @@ if (Test-Path $hooksFile) {
           {
             "type": "command",
             "command": "rm -f .claude/.stop-hook-fired"
-          },
-          {
-            "type": "prompt",
-            "prompt": "autoSDD GATE: If user message contains [raw], [no-sdd], or 'skip autosdd' → skip this. Otherwise: check if a version folder exists for THIS session in context/appVersions/. If NOT → execute Step 0 (VERSION INIT) NOW before any other work. Screenshots go to context/appVersions/vX.Y.Z/screenshots/."
           }
         ]
       }

@@ -33,7 +33,7 @@ When sub-agents fail: DIAGNOSE → IMPROVE prompt → RE-DELEGATE. After 2 failu
 ### Step 0 — VERSION INIT (FIRST ACTION — before thinking)
 1. Read PROGRESS.md → determine next version number
 2. Create `context/appVersions/vX.Y.Z/`
-3. Save `original_prompt.md` (user's raw prompt, verbatim)
+3. Save `original_prompt.md` (user's raw prompt, verbatim + conversation ID in frontmatter)
 4. Update PROGRESS.md: `vX.Y.Z — STARTED`
 5. `mem_save` topic `sessions/{project}/{version}`: conversation ID + date + trigger
 
@@ -235,11 +235,20 @@ Version folder `context/appVersions/vX.Y.Z/` must contain at close:
 
 | File | Purpose |
 |------|---------|
-| `original_prompt.md` | User's raw prompt (saved at Step 0) |
+| `original_prompt.md` | User's raw prompt + conversation ID (saved at Step 0) |
 | `prompt.md` | CREA-structured plan (saved at Step 3) |
 | `feedback.md` | Execution metrics + discoveries (saved at Step 6) |
 | `changelog.md` | Short summary: features/fixes/refactors (saved at Step 6) |
 | `screenshots/` | Visual test captures from Playwright (created on demand) |
+
+### original_prompt.md template
+```markdown
+---
+conversation_id: {conversation-id}
+date: {YYYY-MM-DD}
+---
+{user's raw prompt, verbatim}
+```
 
 ### feedback.md template
 ```markdown
