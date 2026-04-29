@@ -1,18 +1,15 @@
 # PROGRESS
 
 ## Current Task
-Update AGENTS.md to reflect autoSDD v5.2.0 changes.
+Propagate UserPromptSubmit delegation reminder hook to sync-path files
 
 ## Status: DONE
+Updated 5 files with new delegation reminder text matching autosdd/.claude/settings.json source of truth:
+- install.sh (line 1079)
+- install.ps1 (line 1087)
+- Bemovil2.0/.claude/settings.json
+- cba/.claude/settings.json
+- docs/hooks.md (3 occurrences)
 
-Updated `AGENTS.md` with targeted edits for v5.2.0:
-- Added Architecture Principle 8 "Less is more" (token minimization, knowledge caching, IF/THEN style, 270-line target)
-- Updated Enforcement Mechanisms table: Step 0 VERSION INIT, PROGRESS.md as compaction anchor, SubagentStop PROGRESS.md requirement, PreCompact 3-action checklist, Knowledge caching row, corrected section references (feedback → Section 7, doc sync → Step 9)
-- Updated Testing & Validation: sections numbered 1–11, hard limit 300 / target 270 lines
-
-Sync paths, Skill Registry, and Shared Protocols were not touched (no changes required).
-
----
-
-## Last Delegation
-install.sh v5.2 update — DONE. Version banners (3 locations) → v5.2, AUTOSDD_BLOCK compressed to 47-line v5.2 format (VERSION FIRST, PROGRESS.md, routing table, knowledge caching, compaction recovery), hooks updated (SubagentStop + PreCompact with actionable 3-step prompts, Stop shortened).
+## Pending
+- Feedback question asked: awaiting user response on delegation reminder wording stability

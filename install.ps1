@@ -1081,6 +1081,10 @@ if (Test-Path $hooksFile) {
           {
             "type": "command",
             "command": "rm -f .claude/.stop-hook-fired"
+          },
+          {
+            "type": "command",
+            "command": "echo 'autoSDD: ORCHESTRATOR rules — inline: coordination, git, 1-file edits, reads 1-3 files. DELEGATE: 2+ files, 4+ reads, tests/builds, multi-step execution. ALWAYS DELEGATE: 2+ independent parallel tasks.'"
           }
         ]
       }

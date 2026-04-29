@@ -84,3 +84,4 @@ context/knowledge-vault/
 # Loose screenshots (not documentation assets — use docs/ for intentional images)
 ai-*.png
 dashboard.png
+# autoSDD / Claude Code artifacts

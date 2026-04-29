@@ -27,7 +27,7 @@ Hooks automate quality enforcement. They run at defined points in Claude Code's 
 | `PermissionDenied` | A permission request is denied | No |
 | `PreCompact` | Before context compaction | No — use to backup state |
 | `PostCompact` | After context compaction | No — use for recovery |
-| `UserPromptSubmit` | Before processing user input | **command-only** — use for cleanup (debounce resets). NEVER use prompt-type (causes loops) |
+| `UserPromptSubmit` | Before processing user input | **command-only** — use for cleanup (debounce resets) and delegation reminders. NEVER use prompt-type (causes loops) |
 | `TeammateIdle` | A teammate agent is idle | No |
 | `InstructionsLoaded` | Agent instructions are loaded | No |
 | `WorktreeCreate` | A git worktree is created | No |
@@ -246,6 +246,10 @@ Full recommended setup combining all four strategic hooks:
           {
             "type": "command",
             "command": "rm -f .claude/.stop-hook-fired"
+          },
+          {
+            "type": "command",
+            "command": "echo 'autoSDD: ORCHESTRATOR rules — inline: coordination, git, 1-file edits, reads 1-3 files. DELEGATE: 2+ files, 4+ reads, tests/builds, multi-step execution. ALWAYS DELEGATE: 2+ independent parallel tasks.'"
           }
         ]
       }
@@ -480,6 +484,10 @@ Use a `command`-type Stop hook that checks a marker file. On first fire: create 
         {
           "type": "command",
           "command": "rm -f .claude/.stop-hook-fired"
+        },
+        {
+          "type": "command",
+          "command": "echo 'autoSDD: You are the ORCHESTRATOR. Coordination = inline. Execution = DELEGATE via Agent tool. Running commands, editing files, installing = EXECUTION → delegate. Analyzing, deciding, planning = COORDINATION → inline.'"
         }
       ]
     }
@@ -487,7 +495,7 @@ Use a `command`-type Stop hook that checks a marker file. On first fire: create 
 }
 ```
 
-This pattern ensures the checkpoint fires exactly once per user interaction — never in a loop.
+This pattern ensures the checkpoint fires exactly once per user interaction — never in a loop. The delegation reminder echo is also `command`-type, so it prints text visible to the model without triggering response loops.
 
 ### prompt-type UserPromptSubmit hooks cause loops
 
@@ -495,4 +503,4 @@ Never use a `prompt`-type hook on `UserPromptSubmit`. This event fires on **ever
 
 **Discovered in**: conversation `f69dbcf6-c244-4a1b-adfb-61a490cd1968` (2026-04-28). The hook forced VERSION INIT checks on every prompt, creating a loop that required manual removal from `settings.json` to continue.
 
-**Rule**: `UserPromptSubmit` hooks must be `command`-type only (silent file operations like debounce resets). Pipeline enforcement (VERSION INIT, opt-out checks) belongs in SKILL.md text instructions, not in hooks that inject prompts.
+**Rule**: `UserPromptSubmit` hooks must be `command`-type only (debounce resets, delegation reminders via echo). Pipeline enforcement (VERSION INIT, opt-out checks) belongs in SKILL.md text instructions, not in hooks that inject prompts.

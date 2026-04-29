@@ -85,10 +85,10 @@ Before reading 4+ files → check Engram `knowledge/{project}/{topic}` for cache
 After understanding a flow → save a 20-line map to Engram.
 
 ### Compaction Recovery (read this AFTER any compaction)
-1. Read `PROGRESS.md` (ONLY this — your state anchor)
-2. Read current version's `prompt.md` (your plan)
+1. Read `PROGRESS.md` (your state anchor)
+2. Read current version's `prompt.md`
 3. `mem_context()` + `mem_search("session/{project}")`
-4. Resume from PROGRESS.md state — do NOT read other files unless PROGRESS.md says you need them
+4. Resume from where PROGRESS.md says
 
 ### Hooks
 - **SubagentStop**: Update PROGRESS.md + save observation + check feedback debt
