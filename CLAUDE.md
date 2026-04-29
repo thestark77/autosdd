@@ -12,7 +12,7 @@ Markdown · Bash · PowerShell · Go (gentle-ai dependency)
 
 | Document | Purpose |
 |----------|---------|
-| `skill/SKILL.md` | **Core definition** — the framework itself (v5.1, must stay < 300 lines) |
+| `skill/SKILL.md` | **Core definition** — the framework itself (v5.3, must stay < 300 lines) |
 | `context/audit-v4-prohuella.md` | Compliance audit that drove v4.1 and v5.0 improvements |
 | `templates/CLAUDE.md` | Installed output template — must stay in sync with SKILL.md version |
 
@@ -53,7 +53,7 @@ This project uses autoSDD to develop autoSDD. The audit report at `context/audit
 ---
 
 <!-- autosdd:start -->
-## autoSDD v5.2 — Active Pipeline (DO NOT REMOVE)
+## autoSDD v5.3 — Active Pipeline (DO NOT REMOVE)
 
 ALL prompts go through autoSDD unless `[raw]`, `[no-sdd]`, or `skip autosdd`.
 

@@ -161,7 +161,7 @@ confirm_reinstall() {
 
 echo ""
 echo "  ╔══════════════════════════════════════════╗"
-echo "  ║     autoSDD v5.2 - Installer             ║"
+echo "  ║     autoSDD v5.3 - Installer             ║"
 echo "  ║     Extension for gentle-ai              ║"
 echo "  ╚══════════════════════════════════════════╝"
 echo ""
@@ -944,7 +944,7 @@ fi
 
 AUTOSDD_BLOCK=$(cat <<'BLOCKEOF'
 <!-- autosdd:start -->
-## autoSDD v5.2 — Active Pipeline (DO NOT REMOVE)
+## autoSDD v5.3 — Active Pipeline (DO NOT REMOVE)
 
 ALL prompts go through autoSDD unless `[raw]`, `[no-sdd]`, or `skip autosdd`.
 
@@ -1246,11 +1246,11 @@ fi
 echo ""
 if $all_good; then
   echo "  ╔══════════════════════════════════════════╗"
-  echo "  ║     autoSDD v5.2 installed!               ║"
+  echo "  ║     autoSDD v5.3 installed!               ║"
   echo "  ╚══════════════════════════════════════════╝"
 else
   echo "  ╔══════════════════════════════════════════╗"
-  echo "  ║  autoSDD v5.2 installed (with warnings)   ║"
+  echo "  ║  autoSDD v5.3 installed (with warnings)   ║"
   echo "  ╚══════════════════════════════════════════╝"
 fi
 

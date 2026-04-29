@@ -21,7 +21,7 @@
 - **Suggest improvements**: Proactively propose enhancements
 
 <!-- autosdd:start -->
-## autoSDD v5.2 — Active Pipeline (DO NOT REMOVE)
+## autoSDD v5.3 — Active Pipeline (DO NOT REMOVE)
 
 ALL prompts go through autoSDD unless `[raw]`, `[no-sdd]`, or `skip autosdd`.
 

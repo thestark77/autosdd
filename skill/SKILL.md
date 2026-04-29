@@ -3,7 +3,7 @@ name: autosdd
 description: >
   Autonomous development pipeline. Enforces delegation, versioning, 
   knowledge caching, and feedback. ALWAYS ACTIVE unless opted out.
-version: "5.2.0"
+version: "5.3.0"
 license: MIT
 metadata:
   author: gentleman-programming
@@ -11,7 +11,7 @@ metadata:
   compatible_agents: [Claude Code, OpenAI Codex, Cursor, VS Code Copilot, Windsurf, Kiro, Gemini CLI]
 ---
 
-# autoSDD v5.2 — Autonomous Development Pipeline
+# autoSDD v5.3 — Autonomous Development Pipeline
 
 > ALWAYS ACTIVE. Opt-out: `[raw]`, `[no-sdd]`, or `skip autosdd`.
 
@@ -31,10 +31,10 @@ When sub-agents fail: DIAGNOSE → IMPROVE prompt → RE-DELEGATE. After 2 failu
 ## 2. Pipeline (8 Steps)
 
 ### Step 0 — VERSION INIT (FIRST ACTION — before thinking)
-1. Read PROGRESS.md → determine next version number
+1. Read PROGRESS.md → determine next version number → **RESET** (keep only `# PROGRESS` header + new version)
 2. Create `context/appVersions/vX.Y.Z/`
 3. Save `original_prompt.md` (user's raw prompt, verbatim + conversation ID in frontmatter)
-4. Update PROGRESS.md: `vX.Y.Z — STARTED`
+4. Update PROGRESS.md: `vX.Y.Z — STARTED` + task list
 5. `mem_save` topic `sessions/{project}/{version}`: conversation ID + date + trigger
 
 > If this step is skipped, the session is NON-COMPLIANT from the start.
@@ -58,6 +58,7 @@ Log each delegation in PROGRESS.md (1 line: task + files + status).
 ### Step 5 — COLLECT
 Validate results. Update PROGRESS.md per task (DONE/FAILED/PARTIAL). Re-delegate failures.
 **Ask user ≥1 feedback question** (mandatory — see Section 7).
+**Scope changes**: If user instruction modifies scope → append to `prompt.md` under `## Additional Instructions` with `### [YYYY-MM-DD HH:MM]` timestamp.
 
 ### Step 6 — CLOSE VERSION
 Read `original_prompt.md` (needed for feedback generation). Generate `feedback.md` + `changelog.md` in version folder (see Section 10). Update PROGRESS.md: `vX.Y.Z — CLOSED`. Save Engram summary.
@@ -241,45 +242,10 @@ Version folder `context/appVersions/vX.Y.Z/` must contain at close:
 | `changelog.md` | Short summary: features/fixes/refactors (saved at Step 6) |
 | `screenshots/` | Visual test captures from Playwright (created on demand) |
 
-### original_prompt.md template
-```markdown
----
-conversation_id: {conversation-id}
-date: {YYYY-MM-DD}
----
-{user's raw prompt, verbatim}
-```
-
-### feedback.md template
-```markdown
-# Feedback - v{VERSION} · {date}
-
-## Execution
-Tasks delegated: {N} · Inline: {N} (→0) · Re-delegations: {N}
-
-## Telemetry
-tasks_delegated={N} · tasks_inline={N} · sub_agents_with_skills={N}
-engram_saves={N} · feedback_questions_asked={N} · triage_score={H/M/L}
-
-## Discoveries
-| What | Action taken |
-|------|-------------|
-```
-
-### changelog.md template
-```markdown
-# Changelog — v{VERSION}
-> Date: {date} · Trigger: {why this version exists}
-
-## Features
-- {new capabilities}
-
-## Fixes
-- {bug fixes}
-
-## Refactors
-- {structural changes without behavior change}
-```
+### Templates (inline)
+**original_prompt.md**: Frontmatter `conversation_id` + `date`, then raw prompt verbatim.
+**feedback.md**: Execution stats (delegated/inline/re-delegations) · Telemetry counters · Discoveries table.
+**changelog.md**: Version + date + trigger, then Features/Fixes/Refactors sections.
 
 ---
 
@@ -296,4 +262,4 @@ engram_saves={N} · feedback_questions_asked={N} · triage_score={H/M/L}
 **Opt-out**: `[raw]` / `[no-sdd]` / `skip autosdd`.
 
 ---
-*autoSDD v5.2.0 — April 2026 · Gentleman Programming*
+*autoSDD v5.3.0 — April 2026 · Gentleman Programming*

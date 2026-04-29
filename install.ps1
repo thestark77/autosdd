@@ -136,7 +136,7 @@ function Confirm-Reinstall {
 
 Write-Host ""
 Write-Host "  +==========================================+" -ForegroundColor Cyan
-Write-Host "  |     autoSDD v5.2 - Installer             |" -ForegroundColor Cyan
+Write-Host "  |     autoSDD v5.3 - Installer             |" -ForegroundColor Cyan
 Write-Host "  |     Extension for gentle-ai              |" -ForegroundColor Cyan
 Write-Host "  +==========================================+" -ForegroundColor Cyan
 Write-Host ""
@@ -949,7 +949,7 @@ try {
 
 $AUTOSDD_BLOCK = @"
 <!-- autosdd:start -->
-## autoSDD v5.2 — Active Pipeline (DO NOT REMOVE)
+## autoSDD v5.3 — Active Pipeline (DO NOT REMOVE)
 
 ALL prompts go through autoSDD unless ``[raw]``, ``[no-sdd]``, or ``skip autosdd``.
 
@@ -1262,11 +1262,11 @@ if ((Test-Path $claudeMd) -and ((Get-Content $claudeMd -Raw) -match "autosdd:sta
 Write-Host ""
 if ($allGood) {
   Write-Host "  +==========================================+" -ForegroundColor Green
-  Write-Host "  |     autoSDD v5.2 installed!               |" -ForegroundColor Green
+  Write-Host "  |     autoSDD v5.3 installed!               |" -ForegroundColor Green
   Write-Host "  +==========================================+" -ForegroundColor Green
 } else {
   Write-Host "  +==========================================+" -ForegroundColor Yellow
-  Write-Host "  |  autoSDD v5.2 installed (with warnings)   |" -ForegroundColor Yellow
+  Write-Host "  |  autoSDD v5.3 installed (with warnings)   |" -ForegroundColor Yellow
   Write-Host "  +==========================================+" -ForegroundColor Yellow
 }
 
