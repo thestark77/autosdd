@@ -3,7 +3,7 @@ name: autosdd
 description: >
   Autonomous development pipeline. Enforces delegation, versioning, 
   knowledge caching, and feedback. ALWAYS ACTIVE unless opted out.
-version: "5.3.0"
+version: "6.0.0"
 license: MIT
 metadata:
   author: gentleman-programming
@@ -11,7 +11,7 @@ metadata:
   compatible_agents: [Claude Code, OpenAI Codex, Cursor, VS Code Copilot, Windsurf, Kiro, Gemini CLI]
 ---
 
-# autoSDD v5.3 — Autonomous Development Pipeline
+# autoSDD v6.0 — Autonomous Development Pipeline
 
 > ALWAYS ACTIVE. Opt-out: `[raw]`, `[no-sdd]`, or `skip autosdd`.
 
@@ -23,27 +23,32 @@ You are an ORCHESTRATOR. You delegate, you don't execute.
 
 **DO inline**: Read 1-3 files · prompt.md/feedback.md/PROGRESS.md · git · Engram · single-file atomic edits
 **DELEGATE**: Write 2+ files · Read 4+ files · Tests/builds · Any multi-file change
+**Event-driven ONLY**: Monitor Tool for waits. Background Agent for async. NEVER sleep/poll — non-negotiable.
 
 When sub-agents fail: DIAGNOSE → IMPROVE prompt → RE-DELEGATE. After 2 failures → ask user.
 
 ---
 
-## 2. Pipeline (8 Steps)
+## 2. Pipeline (9 Steps)
 
 ### Step 0 — VERSION INIT (FIRST ACTION — before thinking)
-1. Read PROGRESS.md → determine next version number → **RESET** (keep only `# PROGRESS` header + new version)
-2. Create `context/appVersions/vX.Y.Z/`
-3. Save `original_prompt.md` (user's raw prompt, verbatim + conversation ID in frontmatter)
-4. Update PROGRESS.md: `vX.Y.Z — STARTED` + task list
-5. `mem_save` topic `sessions/{project}/{version}`: conversation ID + date + trigger
+1. Run `scripts/version-init.sh` (or `.ps1`) to create version folder + reset PROGRESS.md
+2. Save `original_prompt.md` (user's raw prompt, verbatim + conversation ID in frontmatter)
+3. `mem_save` topic `sessions/{project}/{version}`: conversation ID + date + trigger
 
 > If this step is skipped, the session is NON-COMPLIANT from the start.
 
+### Step 0.5 — CONTEXT SCOUT (haiku, automatic)
+Launch context-scout sub-agent (ALWAYS haiku):
+```
+Agent({ model: "haiku", description: "Context scout", prompt: [user prompt + source list] })
+```
+Receives structured brief. **This is a guide, not a boundary** — if more context is needed later, read it.
+
 ### Step 1 — TRIAGE (15s, inline)
-- `mem_search("pending/{project}")` + `mem_search("learnings/{project}")`
+- Use Scout's brief + `mem_search("pending/{project}")`
 - Clarity: HIGH=proceed · MEDIUM=ask 1-3 things · LOW=stop
 - Detect feedback → persist to Engram + context files
-- Ask for references if helpful (non-blocking)
 
 ### Step 2 — ROUTE
 DEV (feature/add/create/refactor) · DEBUG (fix/bug) · REVIEW (review/PR) · RESEARCH (compare/investigate)
@@ -58,13 +63,15 @@ Log each delegation in PROGRESS.md (1 line: task + files + status).
 ### Step 5 — COLLECT
 Validate results. Update PROGRESS.md per task (DONE/FAILED/PARTIAL). Re-delegate failures.
 **Ask user ≥1 feedback question** (mandatory — see Section 7).
-**Scope changes**: If user instruction modifies scope → append to `prompt.md` under `## Additional Instructions` with `### [YYYY-MM-DD HH:MM]` timestamp.
+**Scope changes**: If user modifies scope → append to `prompt.md` under `## Additional Instructions` with timestamp.
 
-### Step 6 — CLOSE VERSION
-Read `original_prompt.md` (needed for feedback generation). Generate `feedback.md` + `changelog.md` in version folder (see Section 10). Update PROGRESS.md: `vX.Y.Z — CLOSED`. Save Engram summary.
+### Step 6 — CLOSE VERSION (delegate to haiku)
+Delegate: `Agent({ model: "haiku", description: "Version close" })` with PROGRESS.md + prompt.md → generate feedback.md + changelog.md.
+Update PROGRESS.md: `vX.Y.Z — CLOSED`. Run `scripts/version-lint.sh` to verify sync.
 
-### Step 7 — KNOWLEDGE UPDATE
-Update context files if anything changed. Save knowledge maps (Section 6). Check doc sync.
+### Step 7 — KNOWLEDGE UPDATE (delegate to haiku)
+Delegate: `Agent({ model: "haiku", description: "Knowledge update" })` → update context files, save knowledge maps (Section 6), check doc sync.
+Memory rules: search Engram for duplicates before saving · max 5 lines per observation · title max 8 words.
 
 **Mid-Pipeline Interrupt**: New user message → ANSWER FIRST → RE-PRIORITIZE task queue → RESUME.
 
@@ -77,27 +84,18 @@ Update context files if anything changed. Save knowledge maps (Section 6). Check
 > Flow: {DEV/DEBUG/REVIEW/RESEARCH} · Triage: {HIGH/MEDIUM/LOW}
 
 ## Context
-- Current state: {files, recent changes}
-- Problem: {what + WHY}
-- Constraints: {from guidelines.md}
-- Prior decisions: {from Engram}
-- References: {user-provided if any}
+{current state, problem + WHY, constraints, prior decisions, references}
 
 ## Role
 Sub-agents act as senior {implementers/reviewers} with {domain} expertise.
 
 ## Specificity
-- Anti-patterns: {from learnings}
-- Testing: {how to validate}
-- Patterns: {reference existing files}
+{anti-patterns from learnings, testing strategy, reference patterns}
 
 ## Tasks
 ### Task N: {name}
 - Type: {parallel | depends-on: Task M}
-- Skills: {from routing table}
-- Files: {paths}
-- Model: {sonnet/opus}
-- Validation: {commands}
+- Skills: {routing} · Files: {paths} · Model: {from assignments} · Validation: {commands}
 
 ## Commits
 {conventional commits, segmented by module}
@@ -123,6 +121,9 @@ Senior {implementer/tester} specializing in {domain}.
 ## Task
 - {file}: {what to do}
 
+## Constraints
+- Event-driven ONLY: Monitor Tool for waits, background agents for async. NEVER sleep/poll.
+
 ## Validation
 - `rtk tsc --noEmit` · `rtk eslint {paths}`
 
@@ -131,6 +132,19 @@ Report: files_changed, tests_added, issues_found, discoveries
 ```
 
 Always set `model` parameter. Always set `description`.
+
+### Pipeline Model Assignments
+
+| Role | Model | Reason |
+|------|-------|--------|
+| context-scout | haiku | Gather + filter, no reasoning needed |
+| version-close | haiku | Template-based artifact generation |
+| knowledge-update | haiku | Mechanical updates + memory saves |
+| precompact-save | haiku | State serialization under time pressure |
+| task execution | sonnet | Implementation (default for sub-agents) |
+| architecture/design | opus | Strategic decisions only |
+
+> These EXTEND gentle-ai's `model-assignments.md` — they do not replace it.
 
 ---
 
@@ -157,24 +171,11 @@ Read matched SKILL.md, extract rules, paste into `## Standards`. Max 5 blocks/ag
 
 **Rule**: Before reading 4+ files to understand a flow, check if a cached map exists.
 
-**When to create a knowledge map**:
-- After understanding a UI flow or component architecture
-- After mapping a backend service or API structure
-- After discovering non-obvious relationships between files
+**Create** after understanding a flow. Save to Engram `knowledge/{project}/{topic}`, under 30 lines:
+`Purpose → Files → Flow (step1→step2→step3) → Key decisions → Gotchas`
 
-**Format**: Save to Engram with topic `knowledge/{project}/{topic}` — keep it under 30 lines:
-```
-## {Component/Flow Name}
-Purpose: {1 line}
-Files: {list of paths}
-Flow: {step1} → {step2} → {step3}
-Key decisions: {why it's built this way}
-Gotchas: {what breaks if you touch X}
-```
-
-**When to USE a knowledge map**: At TRIAGE (Step 1), search `knowledge/{project}` for relevant maps before planning. Include in sub-agent Context section.
-
-**When to UPDATE**: At KNOWLEDGE UPDATE (Step 7), if the work changed the mapped flow.
+**Use** at TRIAGE (Step 1): search for relevant maps, include in sub-agent Context.
+**Update** at KNOWLEDGE UPDATE (Step 7): if the work changed the mapped flow.
 
 ---
 
@@ -182,8 +183,7 @@ Gotchas: {what breaks if you touch X}
 
 **After each completed task or group of tasks**: Ask user ≥1 strategic feedback question.
 - Non-blocking (keep working), 1-line, yes/no or A/B preferred
-- Persist answers to Engram + user_context.md
-- Max 2 questions per phase
+- Persist answers to Engram + user_context.md · Max 2 questions per phase
 
 | After... | Ask |
 |----------|-----|
@@ -203,14 +203,10 @@ Gotchas: {what breaks if you touch X}
 
 PROGRESS.md must always reflect:
 - Current version and status (STARTED/PLANNED/IN-PROGRESS/CLOSED)
-- Task list with status per task
-- Key decisions made
-- What to do next
+- Task list with status per task · Key decisions · What to do next
 
-### Pre-Compaction (triggered by PreCompact hook)
-1. Update PROGRESS.md with ALL in-flight task states
-2. `mem_save` topic `session/{project}/{date}`: current task, decisions, next steps
-3. Note pending feedback.md if not yet generated
+### Pre-Compaction (delegate to haiku via PreCompact hook)
+Delegate: `Agent({ model: "haiku", description: "Pre-compact save" })` → (1) Update PROGRESS.md with ALL in-flight states (2) `mem_save` session state (3) Note pending feedback.md.
 
 ### Post-Compaction Recovery (ALWAYS — read this from CLAUDE.md)
 1. Read PROGRESS.md (ONLY this — your state anchor)
@@ -225,6 +221,7 @@ PROGRESS.md must always reflect:
 **Every prompt**: `mem_search` for pending tasks + relevant context.
 **Session start**: `mem_context` → `mem_search("pending")` → surface to user.
 **Save when**: decision made · bug found · convention established · preference learned · task deferred.
+**Conciseness**: Title max 8 words · Content max 5 lines · Search before saving (no duplicates).
 **Pending tasks**: topic `pending/{project}/{task}`. Mark done via `mem_update`.
 **Session close**: `mem_session_summary` with Goal, Accomplished, Pending, Next Steps.
 
@@ -242,16 +239,13 @@ Version folder `context/appVersions/vX.Y.Z/` must contain at close:
 | `changelog.md` | Short summary: features/fixes/refactors (saved at Step 6) |
 | `screenshots/` | Visual test captures from Playwright (created on demand) |
 
-### Templates (inline)
-**original_prompt.md**: Frontmatter `conversation_id` + `date`, then raw prompt verbatim.
-**feedback.md**: Execution stats (delegated/inline/re-delegations) · Telemetry counters · Discoveries table.
-**changelog.md**: Version + date + trigger, then Features/Fixes/Refactors sections.
+**Templates**: `original_prompt.md` = frontmatter (conversation_id, date) + raw prompt. `feedback.md` = execution stats + telemetry + discoveries. `changelog.md` = version + date + Features/Fixes/Refactors.
 
 ---
 
 ## 11. Ecosystem
 
-**autoSDD installs**: `prompt-engineering-patterns` · `frontend-design` · `interface-design` · `e2e-testing-patterns` · `error-handling-patterns` · `playwright-cli` · `claude-md-improver` · `feedback-report` · `knowledge-graph` · `autosdd-telemetry`
+**autoSDD installs**: `context-scout` · `prompt-engineering-patterns` · `frontend-design` · `interface-design` · `e2e-testing-patterns` · `error-handling-patterns` · `playwright-cli` · `claude-md-improver` · `feedback-report` · `knowledge-graph` · `autosdd-telemetry`
 
 **Global tools installed**: RTK (token optimization) · Playwright CLI (browser automation)
 
@@ -259,9 +253,9 @@ Version folder `context/appVersions/vX.Y.Z/` must contain at close:
 
 **RTK**: Always prefix commands with `rtk`.
 
-**Monitoring**: NEVER sleep/poll. Use Monitor for builds. Background Agent auto-notifies.
+**Monitoring**: NEVER sleep/poll. Use Monitor for builds. Background Agent auto-notifies. Non-negotiable.
 
 **Opt-out**: `[raw]` / `[no-sdd]` / `skip autosdd`.
 
 ---
-*autoSDD v5.3.0 — April 2026 · Gentleman Programming*
+*autoSDD v6.0.0 — April 2026 · Gentleman Programming*

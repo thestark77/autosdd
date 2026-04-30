@@ -31,7 +31,8 @@ autosdd/
 ├── skills/                            # autoSDD-owned bundled skills
 │   ├── autosdd-telemetry/SKILL.md     # /audit, /improve, /self-analysis — compliance scoring
 │   ├── feedback-report/SKILL.md       # /feedback [timerange] — time-based reports
-│   └── knowledge-graph/SKILL.md       # /knowledge-graph — Engram visualization
+│   ├── knowledge-graph/SKILL.md       # /knowledge-graph — Engram visualization
+│   └── context-scout/SKILL.md         # Haiku context pre-filter agent
 │                                      # All installed to: ~/.{agent}/skills/{skill-name}/
 │
 ├── shared/                            # Shared protocols (installed to ~/.{agent}/skills/_shared/)
@@ -47,11 +48,16 @@ autosdd/
 │   ├── guidelines.md                  # Technical rules template
 │   ├── user_context.md                # User profile template
 │   ├── business_logic.md              # Domain knowledge template
-│   └── knowledge-graph.html           # Standalone graph viewer
+│   ├── knowledge-graph.html           # Standalone graph viewer
+│   └── context-profiles.md            # Context filtering rules per task type
 │
 ├── scripts/
 │   ├── auto-resume.sh                 # Rate-limit recovery wrapper (macOS/Linux)
-│   └── auto-resume.ps1                # Rate-limit recovery wrapper (Windows)
+│   ├── auto-resume.ps1                # Rate-limit recovery wrapper (Windows)
+│   ├── version-init.sh                # Mechanical VERSION INIT (zero tokens)
+│   ├── version-init.ps1               # Windows equivalent
+│   ├── version-lint.sh                # Version sync verification
+│   └── version-lint.ps1               # Windows equivalent
 │
 ├── patches/
 │   └── engram-embedding.patch         # Patch for Engram MCP embedding layer
@@ -156,6 +162,12 @@ shared/rtk.md
   → install.ps1 (shared/ copy commands)
 ```
 
+### Context profiles changes
+```
+templates/context-profiles.md (template source)
+  → context/context-profiles.md (project-local, installed if not exists)
+```
+
 ### README.md (MANDATORY — update on ANY user-visible change)
 ```
 README.md must be updated when ANY of these change:
@@ -181,6 +193,7 @@ Generated at Step 6 (CLOSE VERSION). No global CHANGELOG.md — history lives pe
 | What | How | Where |
 |------|-----|-------|
 | Step 0 VERSION INIT (version folder + original_prompt.md) | SKILL.md Step 0 — FIRST action before any pipeline work | `skill/SKILL.md` Section 2 |
+| Step 0.5 Context Scout (haiku pre-filter) | SKILL.md Step 0.5 — automatic before every triage | `skill/SKILL.md` Section 2 |
 | PROGRESS.md as compaction survival anchor | Updated at every pipeline step (not just at close); SubagentStop hook explicitly requires update | `skill/SKILL.md`, `.claude/settings.json` |
 | Step 5 checkpoint (observation + feedback + PROGRESS.md update) | SubagentStop hook → prompt injected after every sub-agent; explicitly requires PROGRESS.md update | `.claude/settings.json` |
 | Step 8 pre-compaction save (3-action checklist) | PreCompact hook → specific 3-action checklist: save flow maps, update PROGRESS.md, save Engram summary | `.claude/settings.json` |
@@ -207,6 +220,7 @@ Generated at Step 6 (CLOSE VERSION). No global CHANGELOG.md — history lives pe
 | `autosdd-telemetry` | `skills/autosdd-telemetry/SKILL.md` | `/audit`, `/improve`, `/self-analysis` |
 | `feedback-report` | `skills/feedback-report/SKILL.md` | `/feedback [timerange]` |
 | `knowledge-graph` | `skills/knowledge-graph/SKILL.md` | `/knowledge-graph` |
+| `context-scout` | `skills/context-scout/SKILL.md` | Step 0.5 (automatic, every prompt) |
 | `prompt-engineering-patterns` | Fetched from upstream on install | Every CREA prompt.md build |
 | `frontend-design` | Fetched from upstream on install | `.tsx` pages (public-facing) |
 | `interface-design` | Fetched from upstream on install | `.tsx` pages (admin/dashboard) |

@@ -161,7 +161,7 @@ confirm_reinstall() {
 
 echo ""
 echo "  ╔══════════════════════════════════════════╗"
-echo "  ║     autoSDD v5.3 - Installer             ║"
+echo "  ║     autoSDD v6.0 - Installer             ║"
 echo "  ║     Extension for gentle-ai              ║"
 echo "  ╚══════════════════════════════════════════╝"
 echo ""
@@ -806,6 +806,22 @@ for i in "${!AGENTS[@]}"; do
   fi
 done
 
+# 1c. Install context-scout skill (from this repo)
+for i in "${!AGENTS[@]}"; do
+  agent="${AGENTS[$i]}"
+  if echo "$selected_agents" | grep -q "$agent"; then
+    skill_dir="${AGENT_DIRS[$i]}/skills/context-scout"
+    mkdir -p "$skill_dir"
+    if curl -fsSL -o "$skill_dir/SKILL.md" "$REPO_URL/skills/context-scout/SKILL.md"; then
+      echo "  ✓ context-scout ($agent)"
+    else
+      msg="Failed to install context-scout for $agent"
+      echo "  ⚠ $msg"
+      warnings+=("$msg")
+    fi
+  fi
+done
+
 # 2. Install remaining core skills via skills.sh (canonical sources)
 SKILLS_SH=(
   "https://github.com/wshobson/agents:prompt-engineering-patterns"
@@ -928,6 +944,19 @@ else
   echo "  ⚠ auto-resume install failed. Manual: $REPO_URL/scripts/auto-resume.sh"
 fi
 
+# --- Install automation scripts ---
+echo ""
+echo "Installing automation scripts..."
+
+for script_name in "version-init.sh" "version-lint.sh"; do
+  if curl -fsSL -o "$AR_DIR/autosdd-$script_name" "$REPO_URL/scripts/$script_name" 2>/dev/null; then
+    chmod +x "$AR_DIR/autosdd-$script_name"
+    echo "  ✓ $script_name → $AR_DIR/autosdd-$script_name"
+  else
+    echo "  ⚠ Failed to install $script_name"
+  fi
+done
+
 # --- Bootstrap project templates ---
 echo ""
 echo "Bootstrapping project templates..."
@@ -941,7 +970,7 @@ fi
 
 mkdir -p "$CONTEXT_DIR"
 
-templates=("guidelines.md" "user_context.md" "business_logic.md" "autosdd.md")
+templates=("guidelines.md" "user_context.md" "business_logic.md" "autosdd.md" "context-profiles.md")
 for tmpl in "${templates[@]}"; do
   target="$CONTEXT_DIR/$tmpl"
   if [[ -f "$target" ]]; then
@@ -967,18 +996,27 @@ fi
 
 AUTOSDD_BLOCK=$(cat <<'BLOCKEOF'
 <!-- autosdd:start -->
-## autoSDD v5.3 — Active Pipeline (DO NOT REMOVE)
+## autoSDD v6.0 — Active Pipeline (DO NOT REMOVE)
 
 ALL prompts go through autoSDD unless `[raw]`, `[no-sdd]`, or `skip autosdd`.
 
 ### Core Rules
 1. **DELEGATE** — never write 2+ files inline. Read SKILL.md Section 1.
-2. **VERSION FIRST** — before planning, create `context/appVersions/vX.Y.Z/` + save `original_prompt.md`
-3. **PROGRESS.md is sacred** — update at every step. It's your compaction survival anchor.
-4. **Feedback after every task** — ask user ≥1 strategic question. Persist answers.
+2. **VERSION FIRST** — run `scripts/version-init.sh` (or `.ps1`) + save `original_prompt.md`
+3. **CONTEXT SCOUT** — launch haiku scout (Step 0.5) before triage. Structured brief, not raw dumps.
+4. **PROGRESS.md is sacred** — update at every step. Compaction survival anchor.
+5. **Event-driven ONLY** — Monitor Tool for waits. Background Agent for async. NEVER sleep/poll.
+6. **Feedback after every task** — ask user ≥1 strategic question. Persist answers.
 
 ### Pipeline
-`VERSION INIT → TRIAGE → ROUTE → PLAN (CREA) → DELEGATE → COLLECT → CLOSE → KNOWLEDGE UPDATE`
+`VERSION INIT → CONTEXT SCOUT → TRIAGE → ROUTE → PLAN (CREA) → DELEGATE → COLLECT → CLOSE → KNOWLEDGE UPDATE`
+
+### Model Assignments (extends gentle-ai)
+| Role | Model |
+|------|-------|
+| context-scout, version-close, knowledge-update, precompact-save | haiku |
+| task execution (default) | sonnet |
+| architecture/design | opus |
 
 ### Routing (if X → use Y skill)
 | Context | Skill |
@@ -1005,8 +1043,8 @@ After understanding a flow → save a 20-line map to Engram.
 4. Resume from where PROGRESS.md says
 
 ### Hooks
-- **SubagentStop**: Update PROGRESS.md + save observation + check feedback debt
-- **PreCompact**: Save ALL state to PROGRESS.md + Engram NOW (compaction imminent)
+- **SubagentStop**: Update PROGRESS.md + save observation + check feedback debt (skips utility agents)
+- **PreCompact**: Delegate to haiku: save ALL state to PROGRESS.md + Engram NOW
 - **Stop**: Check feedback.md generated + PROGRESS.md current
 - **UserPromptSubmit**: Reset stop-hook debounce
 
@@ -1062,7 +1100,7 @@ cat > "$HOOKS_FILE" << 'HOOKEOF'
         "hooks": [
           {
             "type": "prompt",
-            "prompt": "Sub-agent returned. Do these NOW: (1) Update PROGRESS.md with task result (DONE/FAILED/PARTIAL + 1-line note). (2) If you haven't asked the user a feedback question this version yet — ask one NOW."
+            "prompt": "Sub-agent returned. SKIP these checks if the agent description was 'Context scout', 'Version close', 'Knowledge update', or 'Pre-compact save' (utility agents — no tracking needed). OTHERWISE do these NOW: (1) Update PROGRESS.md with task result (DONE/FAILED/PARTIAL + 1-line note). (2) If you haven't asked the user a feedback question this version yet — ask one NOW."
           }
         ]
       }
@@ -1073,7 +1111,7 @@ cat > "$HOOKS_FILE" << 'HOOKEOF'
         "hooks": [
           {
             "type": "prompt",
-            "prompt": "COMPACTION IMMINENT — you WILL lose conversation context. Execute NOW: (1) Update PROGRESS.md with ALL in-flight task states and decisions. (2) mem_save topic 'session/{project}/{date}' with: current task, decisions made, next steps. (3) If feedback.md not generated yet, note 'PENDING' in PROGRESS.md. After compaction: read PROGRESS.md + current prompt.md + mem_context()."
+            "prompt": "COMPACTION IMMINENT — you WILL lose conversation context. Delegate NOW: Agent({ model: 'haiku', description: 'Pre-compact save', prompt: 'Execute these 3 actions: (1) Update PROGRESS.md with ALL in-flight task states and decisions. (2) mem_save topic session/{project}/{date} with: current task, decisions made, next steps. (3) If feedback.md not generated yet, note PENDING in PROGRESS.md.' }). After compaction: read PROGRESS.md + current prompt.md + mem_context()."
           }
         ]
       }
@@ -1099,7 +1137,7 @@ cat > "$HOOKS_FILE" << 'HOOKEOF'
           },
           {
             "type": "command",
-            "command": "echo 'autoSDD: ORCHESTRATOR rules — inline: coordination, git, 1-file edits, reads 1-3 files. DELEGATE: 2+ files, 4+ reads, tests/builds, multi-step execution. ALWAYS DELEGATE: 2+ independent parallel tasks.'"
+            "command": "echo 'autoSDD: ORCHESTRATOR rules — inline: coordination, git, 1-file edits, reads 1-3 files. DELEGATE: 2+ files, 4+ reads, tests/builds, multi-step execution. ALWAYS DELEGATE: 2+ independent parallel tasks. Event-driven ONLY: Monitor Tool for waits, Background Agent for async. NEVER sleep/poll.'"
           }
         ]
       }
@@ -1201,7 +1239,7 @@ for i in "${!AGENTS[@]}"; do
     fi
 
     # Check core skills installed by autoSDD (via skills.sh -g)
-    core_skill_names=("autosdd" "autosdd-telemetry" "prompt-engineering-patterns" "frontend-design" "interface-design" "claude-md-improver" "e2e-testing-patterns" "error-handling-patterns" "playwright-cli" "feedback-report" "knowledge-graph")
+    core_skill_names=("autosdd" "autosdd-telemetry" "context-scout" "prompt-engineering-patterns" "frontend-design" "interface-design" "claude-md-improver" "e2e-testing-patterns" "error-handling-patterns" "playwright-cli" "feedback-report" "knowledge-graph")
     for cs in "${core_skill_names[@]}"; do
       cs_path="${AGENT_DIRS[$i]}/skills/$cs/SKILL.md"
       if [[ -f "$cs_path" ]]; then
@@ -1269,11 +1307,11 @@ fi
 echo ""
 if $all_good; then
   echo "  ╔══════════════════════════════════════════╗"
-  echo "  ║     autoSDD v5.3 installed!               ║"
+  echo "  ║     autoSDD v6.0 installed!               ║"
   echo "  ╚══════════════════════════════════════════╝"
 else
   echo "  ╔══════════════════════════════════════════╗"
-  echo "  ║  autoSDD v5.3 installed (with warnings)   ║"
+  echo "  ║  autoSDD v6.0 installed (with warnings)   ║"
   echo "  ╚══════════════════════════════════════════╝"
 fi
 

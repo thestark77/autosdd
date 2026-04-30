@@ -1,4 +1,4 @@
-# AutoSDD v5 — Self-Improving Autonomous Development
+# AutoSDD v6 — Self-Improving Autonomous Development
 
 <div align="center">
 
@@ -19,7 +19,7 @@
 
 autoSDD is a **methodology layer** on top of [gentle-ai](https://github.com/Gentleman-Programming/gentle-ai). gentle-ai provides the infrastructure (skills, MCPs, agents). autoSDD provides the process.
 
-**v5 adds telemetry and self-improvement**: the framework measures its own compliance and actively improves. Every session can be audited, every version gets telemetry metrics, and the orchestrator delegates all code to sub-agents — never writes inline.
+**v6 adds cost optimization and context intelligence**: a Haiku-powered Context Scout pre-filters context before the orchestrator starts, mechanical pipeline tasks are delegated to Haiku instead of Opus, and automation scripts replace token-consuming AI work for folder creation and version verification.
 
 ### What autoSDD Adds
 
@@ -37,6 +37,8 @@ autoSDD is a **methodology layer** on top of [gentle-ai](https://github.com/Gent
 
 Every user prompt flows through this pipeline:
 
+0. **VERSION INIT** — Run `scripts/version-init.sh` to create version folder + reset PROGRESS.md (zero tokens).
+0.5. **CONTEXT SCOUT** — A Haiku sub-agent scans all context sources, filters by task relevance, returns a structured brief.
 1. **TRIAGE** — Is the prompt clear? Assign HIGH/MEDIUM/LOW. Check Engram for pending tasks and learnings.
 2. **ROUTE** — Detect intent: feature→DEV, fix→DEBUG, review→REVIEW, research→RESEARCH.
 3. **PLAN (CREA)** — Build `prompt.md` with full CREA structure (Context, Role, Specificity, Action).
@@ -66,7 +68,7 @@ SCOPE → GATHER → EVALUATE (scoring matrix) → SYNTHESIZE → DECIDE
 
 ---
 
-## Bidirectional Feedback (v5)
+## Bidirectional Feedback
 
 ### AI → User
 
@@ -90,7 +92,7 @@ When you correct the AI, it persists the lesson:
 
 The AI confirms: "Anotado. Guardé que [X]. No va a pasar de nuevo."
 
-### v5 Enhancements
+### Enhancements
 
 - **Active feedback**: the orchestrator asks non-blocking questions after every UI change, new feature, refactor, or design decision — feedback is collected without blocking execution
 - **TODO list review**: TODO lists are checked at triage, collect, and close phases to ensure nothing is missed
@@ -99,7 +101,7 @@ The AI confirms: "Anotado. Guardé que [X]. No va a pasar de nuevo."
 
 ---
 
-## Pipeline Gates & Hooks (v5)
+## Pipeline Gates & Hooks
 
 ### Pipeline Gates (MANDATORY — verified before each phase transition)
 
@@ -116,7 +118,7 @@ The installer deploys `.claude/settings.json` with hooks that trigger at key pip
 
 | Hook | Trigger | Action |
 |------|---------|--------|
-| **SubagentStop** | After every sub-agent completes | Run Step 5 checkpoint (save observation, check feedback debt) |
+| **SubagentStop** | After every sub-agent completes | Run Step 5 checkpoint — skips utility agents (scout, close, knowledge, precompact) |
 | **PreCompact** | Before context compaction | Run Step 8 (save Engram summary, persist plan state) |
 | **Stop** | After agent responds | Pre-close checkpoint with debounce (fires once per user interaction) |
 | **UserPromptSubmit** | Before processing user input | Resets Stop hook debounce marker |
@@ -203,6 +205,7 @@ curl -o ~/.claude/skills/autosdd/SKILL.md \
 |-----------|---------|
 | `autosdd` skill | This framework — flow router, CREA, feedback engine, telemetry |
 | `autosdd-telemetry` skill | Session auditing, compliance scoring, /audit, /improve, /self-analysis |
+| `context-scout` skill | Haiku context pre-filter — gathers and filters context before orchestrator |
 | `prompt-engineering-patterns` | CREA prompt techniques (CoT, Few-Shot, Structured Output) |
 | `frontend-design` | Production-grade frontend interfaces |
 | `interface-design` | Dashboards, admin panels, internal tools |
@@ -273,7 +276,8 @@ autosdd/
 ├── skills/                       # Bundled skills (installed to ~/.{agent}/skills/)
 │   ├── autosdd-telemetry/SKILL.md  # /audit, /improve, /self-analysis
 │   ├── feedback-report/SKILL.md  # /feedback [timerange]
-│   └── knowledge-graph/SKILL.md  # /knowledge-graph — memory visualization
+│   ├── knowledge-graph/SKILL.md  # /knowledge-graph — memory visualization
+│   └── context-scout/SKILL.md       # Context filtering agent (Haiku)
 ├── shared/                       # Shared protocols (installed to ~/.{agent}/skills/_shared/)
 │   ├── rtk.md                    # RTK token optimization (autoSDD owns this)
 │   ├── persona.md                # Agent persona, rules (gentle-ai origin)
@@ -286,10 +290,15 @@ autosdd/
 │   ├── guidelines.md             # Technical rules template
 │   ├── user_context.md           # User profile template
 │   ├── business_logic.md         # Domain knowledge template
-│   └── knowledge-graph.html      # Standalone graph viewer
+│   ├── knowledge-graph.html      # Standalone graph viewer
+│   └── context-profiles.md          # Context filtering rules per task type
 ├── scripts/
 │   ├── auto-resume.sh            # Rate-limit recovery wrapper (macOS/Linux)
-│   └── auto-resume.ps1           # Rate-limit recovery wrapper (Windows)
+│   ├── auto-resume.ps1           # Rate-limit recovery wrapper (Windows)
+│   ├── version-init.sh              # Mechanical VERSION INIT (zero tokens)
+│   ├── version-init.ps1             # Windows equivalent
+│   ├── version-lint.sh              # Version sync verification
+│   └── version-lint.ps1             # Windows equivalent
 ├── patches/
 │   └── engram-embedding.patch    # Patch for Engram MCP embedding layer
 ├── docs/
@@ -349,14 +358,15 @@ gentle-ai = infrastructure. autoSDD = methodology + continuous improvement.
 2. **No skipped quality gates** — pipeline gates G1-G4 verified before each phase transition
 3. **No context loss** — every decision saved to Engram immediately, session observations at every step
 4. **No polling** — Monitor tool for all waiting, event-driven always
-5. **No silent failures** — escalate after 3 retries, never loop infinitely
-6. **Specs are truth** — implementation matches specs, not the other way around
-7. **Skills are the orchestrator's responsibility** — use them proactively, inject as TEXT
-8. **Telemetry is mandatory** — every session can be audited, every version gets telemetry metrics
-9. **The orchestrator DELEGATES** — never writes source code inline
-10. **User messages get immediate attention** — mid-pipeline interrupts: answer first, re-prioritize, resume
-11. **Core behaviors enforced structurally** — hooks, gates, and scripts, not just text suggestions
-12. **English framework** — all skills, prompts, Engram content in English
+5. **Cheap models for mechanical work** — Haiku for context-scout, version-close, knowledge-update, precompact-save. Opus reserved for architecture only.
+6. **No silent failures** — escalate after 3 retries, never loop infinitely
+7. **Specs are truth** — implementation matches specs, not the other way around
+8. **Skills are the orchestrator's responsibility** — use them proactively, inject as TEXT
+9. **Telemetry is mandatory** — every session can be audited, every version gets telemetry metrics
+10. **The orchestrator DELEGATES** — never writes source code inline
+11. **User messages get immediate attention** — mid-pipeline interrupts: answer first, re-prioritize, resume
+12. **Core behaviors enforced structurally** — hooks, gates, and scripts, not just text suggestions
+13. **English framework** — all skills, prompts, Engram content in English
 
 ---
 

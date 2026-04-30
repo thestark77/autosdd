@@ -136,7 +136,7 @@ function Confirm-Reinstall {
 
 Write-Host ""
 Write-Host "  +==========================================+" -ForegroundColor Cyan
-Write-Host "  |     autoSDD v5.3 - Installer             |" -ForegroundColor Cyan
+Write-Host "  |     autoSDD v6.0 - Installer             |" -ForegroundColor Cyan
 Write-Host "  |     Extension for gentle-ai              |" -ForegroundColor Cyan
 Write-Host "  +==========================================+" -ForegroundColor Cyan
 Write-Host ""
@@ -786,6 +786,24 @@ for ($i = 0; $i -lt $AGENTS.Count; $i++) {
   }
 }
 
+# 1c. Install context-scout skill (from this repo)
+for ($i = 0; $i -lt $AGENTS.Count; $i++) {
+  $agent = $AGENTS[$i]
+  if ($selectedAgents -contains $agent) {
+    $skillDir = Join-Path $AGENT_DIRS[$i] "skills\context-scout"
+    try {
+      New-Item -ItemType Directory -Path $skillDir -Force | Out-Null
+      $skillFile = Join-Path $skillDir "SKILL.md"
+      Invoke-WebRequest -Uri "$REPO_URL/skills/context-scout/SKILL.md" -OutFile $skillFile -UseBasicParsing
+      Write-Host "  OK context-scout ($agent)"
+    } catch {
+      $msg = "Failed to install context-scout for $agent - $_"
+      Write-Host "  ! $msg" -ForegroundColor Yellow
+      $warnings += $msg
+    }
+  }
+}
+
 # 2. Install remaining core skills via skills.sh (canonical sources)
 $SKILLS_SH = @(
   @{ repo = "https://github.com/wshobson/agents"; skill = "prompt-engineering-patterns" },
@@ -934,6 +952,20 @@ try {
   Write-Host "  ! auto-resume install failed. Manual: $REPO_URL/scripts/auto-resume.ps1" -ForegroundColor Yellow
 }
 
+# --- Install automation scripts ---
+Write-Host ""
+Write-Host "Installing automation scripts..."
+
+foreach ($scriptName in @("version-init.sh", "version-lint.sh", "version-init.ps1", "version-lint.ps1")) {
+  $target = Join-Path $arDir "autosdd-$scriptName"
+  try {
+    Invoke-WebRequest -Uri "$REPO_URL/scripts/$scriptName" -OutFile $target -UseBasicParsing
+    Write-Host "  OK $scriptName -> $target"
+  } catch {
+    Write-Host "  ! Failed to install $scriptName" -ForegroundColor Yellow
+  }
+}
+
 # --- Bootstrap project templates ---
 Write-Host ""
 Write-Host "Bootstrapping project templates..."
@@ -947,7 +979,7 @@ if (Test-Path $contextDir) {
 
 New-Item -ItemType Directory -Path $contextDir -Force | Out-Null
 
-$templates = @("guidelines.md", "user_context.md", "business_logic.md", "autosdd.md")
+$templates = @("guidelines.md", "user_context.md", "business_logic.md", "autosdd.md", "context-profiles.md")
 foreach ($tmpl in $templates) {
   $target = Join-Path $contextDir $tmpl
   if (Test-Path $target) {
@@ -975,18 +1007,27 @@ try {
 
 $AUTOSDD_BLOCK = @"
 <!-- autosdd:start -->
-## autoSDD v5.3 — Active Pipeline (DO NOT REMOVE)
+## autoSDD v6.0 — Active Pipeline (DO NOT REMOVE)
 
 ALL prompts go through autoSDD unless ``[raw]``, ``[no-sdd]``, or ``skip autosdd``.
 
 ### Core Rules
 1. **DELEGATE** — never write 2+ files inline. Read SKILL.md Section 1.
-2. **VERSION FIRST** — before planning, create ``context/appVersions/vX.Y.Z/`` + save ``original_prompt.md``
-3. **PROGRESS.md is sacred** — update at every step. It's your compaction survival anchor.
-4. **Feedback after every task** — ask user ≥1 strategic question. Persist answers.
+2. **VERSION FIRST** — run ``scripts/version-init.sh`` (or ``.ps1``) + save ``original_prompt.md``
+3. **CONTEXT SCOUT** — launch haiku scout (Step 0.5) before triage. Structured brief, not raw dumps.
+4. **PROGRESS.md is sacred** — update at every step. Compaction survival anchor.
+5. **Event-driven ONLY** — Monitor Tool for waits. Background Agent for async. NEVER sleep/poll.
+6. **Feedback after every task** — ask user ≥1 strategic question. Persist answers.
 
 ### Pipeline
-``VERSION INIT → TRIAGE → ROUTE → PLAN (CREA) → DELEGATE → COLLECT → CLOSE → KNOWLEDGE UPDATE``
+``VERSION INIT → CONTEXT SCOUT → TRIAGE → ROUTE → PLAN (CREA) → DELEGATE → COLLECT → CLOSE → KNOWLEDGE UPDATE``
+
+### Model Assignments (extends gentle-ai)
+| Role | Model |
+|------|-------|
+| context-scout, version-close, knowledge-update, precompact-save | haiku |
+| task execution (default) | sonnet |
+| architecture/design | opus |
 
 ### Routing (if X → use Y skill)
 | Context | Skill |
@@ -1013,8 +1054,8 @@ After understanding a flow → save a 20-line map to Engram.
 4. Resume from where PROGRESS.md says
 
 ### Hooks
-- **SubagentStop**: Update PROGRESS.md + save observation + check feedback debt
-- **PreCompact**: Save ALL state to PROGRESS.md + Engram NOW (compaction imminent)
+- **SubagentStop**: Update PROGRESS.md + save observation + check feedback debt (skips utility agents)
+- **PreCompact**: Delegate to haiku: save ALL state to PROGRESS.md + Engram NOW
 - **Stop**: Check feedback.md generated + PROGRESS.md current
 - **UserPromptSubmit**: Reset stop-hook debounce
 
@@ -1073,7 +1114,7 @@ if (Test-Path $hooksFile) {
         "hooks": [
           {
             "type": "prompt",
-            "prompt": "Sub-agent returned. Do these NOW: (1) Update PROGRESS.md with task result (DONE/FAILED/PARTIAL + 1-line note). (2) If you haven't asked the user a feedback question this version yet — ask one NOW."
+            "prompt": "Sub-agent returned. SKIP these checks if the agent description was 'Context scout', 'Version close', 'Knowledge update', or 'Pre-compact save' (utility agents — no tracking needed). OTHERWISE do these NOW: (1) Update PROGRESS.md with task result (DONE/FAILED/PARTIAL + 1-line note). (2) If you haven't asked the user a feedback question this version yet — ask one NOW."
           }
         ]
       }
@@ -1084,7 +1125,7 @@ if (Test-Path $hooksFile) {
         "hooks": [
           {
             "type": "prompt",
-            "prompt": "COMPACTION IMMINENT — you WILL lose conversation context. Execute NOW: (1) Update PROGRESS.md with ALL in-flight task states and decisions. (2) mem_save topic 'session/{project}/{date}' with: current task, decisions made, next steps. (3) If feedback.md not generated yet, note 'PENDING' in PROGRESS.md. After compaction: read PROGRESS.md + current prompt.md + mem_context()."
+            "prompt": "COMPACTION IMMINENT — you WILL lose conversation context. Delegate NOW: Agent({ model: 'haiku', description: 'Pre-compact save', prompt: 'Execute these 3 actions: (1) Update PROGRESS.md with ALL in-flight task states and decisions. (2) mem_save topic session/{project}/{date} with: current task, decisions made, next steps. (3) If feedback.md not generated yet, note PENDING in PROGRESS.md.' }). After compaction: read PROGRESS.md + current prompt.md + mem_context()."
           }
         ]
       }
@@ -1110,7 +1151,7 @@ if (Test-Path $hooksFile) {
           },
           {
             "type": "command",
-            "command": "echo 'autoSDD: ORCHESTRATOR rules — inline: coordination, git, 1-file edits, reads 1-3 files. DELEGATE: 2+ files, 4+ reads, tests/builds, multi-step execution. ALWAYS DELEGATE: 2+ independent parallel tasks.'"
+            "command": "echo 'autoSDD: ORCHESTRATOR rules — inline: coordination, git, 1-file edits, reads 1-3 files. DELEGATE: 2+ files, 4+ reads, tests/builds, multi-step execution. ALWAYS DELEGATE: 2+ independent parallel tasks. Event-driven ONLY: Monitor Tool for waits, Background Agent for async. NEVER sleep/poll.'"
           }
         ]
       }
@@ -1215,7 +1256,7 @@ for ($i = 0; $i -lt $AGENTS.Count; $i++) {
     }
 
     # Check core skills installed by autoSDD
-    $coreSkillNames = @("autosdd", "autosdd-telemetry") + ($SKILLS_SH | ForEach-Object { $_.skill }) + $BUNDLED_SKILLS
+    $coreSkillNames = @("autosdd", "autosdd-telemetry", "context-scout") + ($SKILLS_SH | ForEach-Object { $_.skill }) + $BUNDLED_SKILLS
     foreach ($cs in $coreSkillNames) {
       $csPath = Join-Path $AGENT_DIRS[$i] "skills\$cs\SKILL.md"
       if (Test-Path $csPath) {
@@ -1288,11 +1329,11 @@ if ((Test-Path $claudeMd) -and ((Get-Content $claudeMd -Raw) -match "autosdd:sta
 Write-Host ""
 if ($allGood) {
   Write-Host "  +==========================================+" -ForegroundColor Green
-  Write-Host "  |     autoSDD v5.3 installed!               |" -ForegroundColor Green
+  Write-Host "  |     autoSDD v6.0 installed!               |" -ForegroundColor Green
   Write-Host "  +==========================================+" -ForegroundColor Green
 } else {
   Write-Host "  +==========================================+" -ForegroundColor Yellow
-  Write-Host "  |  autoSDD v5.3 installed (with warnings)   |" -ForegroundColor Yellow
+  Write-Host "  |  autoSDD v6.0 installed (with warnings)   |" -ForegroundColor Yellow
   Write-Host "  +==========================================+" -ForegroundColor Yellow
 }
 
