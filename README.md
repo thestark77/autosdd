@@ -172,8 +172,9 @@ The installer asks 2 questions (which AI agents? response style?) and handles ev
 3. Installs **14 core skills** globally (from original sources)
 4. Installs **shared protocols** (persona, RTK, orchestrator, engram, model assignments)
 5. Installs **RTK** (token optimization — 60-90% savings)
-6. Installs **auto-resume** (rate-limit recovery wrapper — default ON)
-7. Bootstraps **project templates** (context/ + CLAUDE.md)
+6. Installs **Playwright CLI** (browser automation + Chromium)
+7. Installs **auto-resume** (rate-limit recovery wrapper — default ON)
+8. Bootstraps **project templates** (context/ + CLAUDE.md)
 
 ### After Installation
 

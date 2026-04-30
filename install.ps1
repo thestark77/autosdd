@@ -888,6 +888,32 @@ if ($rtkCmd) {
   }
 }
 
+# --- Install Playwright CLI ---
+Write-Host ""
+Write-Host "Installing Playwright CLI..."
+
+$playwrightCmd = Get-Command playwright -ErrorAction SilentlyContinue
+if ($playwrightCmd) {
+  Write-Host "  OK Playwright CLI already installed"
+} else {
+  Write-Host "  Installing @playwright/cli..."
+  & npm install -g "@playwright/cli@latest" 2>$null
+  if ($LASTEXITCODE -eq 0) {
+    Write-Host "  OK Playwright CLI installed"
+    Write-Host "  Installing Chromium browser..."
+    & playwright install chromium 2>$null
+    if ($LASTEXITCODE -eq 0) {
+      Write-Host "  OK Chromium installed"
+    } else {
+      Write-Host "  ! Chromium auto-install failed. Run manually: playwright install chromium" -ForegroundColor Yellow
+      $warnings += "Chromium browser not installed. Run: playwright install chromium"
+    }
+  } else {
+    Write-Host "  ! Playwright CLI install failed. Install manually: npm install -g @playwright/cli@latest" -ForegroundColor Yellow
+    $warnings += "Playwright CLI not installed. Run: npm install -g @playwright/cli@latest"
+  }
+}
+
 # --- Install auto-resume wrapper ---
 Write-Host ""
 Write-Host "Installing auto-resume wrapper..."

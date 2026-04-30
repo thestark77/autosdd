@@ -890,6 +890,29 @@ else
   fi
 fi
 
+# --- Install Playwright CLI ---
+echo ""
+echo "Installing Playwright CLI..."
+
+if command -v playwright &>/dev/null; then
+  echo "  ✓ Playwright CLI already installed ($(playwright --version 2>/dev/null || echo 'found'))"
+else
+  echo "  Installing @playwright/cli..."
+  if npm install -g @playwright/cli@latest 2>/dev/null; then
+    echo "  ✓ Playwright CLI installed"
+    echo "  Installing Chromium browser..."
+    if playwright install chromium 2>/dev/null; then
+      echo "  ✓ Chromium installed"
+    else
+      echo "  ⚠ Chromium auto-install failed. Run manually: playwright install chromium"
+      warnings+=("Chromium browser not installed. Run: playwright install chromium")
+    fi
+  else
+    echo "  ⚠ Playwright CLI install failed. Install manually: npm install -g @playwright/cli@latest"
+    warnings+=("Playwright CLI not installed. Run: npm install -g @playwright/cli@latest")
+  fi
+fi
+
 # --- Install auto-resume wrapper ---
 echo ""
 echo "Installing auto-resume wrapper..."

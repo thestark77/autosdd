@@ -253,6 +253,8 @@ Version folder `context/appVersions/vX.Y.Z/` must contain at close:
 
 **autoSDD installs**: `prompt-engineering-patterns` · `frontend-design` · `interface-design` · `e2e-testing-patterns` · `error-handling-patterns` · `playwright-cli` · `claude-md-improver` · `feedback-report` · `knowledge-graph` · `autosdd-telemetry`
 
+**Global tools installed**: RTK (token optimization) · Playwright CLI (browser automation)
+
 **gentle-ai provides** (optional, graceful degradation): Engram MCP · SDD phases · skill-resolver · branch-pr · judgment-day · skill-creator · persona · model-assignments
 
 **RTK**: Always prefix commands with `rtk`.

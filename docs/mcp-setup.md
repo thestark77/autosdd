@@ -320,6 +320,6 @@ The orchestrator uses Linear to:
 
 ### Playwright tests failing in headless mode
 
-1. Install browser binaries: `npx playwright install chromium`
+1. Install Playwright CLI and browser binaries: `npm install -g @playwright/cli@latest && playwright install chromium`
 2. Try headed mode to debug: change `--headless` to `--headed`
 3. Check for missing system dependencies: `npx playwright install-deps`
