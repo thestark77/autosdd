@@ -82,3 +82,4 @@ https://openrouter.ai/
 te creas una cuenta, recargas 10 USD que son como 40k
 
 Mejórenlo, es nuestro, quiero que todos hagamos
+probar claude design
