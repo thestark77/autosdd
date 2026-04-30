@@ -57,3 +57,28 @@ Tu prompt → VERSION INIT → CONTEXT SCOUT → TRIAGE → ROUTE → PLAN → D
 - **Variables de entorno** — se comparten por canal interno, nunca commitear
 - **autoSDD NO es magia** — el dev sigue liderando, la IA ejecuta. Hay que saber QUE pedir
 - **Playwright siempre --headed** — tests de browser se ven en pantalla, nunca headless
+
+
+Qué sigue?
+- **Memoria colectiva** — lo que descubre un dev queda disponible para todos (via Engram + feedback PRs)
+- Framework agnóstico a la herramienta, vamos a dejar de usar Claude code
+- Aprendan Open Code, 
+
+## TAREAS:
+
+1. para todos
+https://openrouter.ai/ cargar 10 usd
+Open Code con modelos gratis, recomendado MiniMax 2.7M y be-code-kit (deben revisar el enrutamiento de modelos)
+minimax sub?
+
+
+2. Para todos
+https://www.youtube.com/watch?v=sse5YmoY7Do
+https://youtu.be/Nmk1wxoi6ys
+https://www.youtube.com/watch?v=7OUHQOkVBAo&t=844s
+aquí en lugar de hacerlo tú con claude code lo haces con Hermes
+https://openrouter.ai/
+
+te creas una cuenta, recargas 10 USD que son como 40k
+
+Mejórenlo, es nuestro, quiero que todos hagamos
