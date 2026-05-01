@@ -838,38 +838,48 @@ if echo "$selected_agents" | grep -q "opencode"; then
   # Generate opencode.json from the models preset
   PROJECT_ROOT="$(pwd)"
   if command -v jq &>/dev/null; then
-    # Build opencode.json agent definitions from the active preset
     models_file="$PROJECT_CONTEXT/models.json"
     if [[ -f "$models_file" ]]; then
       default_model=$(jq -r ".presets.\"$selected_preset\".models.default" "$models_file" 2>/dev/null || echo "opencode-go/kimi-k2.6")
       orch_model=$(jq -r ".presets.\"$selected_preset\".models.orchestrator" "$models_file" 2>/dev/null || echo "$default_model")
+      scout_model=$(jq -r ".presets.\"$selected_preset\".models.\"context-scout\"" "$models_file" 2>/dev/null || echo "$default_model")
+      precompact_model=$(jq -r ".presets.\"$selected_preset\".models.\"precompact-save\"" "$models_file" 2>/dev/null || echo "$default_model")
+      version_close_model=$(jq -r ".presets.\"$selected_preset\".models.\"version-close\"" "$models_file" 2>/dev/null || echo "$default_model")
 
-      # Build agent entries for all SDD roles
-      agent_json="{}"
-      for role in context-scout sdd-init sdd-explore sdd-propose sdd-spec sdd-design sdd-tasks sdd-apply sdd-verify sdd-archive prompt-analyst feedback-report knowledge-graph version-close knowledge-update precompact-save; do
-        role_model=$(jq -r ".presets.\"$selected_preset\".models.\"$role\"" "$models_file" 2>/dev/null)
-        if [[ -n "$role_model" && "$role_model" != "null" ]]; then
-          agent_json=$(echo "$agent_json" | jq --arg role "$role" --arg model "$role_model" \
-            '. + {($role): {"description": "autoSDD '"$role"'", "model": $model}}')
-        fi
-      done
+      [[ -z "$orch_model" || "$orch_model" == "null" ]] && orch_model="$default_model"
+      [[ -z "$scout_model" || "$scout_model" == "null" ]] && scout_model="$default_model"
+      [[ -z "$precompact_model" || "$precompact_model" == "null" ]] && precompact_model="$default_model"
+      [[ -z "$version_close_model" || "$version_close_model" == "null" ]] && version_close_model="$default_model"
 
-      # Write opencode.json
-      opencode_file="$PROJECT_ROOT/opencode.json"
-      if [[ -f "$opencode_file" ]]; then
-        # Merge with existing config
-        existing=$(cat "$opencode_file")
-        merged=$(echo "$existing" | jq --arg model "$default_model" --arg orch_model "$orch_model" --argjson agents "$agent_json" \
-          '. + {"model": $model, "agent": (.agent // {} | . + {("autosdd-orchestrator"): {"description": "autoSDD orchestrator — coordinates, delegates, never writes code", "model": $orch_model, "prompt": "You are the autoSDD orchestrator. You DELEGATE all work to sub-agents. You coordinate the pipeline: VERSION INIT -> CONTEXT SCOUT -> TRIAGE -> ROUTE -> PLAN -> DELEGATE -> COLLECT -> CLOSE -> KNOWLEDGE UPDATE. You NEVER write source code directly."}} + $agents)}')
-        echo "$merged" | jq '.' > "$opencode_file"
-      else
-        # Create new config
-        jq -n --arg model "$default_model" --arg orch_model "$orch_model" --argjson agents "$agent_json" \
-          '{"$schema": "https://opencode.ai/config.json", "model": $model, "agent": {("autosdd-orchestrator"): {"description": "autoSDD orchestrator — coordinates, delegates, never writes code", "model": $orch_model, "prompt": "You are the autoSDD orchestrator. You DELEGATE all work to sub-agents. You coordinate the pipeline: VERSION INIT -> CONTEXT SCOUT -> TRIAGE -> ROUTE -> PLAN -> DELEGATE -> COLLECT -> CLOSE -> KNOWLEDGE UPDATE. You NEVER write source code directly."}} + $agents}' > "$opencode_file"
-      fi
-      echo "  ✓ opencode.json configured (preset: $selected_preset, model: $default_model)"
-      echo "    Orchestrator: $orch_model"
-      echo "    Agents: $(echo "$agent_json" | jq 'length' 2>/dev/null || echo "?") roles defined"
+      local_username=$(whoami 2>/dev/null || echo "user")
+
+      jq -n \
+        --arg schema "https://opencode.ai/config.json" \
+        --arg build "$orch_model" \
+        --arg compaction "$precompact_model" \
+        --arg explore "$scout_model" \
+        --arg general "$default_model" \
+        --arg title "$version_close_model" \
+        --arg username "$local_username" \
+        '{
+          "$schema": $schema,
+          "agent": {
+            "build": { "model": $build },
+            "compaction": { "model": $compaction },
+            "explore": { "model": $explore },
+            "general": { "model": $general },
+            "title": { "model": $title }
+          },
+          "instructions": ["opencode.md"],
+          "username": $username
+        }' > "$PROJECT_ROOT/opencode.json"
+
+      echo "  ✓ opencode.json configured (preset: $selected_preset)"
+      echo "    build (orchestrator): $orch_model"
+      echo "    compaction:           $precompact_model"
+      echo "    explore (scout):       $scout_model"
+      echo "    general (default):     $default_model"
+      echo "    title:                $version_close_model"
     else
       echo "  ⚠ models.json not found — skipping opencode.json generation"
       warnings+=("opencode.json not generated — run autosdd-models apply manually")
@@ -1318,7 +1328,7 @@ else
   echo "  · OpenCode CLI not found (install from opencode.ai)"
 fi
 
-# Both can coexist — hooks for Claude, contextPaths for OpenCode
+# Both can coexist — hooks for Claude, instructions for OpenCode
 if $HAS_CLAUDE && $HAS_OPENCODE; then
   echo "  ✓ Both agents detected — configurations installed for both (no conflicts)"
 elif $HAS_CLAUDE; then

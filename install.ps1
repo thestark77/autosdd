@@ -803,63 +803,41 @@ if ($selectedAgents -contains "opencode") {
       $presetModels = $json.presets.$selectedPreset.models
       $defaultModel = $presetModels.default
       $orchModel = $presetModels.orchestrator
+      $scoutModel = $presetModels.'context-scout'
+      $precompactModel = $presetModels.'precompact-save'
+      $versionCloseModel = $presetModels.'version-close'
 
       if (-not $defaultModel) { $defaultModel = "opencode-go/kimi-k2.6" }
       if (-not $orchModel) { $orchModel = $defaultModel }
+      if (-not $scoutModel) { $scoutModel = $defaultModel }
+      if (-not $precompactModel) { $precompactModel = $defaultModel }
+      if (-not $versionCloseModel) { $versionCloseModel = $defaultModel }
 
-      $agents = @{}
-      $roleDescriptions = @{
-        "context-scout"   = "autoSDD context scout - gathers and filters project context"
-        "sdd-init"        = "autoSDD SDD init - project initialization and stack detection"
-        "sdd-explore"     = "autoSDD SDD explore - codebase exploration and analysis"
-        "sdd-propose"     = "autoSDD SDD propose - architectural proposal generation"
-        "sdd-spec"        = "autoSDD SDD spec - specification writing"
-        "sdd-design"      = "autoSDD SDD design - system and interface design"
-        "sdd-tasks"       = "autoSDD SDD tasks - task breakdown and planning"
-        "sdd-apply"       = "autoSDD SDD apply - implementation and code generation"
-        "sdd-verify"      = "autoSDD SDD verify - validation and testing"
-        "sdd-archive"     = "autoSDD SDD archive - version close and documentation"
-        "prompt-analyst"  = "autoSDD prompt analyst - fast inline prompt analysis"
-        "feedback-report"  = "autoSDD feedback report - structured report generation"
-        "knowledge-graph" = "autoSDD knowledge graph - memory visualization"
-        "version-close"   = "autoSDD version close - template-based artifact generation"
-        "knowledge-update" = "autoSDD knowledge update - context and memory updates"
-        "precompact-save"  = "autoSDD precompact save - state serialization before compaction"
-      }
-
-      foreach ($role in @("context-scout", "sdd-init", "sdd-explore", "sdd-propose", "sdd-spec", "sdd-design", "sdd-tasks", "sdd-apply", "sdd-verify", "sdd-archive", "prompt-analyst", "feedback-report", "knowledge-graph", "version-close", "knowledge-update", "precompact-save")) {
-        $roleModel = $presetModels.$role
-        if ($roleModel) {
-          $roleDesc = $roleDescriptions[$role]
-          if (-not $roleDesc) { $roleDesc = "autoSDD $role" }
-          $agents[$role] = @{ description = $roleDesc; model = $roleModel }
-        }
-      }
+      $localUsername = $env:USERNAME
+      if (-not $localUsername) { $localUsername = "user" }
 
       $opencodeFile = Join-Path (Get-Location) "opencode.json"
-      $opencodeConfig = @{ '$schema' = "https://opencode.ai/config.json"; model = $defaultModel }
 
-      if (Test-Path $opencodeFile) {
-        $existing = Get-Content $opencodeFile -Raw | ConvertFrom-Json
-        $opencodeConfig = $existing
-        $opencodeConfig.model = $defaultModel
-      }
-
-      if (-not $opencodeConfig.agent) { $opencodeConfig | Add-Member -NotePropertyName "agent" -NotePropertyValue @{} -Force }
-      $opencodeConfig.agent | Add-Member -NotePropertyName "autosdd-orchestrator" -NotePropertyValue @{
-        description = "autoSDD orchestrator - coordinates, delegates, never writes code"
-        model       = $orchModel
-        prompt      = "You are the autoSDD orchestrator. You DELEGATE all work to sub-agents. You coordinate the pipeline: VERSION INIT -> CONTEXT SCOUT -> TRIAGE -> ROUTE -> PLAN -> DELEGATE -> COLLECT -> CLOSE -> KNOWLEDGE UPDATE. You NEVER write source code directly. You read context/models.json to determine which model to assign to each role."
-      } -Force
-
-      foreach ($role in $agents.Keys) {
-        $opencodeConfig.agent | Add-Member -NotePropertyName $role -NotePropertyValue $agents[$role] -Force
+      $opencodeConfig = [ordered]@{
+        '$schema' = "https://opencode.ai/config.json"
+        agent = [ordered]@{
+          build      = @{ model = $orchModel }
+          compaction = @{ model = $precompactModel }
+          explore    = @{ model = $scoutModel }
+          general    = @{ model = $defaultModel }
+          title      = @{ model = $versionCloseModel }
+        }
+        instructions = @("opencode.md")
+        username = $localUsername
       }
 
       $opencodeConfig | ConvertTo-Json -Depth 10 | Set-Content $opencodeFile -Encoding UTF8
-      Write-Host "  OK opencode.json configured (preset: $selectedPreset, model: $defaultModel)" -ForegroundColor Green
-      Write-Host "    Orchestrator: $orchModel"
-      Write-Host "    Agents: $($agents.Count) roles defined"
+      Write-Host "  OK opencode.json configured (preset: $selectedPreset)" -ForegroundColor Green
+      Write-Host "    build (orchestrator): $orchModel"
+      Write-Host "    compaction:           $precompactModel"
+      Write-Host "    explore (scout):       $scoutModel"
+      Write-Host "    general (default):     $defaultModel"
+      Write-Host "    title:                $versionCloseModel"
     } catch {
       Write-Host "  ! Failed to generate opencode.json - run autosdd-models apply manually" -ForegroundColor Yellow
       $warnings += "opencode.json not generated"
@@ -1300,19 +1278,19 @@ $opencodeMdPath = Join-Path (Get-Location) "opencode.md"
 if (Test-Path $opencodeJsonPath) {
   try {
     $existing = Get-Content $opencodeJsonPath -Raw | ConvertFrom-Json
-    if (-not $existing.contextPaths) {
-      $existing | Add-Member -NotePropertyName "contextPaths" -NotePropertyValue @("CLAUDE.md", "opencode.md", "AGENTS.md") -Force
+    if (-not $existing.instructions) {
+      $existing | Add-Member -NotePropertyName "instructions" -NotePropertyValue @("opencode.md") -Force
     } else {
-      $cp = @($existing.contextPaths)
-      if ($cp -notcontains "opencode.md") {
-        $cp += "opencode.md"
-        $existing.contextPaths = $cp
+      $inst = @($existing.instructions)
+      if ($inst -notcontains "opencode.md") {
+        $inst += "opencode.md"
+        $existing.instructions = $inst
       }
     }
     $existing | ConvertTo-Json -Depth 10 | Set-Content $opencodeJsonPath -Encoding UTF8
-    Write-Host "  OK opencode.json -> contextPaths updated (opencode.md added)"
+    Write-Host "  OK opencode.json -> instructions updated (opencode.md added)"
   } catch {
-    Write-Host "  ! Failed to merge opencode.json contextPaths" -ForegroundColor Yellow
+    Write-Host "  ! Failed to merge opencode.json instructions" -ForegroundColor Yellow
   }
 } else {
   try {

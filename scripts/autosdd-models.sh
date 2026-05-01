@@ -132,85 +132,79 @@ cmd_apply() {
   local active
   active=$(jq -r '.active' "$MODELS_FILE")
 
-  local default_model
-  default_model=$(resolve_model "default")
-
   local opencode_file="$PROJECT_ROOT/opencode.json"
 
   if [[ ! -f "$opencode_file" ]]; then
-    echo "{}" > "$opencode_file"
+    echo '{}' > "$opencode_file"
   fi
 
-  local agent_block="{}"
-  local roles
-  roles=$(jq -r ".presets.\"$active\".models | keys[]" "$MODELS_FILE")
+  local build_model
+  build_model=$(resolve_model "orchestrator")
+  local compaction_model
+  compaction_model=$(resolve_model "precompact-save")
+  local explore_model
+  explore_model=$(resolve_model "context-scout")
+  local general_model
+  general_model=$(resolve_model "default")
+  local title_model
+  title_model=$(resolve_model "version-close")
 
-  while IFS= read -r role; do
-    local model
-    model=$(resolve_model "$role")
+  if [[ -z "$build_model" || "$build_model" == "null" ]]; then
+    build_model=$(resolve_model "default")
+  fi
+  if [[ -z "$compaction_model" || "$compaction_model" == "null" ]]; then
+    compaction_model=$build_model
+  fi
+  if [[ -z "$explore_model" || "$explore_model" == "null" ]]; then
+    explore_model=$build_model
+  fi
+  if [[ -z "$general_model" || "$general_model" == "null" ]]; then
+    general_model=$build_model
+  fi
+  if [[ -z "$title_model" || "$title_model" == "null" ]]; then
+    title_model=$build_model
+  fi
 
-    # Skip 'default' and 'orchestrator' from agents (default goes to root model, orchestrator is root)
-    if [[ "$role" == "default" ]]; then
-      continue
-    fi
-
-    local desc
-    case "$role" in
-      orchestrator)    desc="autoSDD orchestrator — coordinates, delegates, never writes code" ;;
-      context-scout)   desc="autoSDD context scout — gathers and filters project context" ;;
-      sdd-init)        desc="autoSDD SDD init — project initialization and stack detection" ;;
-      sdd-explore)     desc="autoSDD SDD explore — codebase exploration and analysis" ;;
-      sdd-propose)     desc="autoSDD SDD propose — architectural proposal generation" ;;
-      sdd-spec)        desc="autoSDD SDD spec — specification writing" ;;
-      sdd-design)      desc="autoSDD SDD design — system and interface design" ;;
-      sdd-tasks)       desc="autoSDD SDD tasks — task breakdown and planning" ;;
-      sdd-apply)       desc="autoSDD SDD apply — implementation and code generation" ;;
-      sdd-verify)      desc="autoSDD SDD verify — validation and testing" ;;
-      sdd-archive)     desc="autoSDD SDD archive — version close and documentation" ;;
-      prompt-analyst)  desc="autoSDD prompt analyst — fast inline prompt analysis" ;;
-      feedback-report)  desc="autoSDD feedback report — structured report generation" ;;
-      knowledge-graph) desc="autoSDD knowledge graph — memory visualization" ;;
-      version-close)   desc="autoSDD version close — template-based artifact generation" ;;
-      knowledge-update) desc="autoSDD knowledge update — context and memory updates" ;;
-      precompact-save)  desc="autoSDD precompact save — state serialization before compaction" ;;
-      *)               desc="autoSDD $role" ;;
-    esac
-
-    local agent_entry
-    agent_entry=$(jq -n \
-      --arg desc "$desc" \
-      --arg model "$model" \
-      '{description: $desc, model: $model}')
-    agent_block=$(echo "$agent_block" | jq --arg role "$role" --argjson entry "$agent_entry" ". + {($role): $entry}")
-  done
-
-  # Also set orchestrator model in root
-  local orch_model
-  orch_model=$(resolve_model "orchestrator")
-
-  # Build final opencode.json content
   local new_config
-  new_config=$(jq --arg model "$default_model" \
-    --argjson agents "$agent_block" \
-    --arg orch_model "$orch_model" \
-    '. + {
-      "model": $model,
-      "agent": (.agent // {} | . + {
-        "autosdd-orchestrator": {
-          "description": "autoSDD orchestrator — coordinates, delegates, never writes code",
-          "model": $orch_model,
-          "prompt": "You are the autoSDD orchestrator. You DELEGATE all work to sub-agents. You coordinate the pipeline: VERSION INIT -> CONTEXT SCOUT -> TRIAGE -> ROUTE -> PLAN -> DELEGATE -> COLLECT -> CLOSE -> KNOWLEDGE UPDATE. You NEVER write source code directly. You read context/models.json to determine which model to assign to each role."
-        }
-      })
+  new_config=$(jq \
+    --arg schema "https://opencode.ai/config.json" \
+    --arg build "$build_model" \
+    --arg compaction "$compaction_model" \
+    --arg explore "$explore_model" \
+    --arg general "$general_model" \
+    --arg title "$title_model" \
+    '{
+      "$schema": $schema,
+      "agent": {
+        "build": { "model": $build },
+        "compaction": { "model": $compaction },
+        "explore": { "model": $explore },
+        "general": { "model": $general },
+        "title": { "model": $title }
+      },
+      "instructions": ["opencode.md"]
     }' "$opencode_file")
 
   echo "$new_config" | jq '.' > "$opencode_file"
 
+  local username
+  username=$(whoami 2>/dev/null || echo "user")
+  if jq -e '.username' "$opencode_file" > /dev/null 2>&1; then
+    true
+  else
+    local tmp
+    tmp=$(jq --arg u "$username" '. + {username: $u}' "$opencode_file")
+    echo "$tmp" | jq '.' > "$opencode_file"
+  fi
+
   echo ""
   echo "  Applied preset '$active' to $opencode_file"
-  echo "  Root model: $default_model"
-  echo "  Orchestrator: $orch_model"
-  echo "  Agents configured: $(echo "$agent_block" | jq 'length') roles"
+  echo "  OpenCode agents:"
+  echo "    build (orchestrator):  $build_model"
+  echo "    compaction:           $compaction_model"
+  echo "    explore (context):     $explore_model"
+  echo "    general (default):     $general_model"
+  echo "    title:                $title_model"
   echo ""
 }
 
