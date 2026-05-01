@@ -744,6 +744,10 @@ switch ($mode) {
     $keyPath = Join-Path $stateDir "api-key.dpapi"
     $key = ""
     if (Test-Path $keyPath) { $key = Read-DpapiKey -Path $keyPath }
+    if (-not $key) {
+      $plainKeyPath = Join-Path $stateDir "api-key"
+      if (Test-Path $plainKeyPath) { $key = (Get-Content $plainKeyPath -Raw).Trim() }
+    }
     if (-not $key) { $key = Resolve-OpenRouterKey }
     $env:ENGRAM_EMBEDDING_API_KEY = $key
   }
@@ -1383,26 +1387,21 @@ if ($engramWrapper -ne "") {
   if (Test-Path $opencodeGlobalConfig) {
     try {
       $existing = Get-Content $opencodeGlobalConfig -Raw | ConvertFrom-Json
-      $engramMcp = $existing.PSObject.Properties["mcp"]
-      if ($engramMcp -and $engramMcp.Value.PSObject.Properties["engram"]) {
-        Write-Host "  OK OpenCode MCP -> Engram already configured in global config" -ForegroundColor Green
-      } else {
-        if (-not $existing.PSObject.Properties["mcp"]) {
-          $existing | Add-Member -NotePropertyName "mcp" -NotePropertyValue @{} -Force
-        }
-        $mcpObj = $existing.mcp
-        $engramEntry = [ordered]@{
-          "type" = "local"
-          "command" = @($engramWrapper)
-          "enabled" = $true
-          "environment" = [ordered]@{
-            "ENGRAM_DATA_DIR" = $ENGRAM_STATE_DIR
-          }
-        }
-        $mcpObj | Add-Member -NotePropertyName "engram" -NotePropertyValue $engramEntry -Force
-        $existing | ConvertTo-Json -Depth 10 | Set-Content $opencodeGlobalConfig -Encoding UTF8
-        Write-Host "  OK OpenCode MCP -> Engram added to global config" -ForegroundColor Green
+      if (-not $existing.PSObject.Properties["mcp"]) {
+        $existing | Add-Member -NotePropertyName "mcp" -NotePropertyValue @{} -Force
       }
+      $mcpObj = $existing.mcp
+      $engramEntry = [ordered]@{
+        "type" = "local"
+        "command" = @("powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", $engramWrapper)
+        "enabled" = $true
+        "environment" = [ordered]@{
+          "ENGRAM_DATA_DIR" = $ENGRAM_STATE_DIR
+        }
+      }
+      $mcpObj | Add-Member -NotePropertyName "engram" -NotePropertyValue $engramEntry -Force
+      $existing | ConvertTo-Json -Depth 10 | Set-Content $opencodeGlobalConfig -Encoding UTF8
+      Write-Host "  OK OpenCode MCP -> Engram configured in global config" -ForegroundColor Green
     } catch {
       Write-Host "  ! Could not add Engram MCP to OpenCode global config" -ForegroundColor Yellow
       $warnings += "OpenCode MCP config failed - JSON merge error"
@@ -1414,7 +1413,7 @@ if ($engramWrapper -ne "") {
       "mcp" = [ordered]@{
         "engram" = [ordered]@{
           "type" = "local"
-          "command" = @($engramWrapper)
+          "command" = @("powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", $engramWrapper)
           "enabled" = $true
           "environment" = [ordered]@{
             "ENGRAM_DATA_DIR" = $ENGRAM_STATE_DIR

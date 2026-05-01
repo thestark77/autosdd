@@ -135,7 +135,7 @@ OpenCode (the open-source AI coding agent) does not support Claude Code hooks. a
 
 Both files are installed alongside `.claude/settings.json` — which agent uses which config is automatic. Claude Code reads hooks from `.claude/settings.json`, OpenCode reads instructions from `opencode.md`. No conflict.
 
-Note: Engram MCP is not available in OpenCode. autoSDD falls back to file-based knowledge caching in `context/appVersions/knowledge/`.
+The installer configures Engram MCP globally for OpenCode (`~/.config/opencode/opencode.json`) using the same embedding wrapper as Claude Code, so semantic search works identically in both agents.
 
 ### Commands
 

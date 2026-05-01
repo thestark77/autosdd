@@ -1371,20 +1371,15 @@ fi
 if [[ -n "$ENGRAM_WRAPPER" && -f "$ENGRAM_WRAPPER" ]]; then
   if command -v jq &>/dev/null; then
     if [[ -f "$OPENCODE_GLOBAL_CONFIG" ]]; then
-      EXISTING_MCP=$(jq -r '.mcp.engram // empty' "$OPENCODE_GLOBAL_CONFIG" 2>/dev/null)
-      if [[ -n "$EXISTING_MCP" ]]; then
-        echo "  ✓ OpenCode MCP → Engram already configured in global config"
+      TMP_CONFIG=$(jq --arg wrapper "$ENGRAM_WRAPPER" --arg datadir "$ENGRAM_STATE_DIR" \
+        '.mcp.engram = {"type": "local", "command": [$wrapper], "enabled": true, "environment": {"ENGRAM_DATA_DIR": $datadir}}' \
+        "$OPENCODE_GLOBAL_CONFIG" 2>/dev/null)
+      if [[ -n "$TMP_CONFIG" ]]; then
+        echo "$TMP_CONFIG" > "$OPENCODE_GLOBAL_CONFIG"
+        echo "  ✓ OpenCode MCP → Engram configured in global config"
       else
-        TMP_CONFIG=$(jq --arg wrapper "$ENGRAM_WRAPPER" --arg datadir "$ENGRAM_STATE_DIR" \
-          '.mcp.engram = {"type": "local", "command": [$wrapper], "enabled": true, "environment": {"ENGRAM_DATA_DIR": $datadir}}' \
-          "$OPENCODE_GLOBAL_CONFIG" 2>/dev/null)
-        if [[ -n "$TMP_CONFIG" ]]; then
-          echo "$TMP_CONFIG" > "$OPENCODE_GLOBAL_CONFIG"
-          echo "  ✓ OpenCode MCP → Engram added to global config"
-        else
-          echo "  ⚠ Could not add Engram MCP to OpenCode global config"
-          warnings+=("OpenCode MCP config failed - jq merge error")
-        fi
+        echo "  ⚠ Could not add Engram MCP to OpenCode global config"
+        warnings+=("OpenCode MCP config failed - jq merge error")
       fi
     else
       jq -n --arg schema "https://opencode.ai/config.json" --arg wrapper "$ENGRAM_WRAPPER" --arg datadir "$ENGRAM_STATE_DIR" \
