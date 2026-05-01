@@ -1332,6 +1332,38 @@ try {
   $warnings += "opencode.md not installed"
 }
 
+# ── Detect available AI agents ──────────────────────────────────
+Write-Host ""
+Write-Host "  ── Detecting AI agents ──" -ForegroundColor Cyan
+$HasClaude = $false
+$HasOpenCode = $false
+
+if (Get-Command claude -ErrorAction SilentlyContinue) {
+  $HasClaude = $true
+  Write-Host "  OK Claude Code CLI detected" -ForegroundColor Green
+} else {
+  Write-Host "  . Claude Code CLI not found"
+}
+
+if (Get-Command opencode -ErrorAction SilentlyContinue) {
+  $HasOpenCode = $true
+  Write-Host "  OK OpenCode CLI detected" -ForegroundColor Green
+} else {
+  Write-Host "  . OpenCode CLI not found (install from opencode.ai)"
+}
+
+if ($HasClaude -and $HasOpenCode) {
+  Write-Host "  OK Both agents detected — configurations installed for both (no conflicts)" -ForegroundColor Green
+} elseif ($HasClaude) {
+  Write-Host "  OK Using Claude Code CLI — .claude/settings.json hooks active" -ForegroundColor Green
+} elseif ($HasOpenCode) {
+  Write-Host "  OK Using OpenCode — opencode.md instructions active (no hooks needed)" -ForegroundColor Green
+} else {
+  Write-Host "  ! No AI agent detected. Install Claude Code CLI or OpenCode." -ForegroundColor Yellow
+  Write-Host "    Claude Code: npm install -g @anthropic-ai/claude-code"
+  Write-Host "    OpenCode:    see https://opencode.ai"
+}
+
 # ── .gitignore entries (ensure autoSDD artifacts are excluded) ─────────────────
 $gitignoreEntries = @(
   "# autoSDD / Claude Code artifacts"
@@ -1503,29 +1535,30 @@ if (Test-Path $modelsCheckFile) {
   $allGood = $false
 }
 
+# Check opencode.json
+$opencodeJson = Join-Path (Get-Location) "opencode.json"
+if (Test-Path $opencodeJson) {
+  Write-Host "  [OK] opencode.json (OpenCode model config)" -ForegroundColor Green
+} else {
+  Write-Host "  [!!] opencode.json missing" -ForegroundColor Red
+  $allGood = $false
+}
+
+# Check opencode.md
+$opencodeMdCheck = Join-Path (Get-Location) "opencode.md"
+if (Test-Path $opencodeMdCheck) {
+  Write-Host "  [OK] opencode.md (OpenCode instructions)" -ForegroundColor Green
+} else {
+  Write-Host "  [!!] opencode.md missing" -ForegroundColor Red
+  $allGood = $false
+}
+
 # Check CLAUDE.md injection
 $claudeMd = Join-Path (Get-Location) "CLAUDE.md"
 if ((Test-Path $claudeMd) -and ((Get-Content $claudeMd -Raw) -match "autosdd:start")) {
   Write-Host "  [OK] CLAUDE.md autoSDD block" -ForegroundColor Green
 } else {
   Write-Host "  [!!] CLAUDE.md autoSDD block missing" -ForegroundColor Red
-  $allGood = $false
-}
-
-# Check OpenCode configuration (always installed alongside Claude Code)
-$opencodeJson = Join-Path (Get-Location) "opencode.json"
-if (Test-Path $opencodeJson) {
-  Write-Host "  [OK] opencode.json" -ForegroundColor Green
-} else {
-  Write-Host "  [!!] opencode.json missing" -ForegroundColor Red
-  $allGood = $false
-}
-
-$opencodeMd = Join-Path (Get-Location) "opencode.md"
-if (Test-Path $opencodeMd) {
-  Write-Host "  [OK] opencode.md" -ForegroundColor Green
-} else {
-  Write-Host "  [!!] opencode.md missing" -ForegroundColor Red
   $allGood = $false
 }
 
@@ -1558,10 +1591,11 @@ if ($warnings.Count -gt 0) {
 
 Write-Host ""
 Write-Host "  Next steps:"
-Write-Host "    1. Open your project in your AI agent"
+Write-Host "    1. Open your project in your AI agent:"
+Write-Host "       Claude Code: claude"
+Write-Host "       OpenCode:    opencode"
 Write-Host "    2. Run /sdd-init to bootstrap the project"
 Write-Host "    3. Run /sdd-new <feature> to start building"
-Write-Host "    opencode          # Or: opencode (if OpenCode CLI is installed)"
 Write-Host ""
 Write-Host "  Model presets:"
 Write-Host "    autosdd-models list          # Show available presets"

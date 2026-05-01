@@ -1298,6 +1298,39 @@ else
   echo "  ✓ OpenCode config installed — will activate when OpenCode CLI is installed"
 fi
 
+# ── Detect available AI agents ──────────────────────────────────
+echo ""
+echo "  ── Detecting AI agents ───"
+HAS_CLAUDE=false
+HAS_OPENCODE=false
+
+if command -v claude &>/dev/null; then
+  HAS_CLAUDE=true
+  echo "  ✓ Claude Code CLI detected"
+else
+  echo "  · Claude Code CLI not found"
+fi
+
+if command -v opencode &>/dev/null; then
+  HAS_OPENCODE=true
+  echo "  ✓ OpenCode CLI detected"
+else
+  echo "  · OpenCode CLI not found (install from opencode.ai)"
+fi
+
+# Both can coexist — hooks for Claude, contextPaths for OpenCode
+if $HAS_CLAUDE && $HAS_OPENCODE; then
+  echo "  ✓ Both agents detected — configurations installed for both (no conflicts)"
+elif $HAS_CLAUDE; then
+  echo "  ✓ Using Claude Code CLI — .claude/settings.json hooks active"
+elif $HAS_OPENCODE; then
+  echo "  ✓ Using OpenCode — opencode.md instructions active (no hooks needed)"
+else
+  echo "  ⚠ No AI agent detected. Install Claude Code CLI or OpenCode."
+  echo "    Claude Code: npm install -g @anthropic-ai/claude-code"
+  echo "    OpenCode:    see https://opencode.ai"
+fi
+
 # ── .gitignore entries (ensure autoSDD artifacts are excluded) ─────────────────
 GITIGNORE_ENTRIES=(
   "# autoSDD / Claude Code artifacts"
@@ -1455,27 +1488,27 @@ else
   all_good=false
 fi
 
-# Check CLAUDE.md injection
-if [[ -f "./CLAUDE.md" ]] && grep -q "autosdd:start" "./CLAUDE.md"; then
-  echo "  [OK] CLAUDE.md autoSDD block"
-else
-  echo "  [!!] CLAUDE.md autoSDD block missing"
-  all_good=false
-fi
-
 # Check opencode.json
 if [[ -f "./opencode.json" ]]; then
-  echo "  [OK] opencode.json"
+  echo "  [OK] opencode.json (OpenCode model config)"
 else
   echo "  [!!] opencode.json missing"
   all_good=false
 fi
 
-# Check opencode.md
+# Check opencode.md  
 if [[ -f "./opencode.md" ]]; then
-  echo "  [OK] opencode.md"
+  echo "  [OK] opencode.md (OpenCode instructions)"
 else
   echo "  [!!] opencode.md missing"
+  all_good=false
+fi
+
+# Check CLAUDE.md injection
+if [[ -f "./CLAUDE.md" ]] && grep -q "autosdd:start" "./CLAUDE.md"; then
+  echo "  [OK] CLAUDE.md autoSDD block"
+else
+  echo "  [!!] CLAUDE.md autoSDD block missing"
   all_good=false
 fi
 
@@ -1508,8 +1541,9 @@ fi
 
 echo ""
 echo "  Next steps:"
-echo "    1. Open your project in your AI agent"
-echo "    opencode          # Or: opencode (if OpenCode CLI is installed)"
+echo "    1. Open your project in your AI agent:"
+echo "       Claude Code: claude"
+echo "       OpenCode:    opencode"
 echo "    2. Run /sdd-init to bootstrap the project"
 echo "    3. Run /sdd-new <feature> to start building"
 echo ""
