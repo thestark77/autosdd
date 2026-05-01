@@ -7,6 +7,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-Compatible-blue)](https://claude.ai/claude-code)
+[![OpenCode](https://img.shields.io/badge/OpenCode-Compatible-green)](https://opencode.ai)
 [![gentle-ai](https://img.shields.io/badge/gentle--ai-FUNDAMENTAL-red)](https://github.com/Gentleman-Programming/gentle-ai)
 [![RTK](https://img.shields.io/badge/RTK-Token%20Killer-orange)](https://github.com/rtk-ai/rtk)
 [![Made by Gentleman Programming](https://img.shields.io/badge/Made%20by-Gentleman%20Programming-blueviolet)](https://github.com/Gentleman-Programming)
@@ -125,6 +126,17 @@ The installer deploys `.claude/settings.json` with hooks that trigger at key pip
 
 Core behaviors are enforced structurally (hooks, gates, scripts) — not just text suggestions.
 
+### OpenCode Compatibility
+
+OpenCode (the open-source AI coding agent) does not support Claude Code hooks. autoSDD handles this transparently:
+
+- **`opencode.json`**: Maps autoSDD role presets to OpenCode's 4 agent slots (coder, task, title, summarizer). Uses the same `context/models.json` presets.
+- **`opencode.md`**: Loaded via `contextPaths`, embeds all hook-equivalent behaviors directly in the system prompt. Includes mandatory sections for "On Every User Prompt", "After Every Task Tool Returns", "Before Context Compaction", and "Before Responding to User".
+
+Both files are installed alongside `.claude/settings.json` — which agent uses which config is automatic. Claude Code reads hooks from `.claude/settings.json`, OpenCode reads instructions from `opencode.md`. No conflict.
+
+Note: Engram MCP is not available in OpenCode. autoSDD falls back to file-based knowledge caching in `context/appVersions/knowledge/`.
+
 ### Commands
 
 | Command | What it does |
@@ -152,6 +164,7 @@ You only need a **package manager**:
 |----|---------|
 | macOS / Linux | [Homebrew](https://brew.sh): `/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"` |
 | Windows | [Scoop](https://scoop.sh): `irm get.scoop.sh \| iex` |
+| OpenCode CLI (optional) | `opencode --version` | [opencode.ai](https://opencode.ai) |
 
 ### Install
 
@@ -217,6 +230,7 @@ curl -o ~/.claude/skills/autosdd/SKILL.md \
 | `knowledge-graph` | Memory visualization as graph |
 | Shared protocols (5) | RTK (autoSDD-owned) + persona, orchestrator, engram, model-assignments (gentle-ai copies) |
 | `.claude/settings.json` | Pipeline enforcement hooks (SubagentStop, PreCompact, Stop) |
+| `opencode.json` + `opencode.md` | OpenCode model assignments + hook-equivalent system prompt instructions |
 
 ### Auto-installed by gentle-ai
 

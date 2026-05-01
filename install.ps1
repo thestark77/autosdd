@@ -1293,12 +1293,53 @@ if (Test-Path $hooksFile) {
 '@ | Set-Content -Path $hooksFile -Encoding UTF8
 Write-Host "  OK .claude/settings.json -> hooks installed"
 
+# ── OpenCode configuration (always installed, coexists with Claude Code hooks) ──
+$opencodeJsonPath = Join-Path (Get-Location) "opencode.json"
+$opencodeMdPath = Join-Path (Get-Location) "opencode.md"
+
+if (Test-Path $opencodeJsonPath) {
+  try {
+    $existing = Get-Content $opencodeJsonPath -Raw | ConvertFrom-Json
+    if (-not $existing.contextPaths) {
+      $existing | Add-Member -NotePropertyName "contextPaths" -NotePropertyValue @("CLAUDE.md", "opencode.md", "AGENTS.md") -Force
+    } else {
+      $cp = @($existing.contextPaths)
+      if ($cp -notcontains "opencode.md") {
+        $cp += "opencode.md"
+        $existing.contextPaths = $cp
+      }
+    }
+    $existing | ConvertTo-Json -Depth 10 | Set-Content $opencodeJsonPath -Encoding UTF8
+    Write-Host "  OK opencode.json -> contextPaths updated (opencode.md added)"
+  } catch {
+    Write-Host "  ! Failed to merge opencode.json contextPaths" -ForegroundColor Yellow
+  }
+} else {
+  try {
+    Invoke-WebRequest -Uri "$REPO_URL/templates/opencode.json" -OutFile $opencodeJsonPath -UseBasicParsing
+    Write-Host "  OK opencode.json -> installed from template"
+  } catch {
+    Write-Host "  ! Failed to download opencode.json template" -ForegroundColor Yellow
+    $warnings += "opencode.json not installed"
+  }
+}
+
+try {
+  Invoke-WebRequest -Uri "$REPO_URL/templates/opencode.md" -OutFile $opencodeMdPath -UseBasicParsing
+  Write-Host "  OK opencode.md -> installed from template"
+} catch {
+  Write-Host "  ! Failed to download opencode.md template" -ForegroundColor Yellow
+  $warnings += "opencode.md not installed"
+}
+
 # ── .gitignore entries (ensure autoSDD artifacts are excluded) ─────────────────
 $gitignoreEntries = @(
   "# autoSDD / Claude Code artifacts"
   ".claude/skills/"
   ".claude/settings.local.json"
   ".claude/.stop-hook-fired"
+  "# OpenCode artifacts"
+  ".opencode/"
   ".playwright-cli/"
 )
 
@@ -1471,6 +1512,23 @@ if ((Test-Path $claudeMd) -and ((Get-Content $claudeMd -Raw) -match "autosdd:sta
   $allGood = $false
 }
 
+# Check OpenCode configuration (always installed alongside Claude Code)
+$opencodeJson = Join-Path (Get-Location) "opencode.json"
+if (Test-Path $opencodeJson) {
+  Write-Host "  [OK] opencode.json" -ForegroundColor Green
+} else {
+  Write-Host "  [!!] opencode.json missing" -ForegroundColor Red
+  $allGood = $false
+}
+
+$opencodeMd = Join-Path (Get-Location) "opencode.md"
+if (Test-Path $opencodeMd) {
+  Write-Host "  [OK] opencode.md" -ForegroundColor Green
+} else {
+  Write-Host "  [!!] opencode.md missing" -ForegroundColor Red
+  $allGood = $false
+}
+
 # --- Done ---
 Write-Host ""
 if ($allGood) {
@@ -1503,6 +1561,7 @@ Write-Host "  Next steps:"
 Write-Host "    1. Open your project in your AI agent"
 Write-Host "    2. Run /sdd-init to bootstrap the project"
 Write-Host "    3. Run /sdd-new <feature> to start building"
+Write-Host "    opencode          # Or: opencode (if OpenCode CLI is installed)"
 Write-Host ""
 Write-Host "  Model presets:"
 Write-Host "    autosdd-models list          # Show available presets"

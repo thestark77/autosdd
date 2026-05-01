@@ -1110,7 +1110,7 @@ fi
 
 AUTOSDD_BLOCK=$(cat <<'BLOCKEOF'
 <!-- autosdd:start -->
-## autoSDD v6.0 — Active Pipeline (DO NOT REMOVE)
+## autoSDD v6.1 — Active Pipeline (DO NOT REMOVE)
 
 ALL prompts go through autoSDD unless `[raw]`, `[no-sdd]`, or `skip autosdd`.
 
@@ -1265,6 +1265,38 @@ cat > "$HOOKS_FILE" << 'HOOKEOF'
 }
 HOOKEOF
 echo "  ✓ .claude/settings.json → hooks installed"
+
+# ── OpenCode configuration (always installed alongside Claude Code hooks) ──────
+echo ""
+echo "Installing OpenCode configuration..."
+
+if command -v opencode &>/dev/null; then
+  echo "  → OpenCode CLI detected"
+  OPENCODE_INSTALLED=true
+else
+  echo "  → OpenCode CLI not found — installing config for later use"
+  OPENCODE_INSTALLED=false
+fi
+
+if curl -fsSL -o "./opencode.json" "$TEMPLATE_URL/opencode.json"; then
+  echo "  ✓ opencode.json → ./opencode.json"
+else
+  echo "  ⚠ Failed to download opencode.json"
+  warnings+=("opencode.json not installed")
+fi
+
+if curl -fsSL -o "./opencode.md" "$TEMPLATE_URL/opencode.md"; then
+  echo "  ✓ opencode.md → ./opencode.md"
+else
+  echo "  ⚠ Failed to download opencode.md"
+  warnings+=("opencode.md not installed")
+fi
+
+if [[ "$OPENCODE_INSTALLED" == true ]]; then
+  echo "  ✓ OpenCode ready — config files installed to project root"
+else
+  echo "  ✓ OpenCode config installed — will activate when OpenCode CLI is installed"
+fi
 
 # ── .gitignore entries (ensure autoSDD artifacts are excluded) ─────────────────
 GITIGNORE_ENTRIES=(
@@ -1431,6 +1463,22 @@ else
   all_good=false
 fi
 
+# Check opencode.json
+if [[ -f "./opencode.json" ]]; then
+  echo "  [OK] opencode.json"
+else
+  echo "  [!!] opencode.json missing"
+  all_good=false
+fi
+
+# Check opencode.md
+if [[ -f "./opencode.md" ]]; then
+  echo "  [OK] opencode.md"
+else
+  echo "  [!!] opencode.md missing"
+  all_good=false
+fi
+
 # --- Done ---
 echo ""
 if $all_good; then
@@ -1461,6 +1509,7 @@ fi
 echo ""
 echo "  Next steps:"
 echo "    1. Open your project in your AI agent"
+echo "    opencode          # Or: opencode (if OpenCode CLI is installed)"
 echo "    2. Run /sdd-init to bootstrap the project"
 echo "    3. Run /sdd-new <feature> to start building"
 echo ""

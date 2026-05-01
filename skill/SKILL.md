@@ -8,7 +8,7 @@ license: MIT
 metadata:
   author: gentleman-programming
   repository: https://github.com/thestark77/autosdd
-  compatible_agents: [Claude Code, OpenAI Codex, Cursor, VS Code Copilot, Windsurf, Kiro, Gemini CLI]
+  compatible_agents: [Claude Code, OpenAI Codex, Cursor, VS Code Copilot, Windsurf, Kiro, Gemini CLI, OpenCode]
 ---
 
 # autoSDD v6.1 — Autonomous Development Pipeline
@@ -139,7 +139,13 @@ Model assignments are configured in `context/models.json`. Read this file at ses
 
 **For Claude Code / other agents**: Use the alias table below as fallback when `context/models.json` is not available.
 
-**For OpenCode**: Run `autosdd-models apply` to generate `opencode.json` with agent definitions from the active preset.
+**For OpenCode**: The installer creates two files:
+- `opencode.json` — Model assignments for OpenCode's 4 agent slots (coder, task, title, summarizer). Uses presets from `context/models.json`.
+- `opencode.md` — Hook-equivalent instructions embedded in the system prompt via contextPaths. Replaces Claude Code hooks (SubagentStop, PreCompact, Stop, UserPromptSubmit) with mandatory behaviors enforced inline.
+
+OpenCode has only 4 agent names: `coder` (main), `task` (sub-agent), `title` (titles), `summarizer` (compaction). The orchestrator role uses `coder`, context-scout and other fast roles use `task` with lightweight models, and title/summarizer use the cheapest model.
+
+Run `autosdd-models apply` to generate/update `opencode.json` from the active preset in `context/models.json`.
 
 #### Presets (context/models.json)
 
@@ -242,6 +248,21 @@ Delegate: `Agent({ model: "haiku", description: "Pre-compact save" })` → (1) U
 2. Read current version's `prompt.md` (your plan)
 3. `mem_context()` + `mem_search("session/{project}")`
 4. Resume from PROGRESS.md state — do NOT read other files unless PROGRESS.md says you need them
+
+### OpenCode Compatibility
+
+OpenCode does not support Claude Code hooks. Instead, `opencode.md` (installed to project root and loaded via `contextPaths`) enforces the same behaviors inline in the system prompt:
+
+| Hook | Claude Code | OpenCode Equivalent |
+|------|-------------|---------------------|
+| SubagentStop | `.claude/settings.json` hook | `opencode.md` → "After Every Task Tool Returns" section |
+| PreCompact | `.claude/settings.json` hook | `opencode.md` → "Before Context Compaction" section |
+| Stop | `.claude/settings.json` hook | `opencode.md` → "Before Responding to User" section |
+| UserPromptSubmit | `.claude/settings.json` hook | `opencode.md` → "On Every User Prompt" section |
+
+Both files coexist — Claude Code uses `.claude/settings.json`, OpenCode uses `opencode.json` + `opencode.md`. No conflict.
+
+Engram MCP (`mem_save`, `mem_search`, `mem_context()`) is NOT available in OpenCode. `opencode.md` replaces it with file-based knowledge caching in `context/appVersions/knowledge/`.
 
 ---
 
