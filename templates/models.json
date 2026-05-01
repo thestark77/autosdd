@@ -1,0 +1,78 @@
+{
+  "$schema": "autosdd-models-v1",
+  "active": "balanced",
+  "presets": {
+    "quality": {
+      "description": "Zen para todo — maxima calidad, mayor costo",
+      "provider": "opencode",
+      "models": {
+        "orchestrator":    "opencode/claude-opus-4-6",
+        "context-scout":   "opencode/claude-haiku-4-5",
+        "sdd-init":        "opencode/claude-sonnet-4-6",
+        "sdd-explore":     "opencode/claude-sonnet-4-6",
+        "sdd-propose":     "opencode/gemini-3.1-pro",
+        "sdd-spec":        "opencode/gemini-3.1-pro",
+        "sdd-design":      "opencode/claude-opus-4-6",
+        "sdd-tasks":       "opencode/gpt-5.4",
+        "sdd-apply":       "opencode/claude-sonnet-4-6",
+        "sdd-verify":      "opencode/gpt-5.4",
+        "sdd-archive":     "opencode/claude-sonnet-4-6",
+        "prompt-analyst":  "opencode/claude-haiku-4-5",
+        "feedback-report": "opencode/claude-sonnet-4-6",
+        "knowledge-graph": "opencode/claude-sonnet-4-6",
+        "version-close":   "opencode/claude-haiku-4-5",
+        "knowledge-update":"opencode/claude-haiku-4-5",
+        "precompact-save": "opencode/claude-haiku-4-5",
+        "default":         "opencode/claude-sonnet-4-6"
+      }
+    },
+    "balanced": {
+      "description": "Zen para decisiones criticas, Go para ejecucion — mejor relacion costo/calidad",
+      "provider": "mixed",
+      "models": {
+        "orchestrator":    "opencode/claude-opus-4-6",
+        "context-scout":   "opencode-go/deepseek-v4-pro",
+        "sdd-init":        "opencode-go/kimi-k2.6",
+        "sdd-explore":     "opencode-go/kimi-k2.6",
+        "sdd-propose":     "opencode-go/deepseek-v4-pro",
+        "sdd-spec":        "opencode-go/deepseek-v4-pro",
+        "sdd-design":      "opencode-go/deepseek-v4-pro",
+        "sdd-tasks":       "opencode-go/deepseek-v4-pro",
+        "sdd-apply":       "opencode-go/kimi-k2.6",
+        "sdd-verify":      "opencode/gpt-5.4",
+        "sdd-archive":     "opencode-go/kimi-k2.6",
+        "prompt-analyst":  "opencode-go/deepseek-v4-pro",
+        "feedback-report": "opencode-go/kimi-k2.6",
+        "knowledge-graph": "opencode-go/kimi-k2.6",
+        "version-close":   "opencode-go/deepseek-v4-pro",
+        "knowledge-update":"opencode-go/deepseek-v4-pro",
+        "precompact-save": "opencode-go/deepseek-v4-pro",
+        "default":         "opencode-go/kimi-k2.6"
+      }
+    },
+    "economy": {
+      "description": "Go para todo — minimo costo, buena capacidad",
+      "provider": "opencode-go",
+      "models": {
+        "orchestrator":    "opencode-go/glm-5.1",
+        "context-scout":   "opencode-go/deepseek-v4-pro",
+        "sdd-init":        "opencode-go/kimi-k2.6",
+        "sdd-explore":     "opencode-go/kimi-k2.6",
+        "sdd-propose":     "opencode-go/deepseek-v4-pro",
+        "sdd-spec":        "opencode-go/deepseek-v4-pro",
+        "sdd-design":      "opencode-go/deepseek-v4-pro",
+        "sdd-tasks":       "opencode-go/deepseek-v4-pro",
+        "sdd-apply":       "opencode-go/kimi-k2.6",
+        "sdd-verify":      "opencode-go/kimi-k2.6",
+        "sdd-archive":     "opencode-go/kimi-k2.6",
+        "prompt-analyst":  "opencode-go/deepseek-v4-pro",
+        "feedback-report": "opencode-go/kimi-k2.6",
+        "knowledge-graph": "opencode-go/kimi-k2.6",
+        "version-close":   "opencode-go/deepseek-v4-pro",
+        "knowledge-update":"opencode-go/deepseek-v4-pro",
+        "precompact-save": "opencode-go/deepseek-v4-pro",
+        "default":         "opencode-go/kimi-k2.6"
+      }
+    }
+  }
+}

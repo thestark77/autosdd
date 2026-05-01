@@ -3,7 +3,7 @@ name: autosdd
 description: >
   Autonomous development pipeline. Enforces delegation, versioning, 
   knowledge caching, and feedback. ALWAYS ACTIVE unless opted out.
-version: "6.0.0"
+version: "6.1.0"
 license: MIT
 metadata:
   author: gentleman-programming
@@ -11,7 +11,7 @@ metadata:
   compatible_agents: [Claude Code, OpenAI Codex, Cursor, VS Code Copilot, Windsurf, Kiro, Gemini CLI]
 ---
 
-# autoSDD v6.0 — Autonomous Development Pipeline
+# autoSDD v6.1 — Autonomous Development Pipeline
 
 > ALWAYS ACTIVE. Opt-out: `[raw]`, `[no-sdd]`, or `skip autosdd`.
 
@@ -135,14 +135,43 @@ Always set `model` parameter. Always set `description`.
 
 ### Pipeline Model Assignments
 
-| Role | Model | Reason |
-|------|-------|--------|
-| context-scout | haiku | Gather + filter, no reasoning needed |
-| version-close | haiku | Template-based artifact generation |
-| knowledge-update | haiku | Mechanical updates + memory saves |
-| precompact-save | haiku | State serialization under time pressure |
-| task execution | sonnet | Implementation (default for sub-agents) |
-| architecture/design | opus | Strategic decisions only |
+Model assignments are configured in `context/models.json`. Read this file at session start to resolve the active preset.
+
+**For Claude Code / other agents**: Use the alias table below as fallback when `context/models.json` is not available.
+
+**For OpenCode**: Run `autosdd-models apply` to generate `opencode.json` with agent definitions from the active preset.
+
+#### Presets (context/models.json)
+
+| Preset | Provider | Description |
+|--------|----------|-------------|
+| `quality` | opencode (Zen) | Max quality — all paid models |
+| `balanced` | mixed | Zen for critical decisions, Go for execution |
+| `economy` | opencode-go (Go) | Min cost — all Go plan models |
+
+Switch presets: `autosdd-models set <preset>` then `autosdd-models apply`
+
+#### Fallback alias table (for agents without models.json support)
+
+| Role | `haiku` alias | `sonnet` alias | `opus` alias |
+|------|--------------|----------------|--------------|
+| context-scout | haiku | | |
+| version-close | haiku | | |
+| knowledge-update | haiku | | |
+| precompact-save | haiku | | |
+| sdd-explore | | sonnet | |
+| sdd-spec | | sonnet | |
+| sdd-tasks | | sonnet | |
+| sdd-apply | | sonnet | |
+| sdd-verify | | sonnet | |
+| sdd-archive | | sonnet | |
+| feedback-report | | sonnet | |
+| knowledge-graph | | sonnet | |
+| sdd-init | | sonnet | |
+| sdd-propose | | | opus |
+| sdd-design | | | opus |
+| orchestrator | | | opus |
+| default | | sonnet | |
 
 > These EXTEND gentle-ai's `model-assignments.md` — they do not replace it.
 
@@ -258,4 +287,4 @@ Version folder `context/appVersions/vX.Y.Z/` must contain at close:
 **Opt-out**: `[raw]` / `[no-sdd]` / `skip autosdd`.
 
 ---
-*autoSDD v6.0.0 — April 2026 · Gentleman Programming*
+*autoSDD v6.1.0 — May 2026 · Gentleman Programming*

@@ -161,7 +161,7 @@ confirm_reinstall() {
 
 echo ""
 echo "  ╔══════════════════════════════════════════╗"
-echo "  ║     autoSDD v6.0 - Installer             ║"
+echo "  ║     autoSDD v6.1 - Installer             ║"
 echo "  ║     Extension for gentle-ai              ║"
 echo "  ╚══════════════════════════════════════════╝"
 echo ""
@@ -181,7 +181,7 @@ fi
 
 # --- Step 1: Agent Selection ---
 if [[ "$UPDATE_MODE" != true ]]; then
-echo "Step 1/3 - Select AI agents to configure"
+echo "Step 1/4 - Select AI agents to configure"
 echo "  (ENTER = all agents)"
 echo ""
 for i in "${!AGENTS[@]}"; do
@@ -216,7 +216,7 @@ fi
 echo ""
 
 # --- Step 2: Persona Selection ---
-echo "Step 2/3 - Select AI response style"
+echo "Step 2/4 - Select AI response style"
 echo "  (ENTER = neutral)"
 echo ""
 echo "  1. gentleman  - Rioplatense Spanish, passionate, opinionated"
@@ -239,7 +239,7 @@ echo "  → Selected: $selected_persona"
 echo ""
 
 # --- Step 3: Semantic search backend ---
-echo "Step 3/3 - Semantic search backend for Engram"
+echo "Step 3/4 - Semantic search backend for Engram"
 echo "  (ENTER = local [default], 100% offline, no API key needed)"
 echo ""
 echo "  1. local        Ollama + bge-m3  (~2.3GB, free, offline)  [default]"
@@ -289,6 +289,49 @@ elif [[ "$embedding_mode" == "api" ]] && api_configured; then
   fi
 fi
 fi # end update mode guard for steps 1-3
+
+# --- Step 4: Model Preset Selection ---
+if [[ "$UPDATE_MODE" != true ]]; then
+echo ""
+echo "Step 4/4 - Select model preset for autoSDD"
+echo "  (defines which models each pipeline role uses)"
+echo ""
+echo "  1. economy    - OpenCode Go only ($10/mo, all open models)"
+echo "  2. balanced   - Go for execution, Zen for critical decisions (recommended)"
+echo "  3. quality    - OpenCode Zen only (best models, pay-per-token)"
+echo ""
+preset_input=""
+if [[ -r /dev/tty ]]; then
+  read -rp "  Preset (1/2/3) [default=2]: " preset_input </dev/tty || preset_input=""
+fi
+
+selected_preset="balanced"
+case "$preset_input" in
+  1) selected_preset="economy" ;;
+  2|"") selected_preset="balanced" ;;
+  3) selected_preset="quality" ;;
+  *) selected_preset="balanced" ;;
+esac
+echo "  → Selected: $selected_preset"
+echo ""
+fi # end update mode guard for step 4
+
+# Read existing preset if in update mode
+if [[ "$UPDATE_MODE" == true ]]; then
+  existing_preset=""
+  for dir in "${AGENT_DIRS[@]}"; do
+    if [[ -f "$dir/skills/autosdd/SKILL.md" ]]; then
+      proj_dir="$(pwd)"
+      if [[ -f "$proj_dir/context/models.json" ]]; then
+        existing_preset=$(jq -r '.active' "$proj_dir/context/models.json" 2>/dev/null || echo "")
+        break
+      fi
+    fi
+  done
+  selected_preset="${existing_preset:-balanced}"
+  echo "  → Keeping existing model preset: $selected_preset"
+  echo ""
+fi
 
 # For api mode, collect and validate key up-front. Loops until valid.
 api_key=""
@@ -747,24 +790,95 @@ fi
 active_mode=$(cat "$ENGRAM_STATE_DIR/mode" 2>/dev/null || echo "local")
 echo "  → Active embedding mode: $active_mode"
 
-# --- Configure OpenCode profiles (if opencode was selected) ---
+# --- Configure OpenCode (if opencode was selected) ---
 if echo "$selected_agents" | grep -q "opencode"; then
   echo ""
-  echo "Configuring OpenCode SDD profiles..."
-  gentle-ai sync \
-    --agents opencode \
-    --profile autosdd:openrouter/anthropic/claude-opus-4-6 \
-    --profile-phase autosdd:sdd-init:openrouter/anthropic/claude-sonnet-4-6 \
-    --profile-phase autosdd:sdd-explore:openrouter/anthropic/claude-sonnet-4-6 \
-    --profile-phase autosdd:sdd-propose:openrouter/google/gemini-2.5-pro-preview \
-    --profile-phase autosdd:sdd-spec:openrouter/google/gemini-2.5-pro-preview \
-    --profile-phase autosdd:sdd-design:openrouter/anthropic/claude-opus-4-6 \
-    --profile-phase autosdd:sdd-tasks:openrouter/openai/gpt-5.4 \
-    --profile-phase autosdd:sdd-apply:openrouter/anthropic/claude-sonnet-4-6 \
-    --profile-phase autosdd:sdd-verify:openrouter/openai/gpt-5.4 \
-    --profile-phase autosdd:sdd-archive:openrouter/anthropic/claude-sonnet-4-6 \
-    2>/dev/null || echo "  ⚠ OpenCode profile config skipped (OpenCode may not be installed)"
-  echo "  ✓ OpenCode profiles configured"
+  echo "Configuring OpenCode for autoSDD..."
+
+  # Ensure context/models.json exists in project with the selected preset
+  PROJECT_CONTEXT="./context"
+  mkdir -p "$PROJECT_CONTEXT"
+
+  if [[ -f "$PROJECT_CONTEXT/models.json" ]]; then
+    # Update the active preset in existing models.json
+    if command -v jq &>/dev/null; then
+      tmp_models=$(jq ".active = \"$selected_preset\"" "$PROJECT_CONTEXT/models.json" 2>/dev/null)
+      if [[ -n "$tmp_models" ]]; then
+        echo "$tmp_models" > "$PROJECT_CONTEXT/models.json"
+        echo "  ✓ models.json preset updated to: $selected_preset"
+      else
+        echo "  ⚠ jq parse failed - downloading fresh models.json"
+        curl -fsSL -o "$PROJECT_CONTEXT/models.json" "$REPO_URL/templates/models.json"
+        # Still try to set the active preset
+        if command -v jq &>/dev/null; then
+          tmp_models=$(jq ".active = \"$selected_preset\"" "$PROJECT_CONTEXT/models.json" 2>/dev/null)
+          [[ -n "$tmp_models" ]] && echo "$tmp_models" > "$PROJECT_CONTEXT/models.json"
+        fi
+        echo "  ✓ models.json downloaded (preset: $selected_preset)"
+      fi
+    else
+      echo "  ⚠ jq not found - downloading fresh models.json"
+      curl -fsSL -o "$PROJECT_CONTEXT/models.json" "$REPO_URL/templates/models.json"
+      echo "  ✓ models.json downloaded (preset: $selected_preset — edit manually to change)"
+    fi
+  else
+    # Download template and set active preset
+    if curl -fsSL -o "$PROJECT_CONTEXT/models.json" "$REPO_URL/templates/models.json"; then
+      if command -v jq &>/dev/null; then
+        tmp_models=$(jq ".active = \"$selected_preset\"" "$PROJECT_CONTEXT/models.json" 2>/dev/null)
+        [[ -n "$tmp_models" ]] && echo "$tmp_models" > "$PROJECT_CONTEXT/models.json"
+      fi
+      echo "  ✓ models.json created (preset: $selected_preset)"
+    else
+      echo "  ⚠ Failed to download models.json template"
+      warnings+=("models.json not created - run autosdd-models init manually")
+    fi
+  fi
+
+  # Generate opencode.json from the models preset
+  PROJECT_ROOT="$(pwd)"
+  if command -v jq &>/dev/null; then
+    # Build opencode.json agent definitions from the active preset
+    models_file="$PROJECT_CONTEXT/models.json"
+    if [[ -f "$models_file" ]]; then
+      default_model=$(jq -r ".presets.\"$selected_preset\".models.default" "$models_file" 2>/dev/null || echo "opencode-go/kimi-k2.6")
+      orch_model=$(jq -r ".presets.\"$selected_preset\".models.orchestrator" "$models_file" 2>/dev/null || echo "$default_model")
+
+      # Build agent entries for all SDD roles
+      agent_json="{}"
+      for role in context-scout sdd-init sdd-explore sdd-propose sdd-spec sdd-design sdd-tasks sdd-apply sdd-verify sdd-archive prompt-analyst feedback-report knowledge-graph version-close knowledge-update precompact-save; do
+        role_model=$(jq -r ".presets.\"$selected_preset\".models.\"$role\"" "$models_file" 2>/dev/null)
+        if [[ -n "$role_model" && "$role_model" != "null" ]]; then
+          agent_json=$(echo "$agent_json" | jq --arg role "$role" --arg model "$role_model" \
+            '. + {($role): {"description": "autoSDD '"$role"'", "model": $model}}')
+        fi
+      done
+
+      # Write opencode.json
+      opencode_file="$PROJECT_ROOT/opencode.json"
+      if [[ -f "$opencode_file" ]]; then
+        # Merge with existing config
+        existing=$(cat "$opencode_file")
+        merged=$(echo "$existing" | jq --arg model "$default_model" --arg orch_model "$orch_model" --argjson agents "$agent_json" \
+          '. + {"model": $model, "agent": (.agent // {} | . + {("autosdd-orchestrator"): {"description": "autoSDD orchestrator — coordinates, delegates, never writes code", "model": $orch_model, "prompt": "You are the autoSDD orchestrator. You DELEGATE all work to sub-agents. You coordinate the pipeline: VERSION INIT -> CONTEXT SCOUT -> TRIAGE -> ROUTE -> PLAN -> DELEGATE -> COLLECT -> CLOSE -> KNOWLEDGE UPDATE. You NEVER write source code directly."}} + $agents)}')
+        echo "$merged" | jq '.' > "$opencode_file"
+      else
+        # Create new config
+        jq -n --arg model "$default_model" --arg orch_model "$orch_model" --argjson agents "$agent_json" \
+          '{"$schema": "https://opencode.ai/config.json", "model": $model, "agent": {("autosdd-orchestrator"): {"description": "autoSDD orchestrator — coordinates, delegates, never writes code", "model": $orch_model, "prompt": "You are the autoSDD orchestrator. You DELEGATE all work to sub-agents. You coordinate the pipeline: VERSION INIT -> CONTEXT SCOUT -> TRIAGE -> ROUTE -> PLAN -> DELEGATE -> COLLECT -> CLOSE -> KNOWLEDGE UPDATE. You NEVER write source code directly."}} + $agents}' > "$opencode_file"
+      fi
+      echo "  ✓ opencode.json configured (preset: $selected_preset, model: $default_model)"
+      echo "    Orchestrator: $orch_model"
+      echo "    Agents: $(echo "$agent_json" | jq 'length' 2>/dev/null || echo "?") roles defined"
+    else
+      echo "  ⚠ models.json not found — skipping opencode.json generation"
+      warnings+=("opencode.json not generated — run autosdd-models apply manually")
+    fi
+  else
+    echo "  ⚠ jq not found — skipping opencode.json generation"
+    echo "    Install jq and run: autosdd-models set $selected_preset && autosdd-models apply"
+    warnings+=("jq not found — opencode.json not generated")
+  fi
 fi
 
 # --- Install core skills globally ---
@@ -948,7 +1062,7 @@ fi
 echo ""
 echo "Installing automation scripts..."
 
-for script_name in "version-init.sh" "version-lint.sh"; do
+for script_name in "version-init.sh" "version-lint.sh" "autosdd-models.sh"; do
   if curl -fsSL -o "$AR_DIR/autosdd-$script_name" "$REPO_URL/scripts/$script_name" 2>/dev/null; then
     chmod +x "$AR_DIR/autosdd-$script_name"
     echo "  ✓ $script_name → $AR_DIR/autosdd-$script_name"
@@ -970,7 +1084,7 @@ fi
 
 mkdir -p "$CONTEXT_DIR"
 
-templates=("guidelines.md" "user_context.md" "business_logic.md" "autosdd.md" "context-profiles.md")
+templates=("guidelines.md" "user_context.md" "business_logic.md" "autosdd.md" "context-profiles.md" "models.json")
 for tmpl in "${templates[@]}"; do
   target="$CONTEXT_DIR/$tmpl"
   if [[ -f "$target" ]]; then
@@ -1011,12 +1125,17 @@ ALL prompts go through autoSDD unless `[raw]`, `[no-sdd]`, or `skip autosdd`.
 ### Pipeline
 `VERSION INIT → CONTEXT SCOUT → TRIAGE → ROUTE → PLAN (CREA) → DELEGATE → COLLECT → CLOSE → KNOWLEDGE UPDATE`
 
-### Model Assignments (extends gentle-ai)
-| Role | Model |
+### Model Assignments
+Read `context/models.json` at session start. The `active` field selects the preset.
+Switch presets: `autosdd-models set <preset>` then `autosdd-models apply`
+
+| Role | Model (from context/models.json) |
 |------|-------|
-| context-scout, version-close, knowledge-update, precompact-save | haiku |
-| task execution (default) | sonnet |
-| architecture/design | opus |
+| context-scout, version-close, knowledge-update, precompact-save | (preset: economy/balanced/quality) |
+| task execution (default) | (preset: economy/balanced/quality) |
+| architecture/design | (preset: economy/balanced/quality) |
+
+**Fallback** (if context/models.json unavailable): haiku, sonnet, opus
 
 ### Routing (if X → use Y skill)
 | Context | Skill |
@@ -1295,6 +1414,15 @@ else
   all_good=false
 fi
 
+# Check models.json
+if [[ -f "./context/models.json" ]]; then
+  active_preset=$(jq -r '.active' "./context/models.json" 2>/dev/null || echo "?")
+  echo "  [OK] Model preset: $active_preset (context/models.json)"
+else
+  echo "  [!!] context/models.json missing — run autosdd-models init"
+  all_good=false
+fi
+
 # Check CLAUDE.md injection
 if [[ -f "./CLAUDE.md" ]] && grep -q "autosdd:start" "./CLAUDE.md"; then
   echo "  [OK] CLAUDE.md autoSDD block"
@@ -1306,13 +1434,13 @@ fi
 # --- Done ---
 echo ""
 if $all_good; then
-  echo "  ╔══════════════════════════════════════════╗"
-  echo "  ║     autoSDD v6.0 installed!               ║"
-  echo "  ╚══════════════════════════════════════════╝"
+echo "  ╔══════════════════════════════════════════╗"
+echo "  ║     autoSDD v6.1 installed!              ║"
+echo "  ╚══════════════════════════════════════════╝"
 else
-  echo "  ╔══════════════════════════════════════════╗"
-  echo "  ║  autoSDD v6.0 installed (with warnings)   ║"
-  echo "  ╚══════════════════════════════════════════╝"
+echo "  ╔══════════════════════════════════════════╗"
+echo "  ║  autoSDD v6.1 installed (with warnings)  ║"
+echo "  ╚══════════════════════════════════════════╝"
 fi
 
 # Show collected warnings/errors
@@ -1335,6 +1463,11 @@ echo "  Next steps:"
 echo "    1. Open your project in your AI agent"
 echo "    2. Run /sdd-init to bootstrap the project"
 echo "    3. Run /sdd-new <feature> to start building"
+echo ""
+echo "  Model presets:"
+echo "    autosdd-models list          # Show available presets"
+echo "    autosdd-models set <name>    # Switch preset"
+echo "    autosdd-models apply         # Update opencode.json"
 echo ""
 echo "  Update autoSDD later:"
 echo "    curl -fsSL $REPO_URL/install.sh | bash"

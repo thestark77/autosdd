@@ -136,7 +136,7 @@ function Confirm-Reinstall {
 
 Write-Host ""
 Write-Host "  +==========================================+" -ForegroundColor Cyan
-Write-Host "  |     autoSDD v6.0 - Installer             |" -ForegroundColor Cyan
+Write-Host "  |     autoSDD v6.1 - Installer             |" -ForegroundColor Cyan
 Write-Host "  |     Extension for gentle-ai              |" -ForegroundColor Cyan
 Write-Host "  +==========================================+" -ForegroundColor Cyan
 Write-Host ""
@@ -153,7 +153,7 @@ if ($UpdateMode) {
   $apiKey = ""
 } else {
 # --- Step 1: Agent Selection ---
-Write-Host "Step 1/3 - Select AI agents to configure" -ForegroundColor Yellow
+Write-Host "Step 1/4 - Select AI agents to configure" -ForegroundColor Yellow
 Write-Host "  (ENTER = all agents)"
 Write-Host ""
 for ($i = 0; $i -lt $AGENTS.Count; $i++) {
@@ -179,7 +179,7 @@ if ([string]::IsNullOrWhiteSpace($agentInput)) {
 Write-Host ""
 
 # --- Step 2: Persona Selection ---
-Write-Host "Step 2/3 - Select AI response style" -ForegroundColor Yellow
+Write-Host "Step 2/4 - Select AI response style" -ForegroundColor Yellow
 Write-Host "  (ENTER = neutral)"
 Write-Host ""
 Write-Host "  1. gentleman  - Rioplatense Spanish, passionate, opinionated"
@@ -199,7 +199,7 @@ Write-Host "  -> Selected: $selectedPersona"
 Write-Host ""
 
 # --- Step 3: Semantic search backend ---
-Write-Host "Step 3/3 - Semantic search backend for Engram" -ForegroundColor Yellow
+Write-Host "Step 3/4 - Semantic search backend for Engram" -ForegroundColor Yellow
 Write-Host "  (ENTER = local [default], 100% offline, no API key needed)"
 Write-Host ""
 Write-Host "  1. local        Ollama + bge-m3  (~2.3GB, free, offline)  [default]"
@@ -275,6 +275,41 @@ if ($embeddingMode -eq "api") {
 }
 
 } # end interactive steps guard
+
+# --- Step 4: Model Preset Selection ---
+if (-not $UpdateMode) {
+  Write-Host ""
+  Write-Host "Step 4/4 - Select model preset for autoSDD" -ForegroundColor Yellow
+  Write-Host "  (defines which models each pipeline role uses)"
+  Write-Host ""
+  Write-Host "  1. economy    - OpenCode Go only ($10/mo, all open models)"
+  Write-Host "  2. balanced   - Go for execution, Zen for critical decisions (recommended)"
+  Write-Host "  3. quality    - OpenCode Zen only (best models, pay-per-token)"
+  Write-Host ""
+  $presetInput = Read-Host "  Preset (1/2/3) [default=2]"
+
+  $selectedPreset = "balanced"
+  switch ($presetInput) {
+    "1" { $selectedPreset = "economy" }
+    "3" { $selectedPreset = "quality" }
+    default { $selectedPreset = "balanced" }
+  }
+  Write-Host "  -> Selected: $selectedPreset"
+  Write-Host ""
+}
+
+if ($UpdateMode) {
+  $selectedPreset = "balanced"
+  $modelsFile = Join-Path (Get-Location) "context\models.json"
+  if (Test-Path $modelsFile) {
+    try {
+      $json = Get-Content $modelsFile -Raw | ConvertFrom-Json
+      if ($json.active) { $selectedPreset = $json.active }
+    } catch { }
+  }
+  Write-Host "  -> Keeping existing model preset: $selectedPreset"
+  Write-Host ""
+}
 
 if ($UpdateMode) {
   Write-Host "Skipping prerequisites and dependency installation (update mode)..."
@@ -720,26 +755,118 @@ if (Test-Path $pluginMcp) {
 $activeMode = if (Test-Path (Join-Path $ENGRAM_STATE_DIR "mode")) { (Get-Content (Join-Path $ENGRAM_STATE_DIR "mode") -Raw).Trim() } else { "local" }
 Write-Host "  -> Active embedding mode: $activeMode"
 
-# --- Configure OpenCode profiles (if opencode was selected) ---
+# --- Configure OpenCode (if opencode was selected) ---
 if ($selectedAgents -contains "opencode") {
   Write-Host ""
-  Write-Host "Configuring OpenCode SDD profiles..."
-  try {
-    & gentle-ai sync `
-      --agents opencode `
-      --profile "autosdd:openrouter/anthropic/claude-opus-4-6" `
-      --profile-phase "autosdd:sdd-init:openrouter/anthropic/claude-sonnet-4-6" `
-      --profile-phase "autosdd:sdd-explore:openrouter/anthropic/claude-sonnet-4-6" `
-      --profile-phase "autosdd:sdd-propose:openrouter/google/gemini-2.5-pro-preview" `
-      --profile-phase "autosdd:sdd-spec:openrouter/google/gemini-2.5-pro-preview" `
-      --profile-phase "autosdd:sdd-design:openrouter/anthropic/claude-opus-4-6" `
-      --profile-phase "autosdd:sdd-tasks:openrouter/openai/gpt-5.4" `
-      --profile-phase "autosdd:sdd-apply:openrouter/anthropic/claude-sonnet-4-6" `
-      --profile-phase "autosdd:sdd-verify:openrouter/openai/gpt-5.4" `
-      --profile-phase "autosdd:sdd-archive:openrouter/anthropic/claude-sonnet-4-6"
-    Write-Host "  OK OpenCode profiles configured" -ForegroundColor Green
-  } catch {
-    Write-Host "  ! OpenCode profile config skipped (OpenCode may not be installed)" -ForegroundColor Yellow
+  Write-Host "Configuring OpenCode for autoSDD..."
+
+  $contextDir = Join-Path (Get-Location) "context"
+  New-Item -ItemType Directory -Path $contextDir -Force | Out-Null
+
+  $modelsFile = Join-Path $contextDir "models.json"
+  if (Test-Path $modelsFile) {
+    try {
+      $json = Get-Content $modelsFile -Raw | ConvertFrom-Json
+      $json.active = $selectedPreset
+      $json | ConvertTo-Json -Depth 10 | Set-Content $modelsFile -Encoding UTF8
+      Write-Host "  OK models.json preset updated to: $selectedPreset" -ForegroundColor Green
+    } catch {
+      Write-Host "  ! Failed to update models.json - downloading fresh" -ForegroundColor Yellow
+      try {
+        Invoke-WebRequest -Uri "$REPO_URL/templates/models.json" -OutFile $modelsFile -UseBasicParsing
+        Write-Host "  OK models.json downloaded (preset: $selectedPreset)" -ForegroundColor Green
+      } catch {
+        Write-Host "  ! Failed to download models.json template" -ForegroundColor Yellow
+        $warnings += "models.json not created - run autosdd-models init manually"
+      }
+    }
+  } else {
+    try {
+      Invoke-WebRequest -Uri "$REPO_URL/templates/models.json" -OutFile $modelsFile -UseBasicParsing
+      # Set active preset
+      try {
+        $json = Get-Content $modelsFile -Raw | ConvertFrom-Json
+        $json.active = $selectedPreset
+        $json | ConvertTo-Json -Depth 10 | Set-Content $modelsFile -Encoding UTF8
+      } catch { }
+      Write-Host "  OK models.json created (preset: $selectedPreset)" -ForegroundColor Green
+    } catch {
+      Write-Host "  ! Failed to download models.json template" -ForegroundColor Yellow
+      $warnings += "models.json not created - run autosdd-models init manually"
+    }
+  }
+
+  # Generate opencode.json from models preset
+  if (Test-Path $modelsFile) {
+    try {
+      $json = Get-Content $modelsFile -Raw | ConvertFrom-Json
+      $presetModels = $json.presets.$selectedPreset.models
+      $defaultModel = $presetModels.default
+      $orchModel = $presetModels.orchestrator
+
+      if (-not $defaultModel) { $defaultModel = "opencode-go/kimi-k2.6" }
+      if (-not $orchModel) { $orchModel = $defaultModel }
+
+      $agents = @{}
+      $roleDescriptions = @{
+        "context-scout"   = "autoSDD context scout - gathers and filters project context"
+        "sdd-init"        = "autoSDD SDD init - project initialization and stack detection"
+        "sdd-explore"     = "autoSDD SDD explore - codebase exploration and analysis"
+        "sdd-propose"     = "autoSDD SDD propose - architectural proposal generation"
+        "sdd-spec"        = "autoSDD SDD spec - specification writing"
+        "sdd-design"      = "autoSDD SDD design - system and interface design"
+        "sdd-tasks"       = "autoSDD SDD tasks - task breakdown and planning"
+        "sdd-apply"       = "autoSDD SDD apply - implementation and code generation"
+        "sdd-verify"      = "autoSDD SDD verify - validation and testing"
+        "sdd-archive"     = "autoSDD SDD archive - version close and documentation"
+        "prompt-analyst"  = "autoSDD prompt analyst - fast inline prompt analysis"
+        "feedback-report"  = "autoSDD feedback report - structured report generation"
+        "knowledge-graph" = "autoSDD knowledge graph - memory visualization"
+        "version-close"   = "autoSDD version close - template-based artifact generation"
+        "knowledge-update" = "autoSDD knowledge update - context and memory updates"
+        "precompact-save"  = "autoSDD precompact save - state serialization before compaction"
+      }
+
+      foreach ($role in @("context-scout", "sdd-init", "sdd-explore", "sdd-propose", "sdd-spec", "sdd-design", "sdd-tasks", "sdd-apply", "sdd-verify", "sdd-archive", "prompt-analyst", "feedback-report", "knowledge-graph", "version-close", "knowledge-update", "precompact-save")) {
+        $roleModel = $presetModels.$role
+        if ($roleModel) {
+          $roleDesc = $roleDescriptions[$role]
+          if (-not $roleDesc) { $roleDesc = "autoSDD $role" }
+          $agents[$role] = @{ description = $roleDesc; model = $roleModel }
+        }
+      }
+
+      $opencodeFile = Join-Path (Get-Location) "opencode.json"
+      $opencodeConfig = @{ '$schema' = "https://opencode.ai/config.json"; model = $defaultModel }
+
+      if (Test-Path $opencodeFile) {
+        $existing = Get-Content $opencodeFile -Raw | ConvertFrom-Json
+        $opencodeConfig = $existing
+        $opencodeConfig.model = $defaultModel
+      }
+
+      if (-not $opencodeConfig.agent) { $opencodeConfig | Add-Member -NotePropertyName "agent" -NotePropertyValue @{} -Force }
+      $opencodeConfig.agent | Add-Member -NotePropertyName "autosdd-orchestrator" -NotePropertyValue @{
+        description = "autoSDD orchestrator - coordinates, delegates, never writes code"
+        model       = $orchModel
+        prompt      = "You are the autoSDD orchestrator. You DELEGATE all work to sub-agents. You coordinate the pipeline: VERSION INIT -> CONTEXT SCOUT -> TRIAGE -> ROUTE -> PLAN -> DELEGATE -> COLLECT -> CLOSE -> KNOWLEDGE UPDATE. You NEVER write source code directly. You read context/models.json to determine which model to assign to each role."
+      } -Force
+
+      foreach ($role in $agents.Keys) {
+        $opencodeConfig.agent | Add-Member -NotePropertyName $role -NotePropertyValue $agents[$role] -Force
+      }
+
+      $opencodeConfig | ConvertTo-Json -Depth 10 | Set-Content $opencodeFile -Encoding UTF8
+      Write-Host "  OK opencode.json configured (preset: $selectedPreset, model: $defaultModel)" -ForegroundColor Green
+      Write-Host "    Orchestrator: $orchModel"
+      Write-Host "    Agents: $($agents.Count) roles defined"
+    } catch {
+      Write-Host "  ! Failed to generate opencode.json - run autosdd-models apply manually" -ForegroundColor Yellow
+      $warnings += "opencode.json not generated"
+    }
+  } else {
+    Write-Host "  ! models.json not found - skipping opencode.json generation" -ForegroundColor Yellow
+    $warnings += "opencode.json not generated - models.json missing"
   }
 }
 
@@ -956,7 +1083,7 @@ try {
 Write-Host ""
 Write-Host "Installing automation scripts..."
 
-foreach ($scriptName in @("version-init.sh", "version-lint.sh", "version-init.ps1", "version-lint.ps1")) {
+foreach ($scriptName in @("version-init.sh", "version-lint.sh", "version-init.ps1", "version-lint.ps1", "autosdd-models.sh")) {
   $target = Join-Path $arDir "autosdd-$scriptName"
   try {
     Invoke-WebRequest -Uri "$REPO_URL/scripts/$scriptName" -OutFile $target -UseBasicParsing
@@ -979,7 +1106,7 @@ if (Test-Path $contextDir) {
 
 New-Item -ItemType Directory -Path $contextDir -Force | Out-Null
 
-$templates = @("guidelines.md", "user_context.md", "business_logic.md", "autosdd.md", "context-profiles.md")
+$templates = @("guidelines.md", "user_context.md", "business_logic.md", "autosdd.md", "context-profiles.md", "models.json")
 foreach ($tmpl in $templates) {
   $target = Join-Path $contextDir $tmpl
   if (Test-Path $target) {
@@ -1022,12 +1149,17 @@ ALL prompts go through autoSDD unless ``[raw]``, ``[no-sdd]``, or ``skip autosdd
 ### Pipeline
 ``VERSION INIT → CONTEXT SCOUT → TRIAGE → ROUTE → PLAN (CREA) → DELEGATE → COLLECT → CLOSE → KNOWLEDGE UPDATE``
 
-### Model Assignments (extends gentle-ai)
-| Role | Model |
+### Model Assignments
+Read ``context/models.json`` at session start. The ``active`` field selects the preset.
+Switch presets: ``autosdd-models set <preset>`` then ``autosdd-models apply``
+
+| Role | Model (from context/models.json) |
 |------|-------|
-| context-scout, version-close, knowledge-update, precompact-save | haiku |
-| task execution (default) | sonnet |
-| architecture/design | opus |
+| context-scout, version-close, knowledge-update, precompact-save | (preset: economy/balanced/quality) |
+| task execution (default) | (preset: economy/balanced/quality) |
+| architecture/design | (preset: economy/balanced/quality) |
+
+**Fallback** (if context/models.json unavailable): haiku, sonnet, opus
 
 ### Routing (if X → use Y skill)
 | Context | Skill |
@@ -1316,6 +1448,20 @@ if (Test-Path (Join-Path $contextDir "autosdd.md")) {
   $allGood = $false
 }
 
+# Check models.json
+$modelsCheckFile = Join-Path $contextDir "models.json"
+if (Test-Path $modelsCheckFile) {
+  try {
+    $modelsJson = Get-Content $modelsCheckFile -Raw | ConvertFrom-Json
+    Write-Host "  [OK] Model preset: $($modelsJson.active) (context/models.json)" -ForegroundColor Green
+  } catch {
+    Write-Host "  [OK] context/models.json exists" -ForegroundColor Green
+  }
+} else {
+  Write-Host "  [!!] context/models.json missing - run autosdd-models init" -ForegroundColor Red
+  $allGood = $false
+}
+
 # Check CLAUDE.md injection
 $claudeMd = Join-Path (Get-Location) "CLAUDE.md"
 if ((Test-Path $claudeMd) -and ((Get-Content $claudeMd -Raw) -match "autosdd:start")) {
@@ -1329,11 +1475,11 @@ if ((Test-Path $claudeMd) -and ((Get-Content $claudeMd -Raw) -match "autosdd:sta
 Write-Host ""
 if ($allGood) {
   Write-Host "  +==========================================+" -ForegroundColor Green
-  Write-Host "  |     autoSDD v6.0 installed!               |" -ForegroundColor Green
+  Write-Host "  |     autoSDD v6.1 installed!              |" -ForegroundColor Green
   Write-Host "  +==========================================+" -ForegroundColor Green
 } else {
   Write-Host "  +==========================================+" -ForegroundColor Yellow
-  Write-Host "  |  autoSDD v6.0 installed (with warnings)   |" -ForegroundColor Yellow
+  Write-Host "  |  autoSDD v6.1 installed (with warnings)  |" -ForegroundColor Yellow
   Write-Host "  +==========================================+" -ForegroundColor Yellow
 }
 
@@ -1357,6 +1503,11 @@ Write-Host "  Next steps:"
 Write-Host "    1. Open your project in your AI agent"
 Write-Host "    2. Run /sdd-init to bootstrap the project"
 Write-Host "    3. Run /sdd-new <feature> to start building"
+Write-Host ""
+Write-Host "  Model presets:"
+Write-Host "    autosdd-models list          # Show available presets"
+Write-Host "    autosdd-models set <name>    # Switch preset"
+Write-Host "    autosdd-models apply         # Update opencode.json"
 Write-Host ""
 Write-Host "  Update autoSDD later:"
 Write-Host "    irm $REPO_URL/install.ps1 | iex"

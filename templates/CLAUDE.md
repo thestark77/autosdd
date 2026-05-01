@@ -21,7 +21,7 @@
 - **Suggest improvements**: Proactively propose enhancements
 
 <!-- autosdd:start -->
-## autoSDD v6.0 — Active Pipeline (DO NOT REMOVE)
+## autoSDD v6.1 — Active Pipeline (DO NOT REMOVE)
 
 ALL prompts go through autoSDD unless `[raw]`, `[no-sdd]`, or `skip autosdd`.
 
@@ -36,12 +36,18 @@ ALL prompts go through autoSDD unless `[raw]`, `[no-sdd]`, or `skip autosdd`.
 ### Pipeline
 `VERSION INIT → CONTEXT SCOUT → TRIAGE → ROUTE → PLAN (CREA) → DELEGATE → COLLECT → CLOSE → KNOWLEDGE UPDATE`
 
-### Model Assignments (extends gentle-ai)
-| Role | Model |
+### Model Assignments
+Read `context/models.json` at session start. The `active` field selects the preset.
+Switch presets: `autosdd-models set <preset>` then `autosdd-models apply`.
+Current preset: **(see context/models.json)**
+
+| Role | Model (from active preset) |
 |------|-------|
-| context-scout, version-close, knowledge-update, precompact-save | haiku |
-| task execution (default) | sonnet |
-| architecture/design | opus |
+| context-scout, version-close, knowledge-update, precompact-save | (preset: economy/balanced/quality) |
+| task execution (default) | (preset: economy/balanced/quality) |
+| architecture/design | (preset: economy/balanced/quality) |
+
+**Fallback** (if context/models.json unavailable): haiku → cheapest, sonnet → default, opus → architecture
 
 ### Routing (if X → use Y skill)
 | Context | Skill |
