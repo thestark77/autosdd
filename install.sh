@@ -525,6 +525,51 @@ gentle-ai install \
 echo ""
 echo "  ✓ gentle-ai installed"
 
+# --- Auto-update Engram to latest version ---
+echo ""
+echo "Checking Engram version..."
+CURRENT_ENGRAM_VER=$(engram version 2>/dev/null | grep -oP 'v?\K[0-9]+\.[0-9]+\.[0-9]+' | head -1 || echo "")
+LATEST_ENGRAM_VER=$(curl -fsSL "https://api.github.com/repos/Gentleman-Programming/engram/releases/latest" 2>/dev/null | grep -oP '"tag_name":\s*"v?\K[0-9]+\.[0-9]+\.[0-9]+' | head -1 || echo "")
+
+if [[ -z "$CURRENT_ENGRAM_VER" ]]; then
+  echo "  ⚠ Could not detect current Engram version"
+elif [[ -n "$LATEST_ENGRAM_VER" && "$CURRENT_ENGRAM_VER" != "$LATEST_ENGRAM_VER" ]]; then
+  echo "  · Updating Engram from v${CURRENT_ENGRAM_VER} to v${LATEST_ENGRAM_VER}..."
+  ENGRAM_PLATFORM=$(uname -s | tr '[:upper:]' '[:lower:]')
+  ENGRAM_ARCH=$(uname -m | sed 's/x86_64/amd64/' | sed 's/aarch64/arm64/')
+  ENGRAM_TARBALL="engram_${LATEST_ENGRAM_VER}_${ENGRAM_PLATFORM}_${ENGRAM_ARCH}.tar.gz"
+  ENGRAM_DOWNLOAD_URL="https://github.com/Gentleman-Programming/engram/releases/download/v${LATEST_ENGRAM_VER}/${ENGRAM_TARBALL}"
+
+  engram_bin=$(command -v engram 2>/dev/null || echo "")
+  if [[ -z "$engram_bin" ]]; then
+    engram_bin="$(go env GOPATH 2>/dev/null)/bin/engram"
+  fi
+  engram_dir=$(dirname "$engram_bin")
+
+  tmpdir=$(mktemp -d /tmp/engram-update-XXXXXX)
+  if curl -fsSL -o "$tmpdir/$ENGRAM_TARBALL" "$ENGRAM_DOWNLOAD_URL" 2>/dev/null; then
+    if tar -xzf "$tmpdir/$ENGRAM_TARBALL" -C "$tmpdir" 2>/dev/null; then
+      if [[ -f "$tmpdir/engram" ]]; then
+        cp "$tmpdir/engram" "$engram_bin" 2>/dev/null || mkdir -p "$engram_dir" && cp "$tmpdir/engram" "$engram_dir/engram" 2>/dev/null
+        chmod +x "$engram_bin" 2>/dev/null || chmod +x "$engram_dir/engram" 2>/dev/null
+        echo "  ✓ Engram updated to v${LATEST_ENGRAM_VER}"
+      else
+        echo "  ⚠ Could not find engram binary in archive"
+        warnings+=("Engram auto-update failed - binary not found in archive")
+      fi
+    else
+      echo "  ⚠ Could not extract engram archive"
+      warnings+=("Engram auto-update failed - extraction error")
+    fi
+  else
+    echo "  ⚠ Could not download Engram v${LATEST_ENGRAM_VER}"
+    warnings+=("Engram auto-update failed - download error")
+  fi
+  rm -rf "$tmpdir"
+else
+  echo "  ✓ Engram v${CURRENT_ENGRAM_VER} is up to date"
+fi
+
 # --- Inject Engram Embedding Layer ---
 echo ""
 echo "Injecting semantic search (embedding layer) into Engram..."
@@ -1308,6 +1353,56 @@ else
   echo "  ✓ OpenCode config installed — will activate when OpenCode CLI is installed"
 fi
 
+# ── Configure OpenCode global MCP (Engram with semantic search) ──────
+echo ""
+echo "Configuring OpenCode global MCP (Engram with semantic search)..."
+
+OPENCODE_CONFIG_DIR="$HOME/.config/opencode"
+OPENCODE_GLOBAL_CONFIG="$OPENCODE_CONFIG_DIR/opencode.json"
+mkdir -p "$OPENCODE_CONFIG_DIR" 2>/dev/null
+
+ENGRAM_WRAPPER=""
+if [[ -f "$ENGRAM_STATE_DIR/engram-wrapper.sh" ]]; then
+  ENGRAM_WRAPPER="$ENGRAM_STATE_DIR/engram-wrapper.sh"
+elif [[ -f "$HOME/.engram/engram-wrapper.sh" ]]; then
+  ENGRAM_WRAPPER="$HOME/.engram/engram-wrapper.sh"
+fi
+
+if [[ -n "$ENGRAM_WRAPPER" && -f "$ENGRAM_WRAPPER" ]]; then
+  if command -v jq &>/dev/null; then
+    if [[ -f "$OPENCODE_GLOBAL_CONFIG" ]]; then
+      EXISTING_MCP=$(jq -r '.mcp.engram // empty' "$OPENCODE_GLOBAL_CONFIG" 2>/dev/null)
+      if [[ -n "$EXISTING_MCP" ]]; then
+        echo "  ✓ OpenCode MCP → Engram already configured in global config"
+      else
+        TMP_CONFIG=$(jq --arg wrapper "$ENGRAM_WRAPPER" --arg datadir "$ENGRAM_STATE_DIR" \
+          '.mcp.engram = {"type": "local", "command": [$wrapper], "enabled": true, "environment": {"ENGRAM_DATA_DIR": $datadir}}' \
+          "$OPENCODE_GLOBAL_CONFIG" 2>/dev/null)
+        if [[ -n "$TMP_CONFIG" ]]; then
+          echo "$TMP_CONFIG" > "$OPENCODE_GLOBAL_CONFIG"
+          echo "  ✓ OpenCode MCP → Engram added to global config"
+        else
+          echo "  ⚠ Could not add Engram MCP to OpenCode global config"
+          warnings+=("OpenCode MCP config failed - jq merge error")
+        fi
+      fi
+    else
+      jq -n --arg schema "https://opencode.ai/config.json" --arg wrapper "$ENGRAM_WRAPPER" --arg datadir "$ENGRAM_STATE_DIR" \
+        '{"$schema": $schema, "permission": "allow", "mcp": {"engram": {"type": "local", "command": [$wrapper], "enabled": true, "environment": {"ENGRAM_DATA_DIR": $datadir}}}}' \
+        > "$OPENCODE_GLOBAL_CONFIG" 2>/dev/null
+      echo "  ✓ OpenCode MCP → Engram configured in new global config"
+    fi
+  else
+    echo "  ⚠ jq not found — skipping OpenCode MCP config"
+    echo "    Add Engram MCP manually to $OPENCODE_GLOBAL_CONFIG"
+    warnings+=("OpenCode MCP not configured - jq not found")
+  fi
+else
+  echo "  ⚠ Engram wrapper not found — skipping OpenCode MCP config"
+  echo "    Re-run autoSDD install after Engram is configured to enable MCP"
+  warnings+=("OpenCode MCP not configured - engram wrapper missing")
+fi
+
 # ── Detect available AI agents ──────────────────────────────────
 echo ""
 echo "  ── Detecting AI agents ───"
@@ -1512,6 +1607,14 @@ if [[ -f "./opencode.md" ]]; then
 else
   echo "  [!!] opencode.md missing"
   all_good=false
+fi
+
+# Check OpenCode global MCP (Engram with semantic search)
+OPENCODE_GLOBAL="$HOME/.config/opencode/opencode.json"
+if [[ -f "$OPENCODE_GLOBAL" ]] && jq -e '.mcp.engram' "$OPENCODE_GLOBAL" &>/dev/null; then
+  echo "  [OK] OpenCode MCP → Engram (global config)"
+else
+  echo "  [..] OpenCode MCP → Engram not configured (run autoSDD install again)"
 fi
 
 # Check CLAUDE.md injection

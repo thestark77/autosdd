@@ -477,6 +477,58 @@ if ($LASTEXITCODE -ne 0) {
 Write-Host ""
 Write-Host "  OK gentle-ai installed" -ForegroundColor Green
 
+# --- Auto-update Engram to latest version ---
+Write-Host ""
+Write-Host "Checking Engram version..."
+$currentEngramVer = ""
+try {
+  $verOutput = & engram version 2>&1 | Select-String -Pattern "(\d+\.\d+\.\d+)" | Select-Object -First 1
+  if ($verOutput -match "(\d+\.\d+\.\d+)") { $currentEngramVer = $Matches[1] }
+} catch { }
+
+$latestEngramVer = ""
+try {
+  $release = Invoke-RestMethod -Uri "https://api.github.com/repos/Gentleman-Programming/engram/releases/latest" -UseBasicParsing
+  if ($release.tag_name -match "v?(\d+\.\d+\.\d+)") { $latestEngramVer = $Matches[1] }
+} catch { }
+
+if ([string]::IsNullOrWhiteSpace($currentEngramVer)) {
+  Write-Host "  ! Could not detect current Engram version" -ForegroundColor Yellow
+} elseif (-not [string]::IsNullOrWhiteSpace($latestEngramVer) -and $currentEngramVer -ne $latestEngramVer) {
+  Write-Host "  . Updating Engram from v${currentEngramVer} to v${latestEngramVer}..." -ForegroundColor Yellow
+  $engramBin = Get-Command engram -ErrorAction SilentlyContinue
+  if ($engramBin) {
+    $engramDir = Split-Path $engramBin.Source
+    $engramArch = if ([System.Environment]::Is64BitOperatingSystem) { "amd64" } else { "arm64" }
+    $engramZip = "engram_${latestEngramVer}_windows_${engramArch}.zip"
+    $downloadUrl = "https://github.com/Gentleman-Programming/engram/releases/download/v${latestEngramVer}/${engramZip}"
+    $tmpDir = Join-Path $env:TEMP "engram-update-$(Get-Random)"
+    New-Item -ItemType Directory -Path $tmpDir -Force | Out-Null
+    try {
+      $zipPath = Join-Path $tmpDir $engramZip
+      Invoke-WebRequest -Uri $downloadUrl -OutFile $zipPath -UseBasicParsing
+      Expand-Archive -Path $zipPath -DestinationPath $tmpDir -Force
+      $newExe = Join-Path $tmpDir "engram.exe"
+      if (Test-Path $newExe) {
+        Copy-Item $newExe $engramBin.Source -Force
+        Write-Host "  OK Engram updated to v${latestEngramVer}" -ForegroundColor Green
+      } else {
+        Write-Host "  ! Could not find engram.exe in archive" -ForegroundColor Yellow
+        $warnings += "Engram auto-update failed - binary not found in archive"
+      }
+    } catch {
+      Write-Host "  ! Engram update failed: $($_.Exception.Message)" -ForegroundColor Yellow
+      $warnings += "Engram auto-update failed"
+    } finally {
+      Remove-Item $tmpDir -Recurse -Force -ErrorAction SilentlyContinue
+    }
+  } else {
+    Write-Host "  ! engram binary not found in PATH" -ForegroundColor Yellow
+  }
+} else {
+  Write-Host "  OK Engram v${currentEngramVer} is up to date" -ForegroundColor Green
+}
+
 # --- Inject Engram Embedding Layer ---
 Write-Host ""
 Write-Host "Injecting semantic search (embedding layer) into Engram..."
@@ -1308,6 +1360,75 @@ try {
 } catch {
   Write-Host "  ! Failed to download opencode.md template" -ForegroundColor Yellow
   $warnings += "opencode.md not installed"
+}
+
+# ── Configure OpenCode global MCP (Engram with semantic search) ──────
+Write-Host ""
+Write-Host "Configuring OpenCode global MCP (Engram with semantic search)..."
+
+$opencodeConfigDir = Join-Path $env:USERPROFILE ".config\opencode"
+$opencodeGlobalConfig = Join-Path $opencodeConfigDir "opencode.json"
+New-Item -ItemType Directory -Path $opencodeConfigDir -Force | Out-Null
+
+$engramWrapper = ""
+$wrapperSh = Join-Path $ENGRAM_STATE_DIR "engram-wrapper.sh"
+$wrapperPs1 = Join-Path $ENGRAM_STATE_DIR "engram-wrapper.ps1"
+if (Test-Path $wrapperPs1) {
+  $engramWrapper = $wrapperPs1
+} elseif (Test-Path $wrapperSh) {
+  $engramWrapper = $wrapperSh
+}
+
+if ($engramWrapper -ne "") {
+  if (Test-Path $opencodeGlobalConfig) {
+    try {
+      $existing = Get-Content $opencodeGlobalConfig -Raw | ConvertFrom-Json
+      $engramMcp = $existing.PSObject.Properties["mcp"]
+      if ($engramMcp -and $engramMcp.Value.PSObject.Properties["engram"]) {
+        Write-Host "  OK OpenCode MCP -> Engram already configured in global config" -ForegroundColor Green
+      } else {
+        if (-not $existing.PSObject.Properties["mcp"]) {
+          $existing | Add-Member -NotePropertyName "mcp" -NotePropertyValue @{} -Force
+        }
+        $mcpObj = $existing.mcp
+        $engramEntry = [ordered]@{
+          "type" = "local"
+          "command" = @($engramWrapper)
+          "enabled" = $true
+          "environment" = [ordered]@{
+            "ENGRAM_DATA_DIR" = $ENGRAM_STATE_DIR
+          }
+        }
+        $mcpObj | Add-Member -NotePropertyName "engram" -NotePropertyValue $engramEntry -Force
+        $existing | ConvertTo-Json -Depth 10 | Set-Content $opencodeGlobalConfig -Encoding UTF8
+        Write-Host "  OK OpenCode MCP -> Engram added to global config" -ForegroundColor Green
+      }
+    } catch {
+      Write-Host "  ! Could not add Engram MCP to OpenCode global config" -ForegroundColor Yellow
+      $warnings += "OpenCode MCP config failed - JSON merge error"
+    }
+  } else {
+    $newConfig = [ordered]@{
+      '$schema' = "https://opencode.ai/config.json"
+      "permission" = "allow"
+      "mcp" = [ordered]@{
+        "engram" = [ordered]@{
+          "type" = "local"
+          "command" = @($engramWrapper)
+          "enabled" = $true
+          "environment" = [ordered]@{
+            "ENGRAM_DATA_DIR" = $ENGRAM_STATE_DIR
+          }
+        }
+      }
+    }
+    $newConfig | ConvertTo-Json -Depth 10 | Set-Content $opencodeGlobalConfig -Encoding UTF8
+    Write-Host "  OK OpenCode MCP -> Engram configured in new global config" -ForegroundColor Green
+  }
+} else {
+  Write-Host "  ! Engram wrapper not found - skipping OpenCode MCP config" -ForegroundColor Yellow
+  Write-Host "    Re-run autoSDD install after Engram is configured to enable MCP"
+  $warnings += "OpenCode MCP not configured - engram wrapper missing"
 }
 
 # ── Detect available AI agents ──────────────────────────────────

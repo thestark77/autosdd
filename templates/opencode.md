@@ -1,8 +1,9 @@
 # autoSDD v6.1 — OpenCode Instructions
 
 > This file is loaded by OpenCode via the `instructions` field in opencode.json.
-> Do NOT read CLAUDE.md — it contains Claude Code-specific instructions (hooks, Agent() calls, Engram MCP) that are incompatible with OpenCode.
+> Do NOT read CLAUDE.md — it contains Claude Code-specific hooks incompatible with OpenCode.
 > This file adapts the autoSDD pipeline for OpenCode's tooling.
+> Engram MCP is configured globally for OpenCode with semantic search (embeddings) enabled.
 
 ---
 
@@ -109,13 +110,30 @@ When using Task tool, prefer:
 
 ---
 
-## Knowledge Caching (replaces Engram MCP)
+## Knowledge (Engram MCP with Semantic Search)
 
-Engram MCP (`mem_save`, `mem_search`, `mem_context()`) is NOT available in OpenCode. Use file-based knowledge caching instead:
+Engram MCP is configured as a local MCP server in OpenCode's global config (`~/.config/opencode/opencode.json`). It provides `mem_save`, `mem_search`, `mem_context`, and `mem_session_summary` tools with **semantic search enabled** (OpenRouter embeddings: `openai/text-embedding-3-small`).
 
-- **Read**: Before reading 4+ files, check `context/appVersions/` for cached maps
-- **Write**: After understanding a flow, save a 20-line map to `context/appVersions/knowledge/`
-- **Format**: `Purpose → Files → Flow (step1→step2→step3) → Key decisions → Gotchas`
+### When to use Engram
+
+- **mem_search**: Before starting work, search for relevant past decisions, bugs, patterns — supports cross-language semantic matching (e.g., "adoption wait" finds "tiempo de espera en adopciones")
+- **mem_save**: After important decisions, bug fixes, discoveries, or user preferences — proactive, don't wait to be asked
+- **mem_context**: At session start or after compaction — recover previous session context
+- **mem_session_summary**: Before ending a session — summarize what was accomplished
+
+### How to call
+
+Use the `engram` MCP tools directly in OpenCode:
+- `engram__mem_search` — semantic + keyword search across all memories
+- `engram__mem_save` — save a new memory observation
+- `engram__mem_context` — get recent context for the current project
+- `engram__mem_session_summary` — save a session summary
+
+### Also keep file-based knowledge
+
+In addition to Engram, maintain `context/appVersions/knowledge/` as a secondary reference:
+- **Read**: Before reading 4+ files, check both `mem_search` and `context/appVersions/` for cached maps
+- **Write**: After understanding a flow, save to both Engram AND `context/appVersions/knowledge/`
 
 ---
 
@@ -125,7 +143,7 @@ Engram MCP (`mem_save`, `mem_search`, `mem_context()`) is NOT available in OpenC
 |---------|------------|----------|
 | Hooks | `.claude/settings.json` | None (enforced in this file) |
 | Sub-agents | `Agent({ model: "haiku" })` | Task tool with subagent_type |
-| Memory | Engram MCP (`mem_save/search/context`) | File-based `context/appVersions/knowledge/` |
+| Memory | Engram MCP (`mem_save/search/context`) | Engram MCP (configured globally) — same tools, semantic search enabled |
 | Model switching | `model: "opus"/"sonnet"/"haiku"` | `context/models.json` presets → `opencode.json` agents |
 | Pre-compaction save | PreCompact hook | "Before Context Compaction" section above (manual) |
 | Post-sub-agent check | SubagentStop hook | "After Every Task" section above (manual) |
