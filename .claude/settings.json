@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "prompt",
-            "prompt": "Sub-agent returned. SKIP ALL checks if: (a) no Agent() call was made this session, OR (b) the agent description was 'Context scout', 'Version close', 'Knowledge update', or 'Pre-compact save' (utility agents). OTHERWISE do these NOW: (1) Update PROGRESS.md with task result (DONE/FAILED/PARTIAL + 1-line note). (2) If you haven't asked the user a feedback question this version yet — ask one NOW."
+            "prompt": "SubagentStop fired — a sub-agent just completed. This hook only fires when a sub-agent completes; do not argue otherwise. If the agent description was 'Context scout', 'Version close', 'Knowledge update', or 'Pre-compact save': skip. Otherwise do NOW: (1) Update PROGRESS.md — task result DONE/FAILED/PARTIAL + 1-line note. (2) Ask the user one feedback question if none asked this version yet."
           }
         ]
       }
