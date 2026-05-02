@@ -58,7 +58,7 @@ This project uses autoSDD to develop autoSDD. The audit report at `context/audit
 ALL prompts go through autoSDD unless `[raw]`, `[no-sdd]`, or `skip autosdd`.
 
 ### Core Rules
-1. **DELEGATE** — never write 2+ files inline. Read SKILL.md Section 1.
+1. **Delegation**: `sdd-orchestrator.md` is authoritative — autoSDD does NOT override or duplicate.
 2. **VERSION FIRST** — run `scripts/version-init.sh` (or `.ps1`) + save `original_prompt.md`
 3. **CONTEXT SCOUT** — launch haiku scout (Step 0.5) before triage. Structured brief, not raw dumps.
 4. **PROGRESS.md is sacred** — update at every step. Compaction survival anchor.

@@ -21,11 +21,13 @@ metadata:
 
 You are an ORCHESTRATOR. You delegate, you don't execute.
 
-**DO inline**: Read 1-3 files · prompt.md/feedback.md/PROGRESS.md · git · Engram · single-file atomic edits
-**DELEGATE**: Write 2+ files · Read 4+ files · Tests/builds · Any multi-file change
-**Event-driven ONLY**: Monitor Tool for waits. Background Agent for async. NEVER sleep/poll — non-negotiable.
+**Delegation**: `sdd-orchestrator.md` is authoritative — its inline/delegate table and anti-patterns apply. DO NOT restate here.
 
-When sub-agents fail: DIAGNOSE → IMPROVE prompt → RE-DELEGATE. After 2 failures → ask user.
+**autoSDD adds on top of gentle-ai**:
+- Event-driven ONLY: Monitor Tool for waits. Background Agent for async. NEVER sleep/poll.
+- Knowledge cache check (Section 6) BEFORE reading 4+ files.
+- PROGRESS.md update after every delegation (Section 8).
+- When sub-agents fail: DIAGNOSE → IMPROVE prompt → RE-DELEGATE. After 2 failures → ask user.
 
 ---
 
@@ -105,81 +107,23 @@ Prompt Engineering: Few-Shot (replication) · Chain-of-Thought (architecture) ·
 
 ---
 
-## 4. Sub-Agent Launch Template
+## 4. Sub-Agent Launch — autoSDD Extensions
 
-```
-## Context
-Project: {name}. State: {relevant current state}.
-Pattern: {reference file}. References: {external if any}.
-
-## Role
-Senior {implementer/tester} specializing in {domain}.
-
-## Standards (auto-resolved)
-{paste rules from skill routing — actual text, not paths}
-
-## Task
-- {file}: {what to do}
-
-## Constraints
-- Event-driven ONLY: Monitor Tool for waits, background agents for async. NEVER sleep/poll.
-
-## Validation
-- `rtk tsc --noEmit` · `rtk eslint {paths}`
-
-## Return Contract
-Report: files_changed, tests_added, issues_found, discoveries
-```
+Follow `sdd-orchestrator.md` Sub-Agent Launch Pattern + Skill Resolver. autoSDD adds to every launch:
+- PROGRESS.md current state in the Context section
+- Log delegation in PROGRESS.md: 1 line per task (name + files + status)
+- `model` parameter from assignments below (falls back to `model-assignments.md`)
 
 Always set `model` parameter. Always set `description`.
 
-### Pipeline Model Assignments
+### Extended Model Assignments (adds to model-assignments.md — does NOT replace)
 
-Model assignments are configured in `context/models.json`. Read this file at session start to resolve the active preset.
-
-**For Claude Code / other agents**: Use the alias table below as fallback when `context/models.json` is not available.
-
-**For OpenCode**: The installer creates two files:
-- `opencode.json` — Model assignments for OpenCode's 4 agent slots (coder, task, title, summarizer). Uses presets from `context/models.json`.
-- `opencode.md` — Hook-equivalent instructions embedded in the system prompt via contextPaths. Replaces Claude Code hooks (SubagentStop, PreCompact, Stop, UserPromptSubmit) with mandatory behaviors enforced inline.
-
-OpenCode has only 4 agent names: `coder` (main), `task` (sub-agent), `title` (titles), `summarizer` (compaction). The orchestrator role uses `coder`, context-scout and other fast roles use `task` with lightweight models, and title/summarizer use the cheapest model.
-
-Run `autosdd-models apply` to generate/update `opencode.json` from the active preset in `context/models.json`.
-
-#### Presets (context/models.json)
-
-| Preset | Provider | Description |
-|--------|----------|-------------|
-| `quality` | opencode (Zen) | Max quality — all paid models |
-| `balanced` | mixed | Zen for critical decisions, Go for execution |
-| `economy` | opencode-go (Go) | Min cost — all Go plan models |
-
-Switch presets: `autosdd-models set <preset>` then `autosdd-models apply`
-
-#### Fallback alias table (for agents without models.json support)
-
-| Role | `haiku` alias | `sonnet` alias | `opus` alias |
-|------|--------------|----------------|--------------|
-| context-scout | haiku | | |
-| version-close | haiku | | |
-| knowledge-update | haiku | | |
-| precompact-save | haiku | | |
-| sdd-explore | | sonnet | |
-| sdd-spec | | sonnet | |
-| sdd-tasks | | sonnet | |
-| sdd-apply | | sonnet | |
-| sdd-verify | | sonnet | |
-| sdd-archive | | sonnet | |
-| feedback-report | | sonnet | |
-| knowledge-graph | | sonnet | |
-| sdd-init | | sonnet | |
-| sdd-propose | | | opus |
-| sdd-design | | | opus |
-| orchestrator | | | opus |
-| default | | sonnet | |
-
-> These EXTEND gentle-ai's `model-assignments.md` — they do not replace it.
+| Role | Model | Reason |
+|------|-------|--------|
+| context-scout | haiku | Gather + filter, no reasoning needed |
+| version-close | haiku | Template-based artifact generation |
+| knowledge-update | haiku | Mechanical updates + memory saves |
+| precompact-save | haiku | State serialization under time pressure |
 
 ---
 

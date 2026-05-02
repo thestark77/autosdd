@@ -1274,7 +1274,7 @@ cat > "$HOOKS_FILE" << 'HOOKEOF'
         "hooks": [
           {
             "type": "prompt",
-            "prompt": "Sub-agent returned. SKIP these checks if the agent description was 'Context scout', 'Version close', 'Knowledge update', or 'Pre-compact save' (utility agents — no tracking needed). OTHERWISE do these NOW: (1) Update PROGRESS.md with task result (DONE/FAILED/PARTIAL + 1-line note). (2) If you haven't asked the user a feedback question this version yet — ask one NOW."
+            "prompt": "Sub-agent returned. SKIP ALL checks if: (a) no Agent() call was made this session, OR (b) the agent description was 'Context scout', 'Version close', 'Knowledge update', or 'Pre-compact save' (utility agents). OTHERWISE do these NOW: (1) Update PROGRESS.md with task result (DONE/FAILED/PARTIAL + 1-line note). (2) If you haven't asked the user a feedback question this version yet — ask one NOW."
           }
         ]
       }
@@ -1311,7 +1311,7 @@ cat > "$HOOKS_FILE" << 'HOOKEOF'
           },
           {
             "type": "command",
-            "command": "echo 'autoSDD: ORCHESTRATOR rules — inline: coordination, git, 1-file edits, reads 1-3 files. DELEGATE: 2+ files, 4+ reads, tests/builds, multi-step execution. ALWAYS DELEGATE: 2+ independent parallel tasks. Event-driven ONLY: Monitor Tool for waits, Background Agent for async. NEVER sleep/poll.'"
+            "command": "echo 'autoSDD layer active. Delegation: sdd-orchestrator.md is authoritative (read if not cached). PROGRESS.md: update after every delegation. Knowledge cache: check Engram before 4+ file reads.'"
           }
         ]
       }

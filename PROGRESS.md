@@ -30,5 +30,8 @@
 - [x] Presentation summary: context/be-code-kit-overview.md — DONE
 - [x] Task: Explore be-code-kit repo (very thorough) — DONE (full structure, install pipeline, dependency chain, architecture, 8-step installer, no stark-kit breaking change detected, Engram memory saved)
 
+- [x] Task: templates/CLAUDE.md — Core Rules → Reglas Core, delegation deferred to sdd-orchestrator.md — DONE
+- [x] Task: CLAUDE.md (dogfooding) — Core Rule 1 updated to reference sdd-orchestrator.md instead of "SKILL.md Section 1" — DONE
+
 ### Pending / deferred
 - e2e-forge: ad-hoc Axiom log query documentation — deferred (separate repo, ~800 line SKILL.md)
