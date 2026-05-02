@@ -28,6 +28,7 @@
   - [x] Hooks: v6.0 (utility exclusion, haiku delegation, event-driven)
 - [ ] Phase 7: Commits + push (autoSDD repo) — PENDING user confirmation
 - [x] Presentation summary: context/be-code-kit-overview.md — DONE
+- [x] Task: Explore be-code-kit repo (very thorough) — DONE (full structure, install pipeline, dependency chain, architecture, 8-step installer, no stark-kit breaking change detected, Engram memory saved)
 
 ### Pending / deferred
 - e2e-forge: ad-hoc Axiom log query documentation — deferred (separate repo, ~800 line SKILL.md)
