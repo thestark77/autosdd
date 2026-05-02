@@ -1169,56 +1169,55 @@ AUTOSDD_BLOCK=$(cat <<'BLOCKEOF'
 
 ALL prompts go through autoSDD unless `[raw]`, `[no-sdd]`, or `skip autosdd`.
 
-### Core Rules
-1. **Delegation**: `sdd-orchestrator.md` is authoritative — autoSDD does NOT override or duplicate.
-2. **VERSION FIRST** — run `scripts/version-init.sh` (or `.ps1`) + save `original_prompt.md`
-3. **CONTEXT SCOUT** — launch haiku scout (Step 0.5) before triage. Structured brief, not raw dumps.
-4. **PROGRESS.md is sacred** — update at every step. Compaction survival anchor.
-5. **Event-driven ONLY** — Monitor Tool for waits. Background Agent for async. NEVER sleep/poll.
-6. **Feedback after every task** — ask user ≥1 strategic question. Persist answers.
+### Reglas Core
+1. **Delegación**: \`sdd-orchestrator.md\` es autoritativo — autoSDD NO lo sobreescribe ni lo duplica.
+2. **VERSION PRIMERO** — antes de planificar, crear \`context/appVersions/vX.Y.Z/\` + guardar \`original_prompt.md\`
+3. **PROGRESS.md es sagrado** — actualizar en cada paso. Es el ancla de supervivencia ante compactación.
+4. **Feedback después de cada tarea** — hacer al usuario ≥1 pregunta estratégica. Persistir respuestas.
 
 ### Pipeline
-`VERSION INIT → CONTEXT SCOUT → TRIAGE → ROUTE → PLAN (CREA) → DELEGATE → COLLECT → CLOSE → KNOWLEDGE UPDATE`
+\`VERSION INIT → CONTEXT SCOUT → TRIAGE → ROUTE → PLAN (CREA) → DELEGATE → COLLECT → CLOSE → KNOWLEDGE UPDATE\`
 
 ### Model Assignments
-Read `context/models.json` at session start. The `active` field selects the preset.
-Switch presets: `autosdd-models set <preset>` then `autosdd-models apply`
+Read \`context/models.json\` at session start. The \`active\` field selects the preset.
+Switch presets: \`autosdd-models set <preset>\` then \`autosdd-models apply\`.
+Current preset: **(see context/models.json)**
 
-| Role | Model (from context/models.json) |
+| Role | Model (from active preset) |
 |------|-------|
 | context-scout, version-close, knowledge-update, precompact-save | (preset: economy/balanced/quality) |
 | task execution (default) | (preset: economy/balanced/quality) |
 | architecture/design | (preset: economy/balanced/quality) |
 
-**Fallback** (if context/models.json unavailable): haiku, sonnet, opus
+**Fallback** (if context/models.json unavailable): haiku → cheapest, sonnet → default, opus → architecture
 
 ### Routing (if X → use Y skill)
 | Context | Skill |
 |---------|-------|
-| Public UI (.tsx/.vue pages) | `frontend-design` |
-| Admin/dashboard UI | `interface-design` |
-| API routes, validation | `error-handling-patterns` |
-| DB schema, .prisma | `postgresql-table-design` |
-| Tests (.test., .spec.) | `e2e-testing-patterns` |
-| Browser automation | `playwright-cli` (ALWAYS --headed) |
-| PR creation | `branch-pr` |
-| Security, 5+ files | `judgment-day` |
+| Public UI (.tsx/.vue pages) | \`frontend-design\` |
+| Admin/dashboard UI | \`interface-design\` |
+| API routes, validation | \`error-handling-patterns\` |
+| DB schema, .prisma | \`postgresql-table-design\` |
+| Tests (.test., .spec.) | \`e2e-testing-patterns\` |
+| Browser automation | \`playwright-cli\` (ALWAYS --headed) |
+| PR creation | \`branch-pr\` |
+| Security, 5+ files | \`judgment-day\` |
 
-**Screenshots**: ALL Playwright captures → `context/appVersions/vX.Y.Z/screenshots/` (current version). Never elsewhere.
+**Screenshots**: ALL Playwright captures → \`context/appVersions/vX.Y.Z/screenshots/\` (current version). Never elsewhere.
 
 ### Knowledge Caching (saves tokens)
-Before reading 4+ files → check Engram `knowledge/{project}/{topic}` for cached maps.
+Before reading 4+ files → check Engram \`knowledge/{project}/{topic}\` for cached maps.
 After understanding a flow → save a 20-line map to Engram.
 
 ### Compaction Recovery (read this AFTER any compaction)
-1. Read `PROGRESS.md` (your state anchor)
-2. Read current version's `prompt.md`
-3. `mem_context()` + `mem_search("session/{project}")`
-4. Resume from where PROGRESS.md says
+1. Read \`PROGRESS.md\` (ONLY this — your state anchor)
+2. Read current version's \`prompt.md\` (your plan)
+3. \`mem_context()\` + \`mem_search("session/{project}")\`
+4. Resume from PROGRESS.md state — do NOT read other files unless PROGRESS.md says you need them
 
 ### Hooks
 - **SubagentStop**: Update PROGRESS.md + save observation + check feedback debt (skips utility agents)
-- **PreCompact**: Delegate to haiku: save ALL state to PROGRESS.md + Engram NOW
+- **PreCompact**: Delegate to cheapest model: save ALL state to PROGRESS.md + Engram NOW
 - **Stop**: Check feedback.md generated + PROGRESS.md current
 - **UserPromptSubmit**: Reset stop-hook debounce
 
@@ -1226,7 +1225,7 @@ After understanding a flow → save a 20-line map to Engram.
 Provides: Engram MCP · SDD phases · persona · model-assignments · branch-pr · judgment-day
 autoSDD works without it (degraded mode).
 
-Read full framework: `~/.claude/skills/autosdd/SKILL.md`
+Read full framework: \`~/.claude/skills/autosdd/SKILL.md\`
 <!-- autosdd:end -->
 BLOCKEOF
 )

@@ -40,10 +40,10 @@ You are an ORCHESTRATOR. You delegate, you don't execute.
 
 > If this step is skipped, the session is NON-COMPLIANT from the start.
 
-### Step 0.5 — CONTEXT SCOUT (haiku, automatic)
-Launch context-scout sub-agent (ALWAYS haiku):
+### Step 0.5 — CONTEXT SCOUT (cheapest model, automatic)
+Launch context-scout sub-agent (model from assignments — fallback: haiku):
 ```
-Agent({ model: "haiku", description: "Context scout", prompt: [user prompt + source list] })
+Agent({ model: "{context-scout}", description: "Context scout", prompt: [user prompt + source list] })
 ```
 Receives structured brief. **This is a guide, not a boundary** — if more context is needed later, read it.
 
@@ -67,12 +67,12 @@ Validate results. Update PROGRESS.md per task (DONE/FAILED/PARTIAL). Re-delegate
 **Ask user ≥1 feedback question** (mandatory — see Section 7).
 **Scope changes**: If user modifies scope → append to `prompt.md` under `## Additional Instructions` with timestamp.
 
-### Step 6 — CLOSE VERSION (delegate to haiku)
-Delegate: `Agent({ model: "haiku", description: "Version close" })` with PROGRESS.md + prompt.md → generate feedback.md + changelog.md.
+### Step 6 — CLOSE VERSION (delegate to cheapest)
+Delegate: `Agent({ model: "{version-close}", description: "Version close" })` with PROGRESS.md + prompt.md → generate feedback.md + changelog.md.
 Update PROGRESS.md: `vX.Y.Z — CLOSED`. Run `scripts/version-lint.sh` to verify sync.
 
-### Step 7 — KNOWLEDGE UPDATE (delegate to haiku)
-Delegate: `Agent({ model: "haiku", description: "Knowledge update" })` → update context files, save knowledge maps (Section 6), check doc sync.
+### Step 7 — KNOWLEDGE UPDATE (delegate to cheapest)
+Delegate: `Agent({ model: "{knowledge-update}", description: "Knowledge update" })` → update context files, save knowledge maps (Section 6), check doc sync.
 Memory rules: search Engram for duplicates before saving · max 5 lines per observation · title max 8 words.
 
 **Mid-Pipeline Interrupt**: New user message → ANSWER FIRST → RE-PRIORITIZE task queue → RESUME.
@@ -116,7 +116,7 @@ Follow `sdd-orchestrator.md` Sub-Agent Launch Pattern + Skill Resolver. autoSDD 
 
 Always set `model` parameter. Always set `description`.
 
-### Extended Model Assignments (adds to model-assignments.md — does NOT replace)
+### Extended Model Assignments (fallback only — models.json preset takes precedence)
 
 | Role | Model | Reason |
 |------|-------|--------|
@@ -184,8 +184,8 @@ PROGRESS.md must always reflect:
 - Current version and status (STARTED/PLANNED/IN-PROGRESS/CLOSED)
 - Task list with status per task · Key decisions · What to do next
 
-### Pre-Compaction (delegate to haiku via PreCompact hook)
-Delegate: `Agent({ model: "haiku", description: "Pre-compact save" })` → (1) Update PROGRESS.md with ALL in-flight states (2) `mem_save` session state (3) Note pending feedback.md.
+### Pre-Compaction (delegate via PreCompact hook)
+Delegate: `Agent({ model: "{precompact-save}", description: "Pre-compact save" })` → (1) Update PROGRESS.md with ALL in-flight states (2) `mem_save` session state (3) Note pending feedback.md.
 
 ### Post-Compaction Recovery (ALWAYS — read this from CLAUDE.md)
 1. Read PROGRESS.md (ONLY this — your state anchor)
@@ -206,7 +206,7 @@ OpenCode does not support Claude Code hooks. Instead, `opencode.md` (installed t
 
 Both files coexist — Claude Code uses `.claude/settings.json`, OpenCode uses `opencode.json` + `opencode.md`. No conflict.
 
-Engram MCP (`mem_save`, `mem_search`, `mem_context()`) is NOT available in OpenCode. `opencode.md` replaces it with file-based knowledge caching in `context/appVersions/knowledge/`.
+Engram MCP is available in OpenCode when configured as a global MCP server. File-based knowledge in `context/appVersions/knowledge/` serves as secondary reference.
 
 ---
 

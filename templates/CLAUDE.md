@@ -73,7 +73,7 @@ After understanding a flow → save a 20-line map to Engram.
 
 ### Hooks
 - **SubagentStop**: Update PROGRESS.md + save observation + check feedback debt (skips utility agents)
-- **PreCompact**: Delegate to haiku: save ALL state to PROGRESS.md + Engram NOW
+- **PreCompact**: Delegate to cheapest model: save ALL state to PROGRESS.md + Engram NOW
 - **Stop**: Check feedback.md generated + PROGRESS.md current
 - **UserPromptSubmit**: Reset stop-hook debounce
 

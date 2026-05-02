@@ -4,12 +4,12 @@ description: >
   Lightweight context gathering agent. Scans all project context sources,
   filters for task relevance, and returns a curated brief to the orchestrator.
 version: "1.0.0"
-model: haiku
+model: "{context-scout}"
 ---
 
 # Context Scout — Lightweight Context Gathering
 
-> Model: ALWAYS haiku. This agent gathers, it does not reason architecturally.
+> Model: from assignments (fallback: haiku). This agent gathers, it does not reason architecturally.
 
 ## Purpose
 Scan all context sources, filter by task relevance, return a structured brief.
