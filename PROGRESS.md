@@ -32,6 +32,7 @@
 
 - [x] Task: templates/CLAUDE.md — Core Rules → Reglas Core, delegation deferred to sdd-orchestrator.md — DONE
 - [x] Task: CLAUDE.md (dogfooding) — Core Rule 1 updated to reference sdd-orchestrator.md instead of "SKILL.md Section 1" — DONE
+- [x] Task: README consistency check — DONE — v6 version string (not v6.1), AUTOSDD_BLOCK reference missing, OpenCode/Engram correctly documented.
 
 ### Pending / deferred
 - e2e-forge: ad-hoc Axiom log query documentation — deferred (separate repo, ~800 line SKILL.md)
